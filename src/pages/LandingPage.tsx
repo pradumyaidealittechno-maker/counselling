@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   Sparkles, ArrowRight, CheckCircle, Play, FileText, Users,
   Video, MessageSquare, BarChart3, Clock, Dna,
-  Brain, Target, TrendingUp, Shield, Layers, Zap, Globe, Award, Star
+  Brain, Target, TrendingUp, Shield, Layers, Star
 } from 'lucide-react';
 
 const problems = [
