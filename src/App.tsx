@@ -1,0 +1,52 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Onboarding from './pages/Onboarding';
+import Dashboard from './pages/Dashboard';
+import CreateJob from './pages/CreateJob';
+import LinkedInImport from './pages/LinkedInImport';
+import JobDNA from './pages/JobDNA';
+import AITraining from './pages/AITraining';
+import InterviewBuilder from './pages/InterviewBuilder';
+import Candidates from './pages/Candidates';
+import SendInvitation from './pages/SendInvitation';
+import VideoInterview from './pages/VideoInterview';
+import InterviewComplete from './pages/InterviewComplete';
+import AnalysisReport from './pages/AnalysisReport';
+import FinalDecision from './pages/FinalDecision';
+import DashboardLayout from './components/DashboardLayout';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        
+        {/* Interview Route (Candidate-facing) */}
+        <Route path="/interview/:id" element={<VideoInterview />} />
+        <Route path="/interview-complete" element={<InterviewComplete />} />
+        
+        {/* Dashboard Routes */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="jobs/create" element={<CreateJob />} />
+          <Route path="jobs/linkedin-import" element={<LinkedInImport />} />
+          <Route path="jobs/job-dna" element={<JobDNA />} />
+          <Route path="jobs/ai-training" element={<AITraining />} />
+          <Route path="jobs/interview-builder" element={<InterviewBuilder />} />
+          <Route path="candidates" element={<Candidates />} />
+          <Route path="candidates/invite" element={<SendInvitation />} />
+          <Route path="candidates/:id/report" element={<AnalysisReport />} />
+          <Route path="candidates/:id/decision" element={<FinalDecision />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
