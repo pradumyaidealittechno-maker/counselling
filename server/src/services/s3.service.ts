@@ -44,7 +44,9 @@ export class S3Service {
 
     await s3Client.send(command);
 
-    const url = `https://${this.bucket}.s3.${config.aws.region}.amazonaws.com/${key}`;
+    // Generate pre-signed URL for secure access (valid for 7 days)
+    const url = await this.getSignedUrl(key, 7 * 24 * 60 * 60);
+
 
     return {
       key,
@@ -133,7 +135,10 @@ export class S3Service {
     });
 
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
-    const publicUrl = `https://${this.bucket}.s3.${config.aws.region}.amazonaws.com/${key}`;
+    
+    // Generate pre-signed URL for viewing (7 days expiry)
+    const publicUrl = await this.getSignedUrl(key, 7 * 24 * 60 * 60);
+
 
     return {
       uploadUrl,

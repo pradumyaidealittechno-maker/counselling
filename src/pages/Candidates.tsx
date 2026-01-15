@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Search, Filter, Mail, MoreVertical, FileText, Eye, Dna, TrendingUp, Users, Loader } from 'lucide-react';
+import { Upload, Search, Mail, MoreVertical, FileText, Eye, Dna, TrendingUp, Users, Plus, Loader } from 'lucide-react';
 import api from '../services/api';
+import AddCandidateDialog from '../components/AddCandidateDialog';
 
 interface Candidate {
   _id: string;
@@ -11,6 +12,11 @@ interface Candidate {
   phone?: string;
   status: string;
   experience?: string;
+  resume?: {
+    url: string;
+    fileName: string;
+  };
+  resumeUrl?: string;
   interviewResult?: {
     overallScore?: number;
     recommendation?: string;
@@ -29,7 +35,8 @@ const getStatusConfig = (status: string) => {
     'invited': { bg: 'rgba(59, 130, 246, 0.1)', text: '#3B82F6', border: 'rgba(59, 130, 246, 0.3)', label: 'Invited' },
     'resume_screened': { bg: 'rgba(99, 102, 241, 0.1)', text: '#6366F1', border: 'rgba(99, 102, 241, 0.3)', label: 'Resume Screened' },
     'decision_made': { bg: 'rgba(107, 114, 128, 0.1)', text: '#6B7280', border: 'rgba(107, 114, 128, 0.3)', label: 'Decision Made' },
-    'new': { bg: 'rgba(59, 130, 246, 0.1)', text: '#3B82F6', border: 'rgba(59, 130, 246, 0.3)', label: 'New' }
+    'new': { bg: 'rgba(59, 130, 246, 0.1)', text: '#3B82F6', border: 'rgba(59, 130, 246, 0.3)', label: 'New' },
+    'pending': { bg: 'rgba(107, 114, 128, 0.1)', text: '#6B7280', border: 'rgba(107, 114, 128, 0.3)', label: 'Pending Resume' }
   };
   return configs[status] || configs['new'];
 };
@@ -40,8 +47,10 @@ export default function Candidates() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Array<{ _id: string; title: string }>>([]);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [candidateToUploadResume, setCandidateToUploadResume] = useState<string | null>(null);
+
+  const singleFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Check if jobId is in URL params
@@ -50,7 +59,7 @@ export default function Candidates() {
     if (jobIdParam) {
       setSelectedJobId(jobIdParam);
     }
-    
+
     loadCandidates();
     loadJobs();
   }, []);
@@ -76,55 +85,55 @@ export default function Candidates() {
     }
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSingleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    // Require job selection
-    if (!selectedJobId) {
-      alert('Please select a job before uploading resumes.');
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      return;
-    }
+    if (!files || files.length === 0 || !candidateToUploadResume) return;
 
     try {
-      setUploading(true);
-      
-      // Upload each resume
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const formData = new FormData();
-        formData.append('resume', file);
-        formData.append('jobId', selectedJobId);
-
-        await api.candidates.uploadResume(formData);
-      }
+      setLoading(true); // Use global loading since we removed uploading state
+      const file = files[0];
+      await api.candidates.uploadResumeForCandidate(candidateToUploadResume, file);
 
       // Reload candidates
       await loadCandidates();
-      
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+
+      setCandidateToUploadResume(null);
+      if (singleFileInputRef.current) {
+        singleFileInputRef.current.value = '';
       }
     } catch (err) {
-      console.error('Failed to upload resumes:', err);
-      alert('Failed to upload resumes. Please try again.');
+      console.error('Failed to upload resume:', err);
+      alert('Failed to upload resume. Please try again.');
     } finally {
-      setUploading(false);
+      setLoading(false);
+    }
+  };
+
+  const triggerSingleUpload = (candidateId: string) => {
+    setCandidateToUploadResume(candidateId);
+    singleFileInputRef.current?.click();
+  };
+
+  const handleDelete = async (candidateId: string) => {
+    if (window.confirm('Are you sure you want to delete this candidate? This action cannot be undone.')) {
+      try {
+        await api.candidates.delete(candidateId);
+        await loadCandidates();
+      } catch (err) {
+        console.error('Failed to delete candidate:', err);
+        alert('Failed to delete candidate. Please try again.');
+      }
     }
   };
 
   const filteredCandidates = candidates.filter(c => {
-    const matchesSearch = `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    const fullName = `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase();
+    const email = (c.email || '').toLowerCase();
+
+    const matchesSearch = fullName.includes(term) || email.includes(term);
     const matchesJob = !selectedJobId || c.job?._id === selectedJobId;
+
     return matchesSearch && matchesJob;
   });
 
@@ -151,34 +160,25 @@ export default function Candidates() {
           <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>Manage and track all candidates in your pipeline</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <Link to="/dashboard/candidates/invite" className="btn btn-secondary btn-sm">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowAddDialog(true)}
+          >
+            <Plus size={16} /> Add Candidate
+          </button>
+
+          <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
             <Mail size={16} /> Send Invitation
           </Link>
+
+
           <input
             type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
+            ref={singleFileInputRef}
+            onChange={handleSingleFileUpload}
             accept=".pdf,.doc,.docx"
-            multiple
             style={{ display: 'none' }}
           />
-          <button 
-            className="btn btn-primary btn-sm"
-            onClick={handleUploadClick}
-            disabled={uploading || !selectedJobId}
-            title={!selectedJobId ? 'Please select a job first' : 'Upload resumes for selected job'}
-          >
-            {uploading ? (
-              <>
-                <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload size={16} /> Upload Resumes
-              </>
-            )}
-          </button>
         </div>
       </div>
 
@@ -218,29 +218,24 @@ export default function Candidates() {
         </div>
       </div>
 
-      {/* Upload Area */}
-      <div style={{
-        border: '2px dashed #E5E7EB',
-        borderRadius: '0.75rem',
-        padding: '1.25rem',
-        textAlign: 'center',
-        marginBottom: '1rem',
-        background: '#F9FAFB'
-      }}>
-        <Upload size={24} color="#9CA3AF" style={{ marginBottom: '0.5rem' }} />
-        <p style={{ fontWeight: 500, marginBottom: '0.125rem', fontSize: '0.875rem' }}>Drag and drop resumes here</p>
-        <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>or click to browse (PDF, DOC, DOCX)</p>
-      </div>
-
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+      {/* Filters/Search Row */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
         <div style={{ flex: 1, position: 'relative' }}>
-          <Search size={16} color="#9CA3AF" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-          <input 
-            type="text" 
-            className="input" 
-            placeholder="Search candidates..." 
-            style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }}
+          <Search size={18} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            type="text"
+            className="input"
+            placeholder="Search candidates by name or email..."
+            style={{
+              width: '100%',
+              paddingLeft: '40px',
+              paddingTop: '0.625rem',
+              paddingBottom: '0.625rem',
+              fontSize: '0.9375rem',
+              borderRadius: '0.5rem',
+              border: '1px solid #E5E7EB',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -249,16 +244,21 @@ export default function Candidates() {
           className="input"
           value={selectedJobId || ''}
           onChange={(e) => setSelectedJobId(e.target.value || null)}
-          style={{ minWidth: '200px', fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
+          style={{
+            minWidth: '220px',
+            fontSize: '0.9375rem',
+            padding: '0.625rem 1rem',
+            borderRadius: '0.5rem',
+            border: '1px solid #E5E7EB',
+            backgroundColor: 'white',
+            cursor: 'pointer'
+          }}
         >
           <option value="">All Jobs</option>
           {jobs.map(job => (
             <option key={job._id} value={job._id}>{job.title}</option>
           ))}
         </select>
-        <button className="btn btn-ghost btn-sm">
-          <Filter size={16} /> Filter
-        </button>
       </div>
 
       {/* Candidates Table */}
@@ -296,7 +296,7 @@ export default function Candidates() {
                 const score = candidate.interviewResult?.overallScore;
                 const decision = candidate.interviewResult?.recommendation;
                 const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
-                
+
                 return (
                   <tr key={candidate._id} style={{ borderBottom: '1px solid #E5E7EB' }}>
                     <td style={{ padding: '0.75rem' }}>
@@ -366,17 +366,96 @@ export default function Candidates() {
                             <Eye size={12} /> View Report
                           </Link>
                         ) : candidate.status === 'pending_interview' || candidate.status === 'invited' ? (
-                          <button className="btn btn-sm btn-secondary" style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}>
-                            <Mail size={12} /> Resend Invite
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            {(!candidate.resumeUrl && !candidate.resume?.url) && (
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}
+                                onClick={() => triggerSingleUpload(candidate._id)}
+                              >
+                                <Upload size={12} /> Upload Resume
+                              </button>
+                            )}
+                            <button className="btn btn-sm btn-secondary" style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}>
+                              <Mail size={12} /> Resend Invite
+                            </button>
+                          </div>
                         ) : (
-                          <button className="btn btn-sm btn-ghost" style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}>
-                            <FileText size={12} /> View Resume
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            {(!candidate.resumeUrl && !candidate.resume?.url) ? (
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}
+                                onClick={() => triggerSingleUpload(candidate._id)}
+                              >
+                                <Upload size={12} /> Upload Resume
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}
+                                onClick={() => {
+                                  const url = candidate.resume?.url || candidate.resumeUrl;
+                                  if (url) window.open(url, '_blank');
+                                }}
+                              >
+                                <FileText size={12} /> View Resume
+                              </button>
+                            )}
+                          </div>
                         )}
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}>
-                          <MoreVertical size={14} color="#6B7280" />
-                        </button>
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            style={{ padding: '0.25rem' }}
+                            onClick={(e) => {
+                              const menu = e.currentTarget.nextElementSibling;
+                              if (menu) {
+                                (menu as HTMLElement).style.display = (menu as HTMLElement).style.display === 'none' ? 'block' : 'none';
+                              }
+                            }}
+                            onBlur={(e) => {
+                              // Simple delay to allow clicking the menu item
+                              setTimeout(() => {
+                                const menu = e.currentTarget.nextElementSibling;
+                                if (menu) {
+                                  (menu as HTMLElement).style.display = 'none';
+                                }
+                              }, 200);
+                            }}
+                          >
+                            <MoreVertical size={14} color="#6B7280" />
+                          </button>
+                          <div style={{
+                            display: 'none',
+                            position: 'absolute',
+                            right: 0,
+                            top: '100%',
+                            background: 'white',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '0.375rem',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            zIndex: 10,
+                            minWidth: '120px'
+                          }}>
+                            <button
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '0.5rem 0.75rem',
+                                fontSize: '0.875rem',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#EF4444'
+                              }}
+                              onClick={() => handleDelete(candidate._id)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -408,6 +487,13 @@ export default function Candidates() {
       </div>
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+
+      <AddCandidateDialog
+        isOpen={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        onSuccess={loadCandidates}
+        selectedJobId={selectedJobId}
+      />
     </div>
   );
 }

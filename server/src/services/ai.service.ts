@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-interface TranscriptEntry {
+export interface TranscriptEntry {
   speaker: string;
   text: string;
   timestamp: string;
 }
 
-interface InterviewAnalysis {
+export interface InterviewAnalysis {
   overallScore: number;
   technicalSkills: {
     score: number;
@@ -33,7 +33,7 @@ interface InterviewAnalysis {
   redFlags: string[];
 }
 
-class AIService {
+export class AIService {
   private baseUrl: string = 'https://api.openai.com/v1';
 
   private getApiKey(): string {
@@ -51,7 +51,7 @@ class AIService {
     requiredSkills: string[]
   ): Promise<InterviewAnalysis> {
     const apiKey = this.getApiKey();
-    
+
     if (this.shouldUseMock()) {
       throw new Error('OpenAI API key not configured. Cannot analyze interview.');
     }
@@ -132,7 +132,7 @@ Provide a detailed analysis in the following JSON format:
 
   async generateJobDNA(jobDescription: string): Promise<any> {
     const apiKey = this.getApiKey();
-    
+
     // Use mock response if API key is not configured
     if (this.shouldUseMock()) {
       console.log('🎭 Using mock Job DNA generation (OpenAI API key not configured)');
@@ -237,13 +237,13 @@ Guidelines:
       return JSON.parse(response.data.choices[0].message.content);
     } catch (error: any) {
       console.error('❌ Failed to generate Job DNA:', error.response?.data || error.message);
-      
+
       // If API key is invalid, switch to mock mode
       if (error.response?.data?.error?.type === 'invalid_request_error') {
         console.warn('⚠️  OpenAI API key appears to be invalid. Using mock response.');
         return this.generateMockJobDNA(jobDescription);
       }
-      
+
       throw new Error('Failed to generate Job DNA');
     }
   }
@@ -256,7 +256,7 @@ Guidelines:
     const hasPython = desc.includes('python');
     const hasJava = desc.includes('java');
     const isSenior = desc.includes('senior') || desc.includes('lead');
-    
+
     return {
       skillDNA: [
         {
@@ -356,7 +356,7 @@ Guidelines:
     jobDNA?: any;
   }): Promise<any[]> {
     const apiKey = this.getApiKey();
-    
+
     // Use mock response if API key is not configured
     if (this.shouldUseMock()) {
       console.log('🎭 Using mock interview questions generation (OpenAI API key not configured)');
@@ -450,7 +450,7 @@ Return a JSON object with a "questions" array:
       console.log('✅ Generated questions:', result.questions?.length || 0);
       console.log('🔍 Result type:', Array.isArray(result) ? 'array' : typeof result);
       console.log('🔍 Result keys:', Object.keys(result));
-      
+
       // Handle different response formats
       if (Array.isArray(result)) {
         console.log('✅ Returning array directly');
@@ -465,13 +465,13 @@ Return a JSON object with a "questions" array:
       }
     } catch (error: any) {
       console.error('❌ Failed to generate interview questions:', error.response?.data || error.message);
-      
+
       // If API key is invalid, use mock response
       if (error.response?.data?.error?.type === 'invalid_request_error') {
         console.warn('⚠️  OpenAI API key appears to be invalid. Using mock response.');
         return this.generateMockQuestions(jobData);
       }
-      
+
       throw new Error('Failed to generate interview questions');
     }
   }
@@ -492,11 +492,11 @@ Return a JSON object with a "questions" array:
     return [
       {
         id: 'q1-technical',
-        text: hasReact 
+        text: hasReact
           ? 'Explain the difference between controlled and uncontrolled components in React. When would you use each?'
           : hasPython
-          ? 'Explain the difference between lists and tuples in Python. When would you use each?'
-          : 'Describe your approach to designing a scalable system architecture.',
+            ? 'Explain the difference between lists and tuples in Python. When would you use each?'
+            : 'Describe your approach to designing a scalable system architecture.',
         category: 'technical',
         estimatedDuration: 5,
         dnaMapping: [

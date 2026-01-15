@@ -470,4 +470,191 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
+/**
+ * POST /api/interviews/generate-code
+ * Generate unique interview code for candidate (admin only)
+ */
+router.post('/generate-code', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { candidateId, expiresInHours = 168 } = req.body; // Default 7 days
+
+    if (!candidateId) {
+      res.status(400).json({ error: 'Candidate ID is required' });
+      return;
+    }
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      res.status(404).json({ error: 'Candidate not found' });
+      return;
+    }
+
+    // Generate unique code
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+
+    // Create or update interview
+    let interview = await Interview.findOne({ candidateId: candidate._id, status: { $ne: 'completed' } });
+    
+    if (!interview) {
+      interview = await Interview.create({
+        candidateId: candidate._id,
+        jobId: candidate.jobId,
+        companyId: candidate.companyId,
+        invitation: {
+          code,
+          expiresAt,
+          isUsed: false,
+        },
+        status: 'pending',
+      });
+    } else {
+      interview.invitation.code = code;
+      interview.invitation.expiresAt = expiresAt;
+      interview.invitation.isUsed = false;
+      await interview.save();
+    }
+
+    console.log(`✅ Interview code generated for ${candidate.firstName} ${candidate.lastName}: ${code}`);
+
+    res.json({
+      code,
+      expiresAt,
+      candidateId: candidate._id,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`,
+    });
+  } catch (error: any) {
+    console.error('Generate code error:', error);
+    res.status(500).json({ error: 'Failed to generate interview code' });
+  }
+});
+
+/**
+ * POST /api/interviews/start-session
+ * Track when interview session starts
+ */
+router.post('/start-session', async (req: Request, res: Response) => {
+  try {
+    const { candidateId, browserInfo } = req.body;
+
+    if (!candidateId) {
+      res.status(400).json({ error: 'Candidate ID is required' });
+      return;
+    }
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      res.status(404).json({ error: 'Candidate not found' });
+      return;
+    }
+
+    // Update candidate status
+    await Candidate.findByIdAndUpdate(candidateId, {
+      status: 'interview_in_progress',
+    });
+
+    // Update interview
+    await Interview.findOneAndUpdate(
+      { candidateId, status: { $in: ['pending', 'in_progress'] } },
+      {
+        status: 'in_progress',
+        startedAt: new Date(),
+        browserInfo: browserInfo || {},
+      }
+    );
+
+    console.log(`🎥 Interview STARTED: ${candidate.firstName} ${candidate.lastName} (${candidateId})`);
+
+    res.json({
+      success: true,
+      sessionId: candidate._id,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`,
+      startedAt: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Start session error:', error);
+    res.status(500).json({ error: 'Failed to start interview session' });
+  }
+});
+
+/**
+ * POST /api/interviews/end-session
+ * Track when interview session ends
+ */
+router.post('/end-session', async (req: Request, res: Response) => {
+  try {
+    const { candidateId, sessionId, duration } = req.body;
+
+    const id = candidateId || sessionId;
+    if (!id) {
+      res.status(400).json({ error: 'Candidate ID or Session ID is required' });
+      return;
+    }
+
+    const candidate = await Candidate.findById(id);
+    if (!candidate) {
+      res.status(404).json({ error: 'Candidate not found' });
+      return;
+    }
+
+    // Update interview
+    const interview = await Interview.findOne({ candidateId: id, status: 'in_progress' });
+    if (interview) {
+      interview.status = 'completed';
+      interview.completedAt = new Date();
+      
+      if (duration) {
+        interview.duration = duration;
+      } else if (interview.startedAt) {
+        interview.duration = Math.floor((Date.now() - interview.startedAt.getTime()) / 1000);
+      }
+
+      await interview.save();
+    }
+
+    console.log(`✅ Interview COMPLETED: ${candidate.firstName} ${candidate.lastName} (${id})`);
+
+    res.json({
+      success: true,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`,
+      completedAt: new Date(),
+      duration: duration || interview?.duration,
+    });
+  } catch (error: any) {
+    console.error('End session error:', error);
+    res.status(500).json({ error: 'Failed to end interview session' });
+  }
+});
+
+/**
+ * GET /api/interviews/active-sessions
+ * Get list of currently active interview sessions (admin only)
+ */
+router.get('/active-sessions', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const activeInterviews = await Interview.find({
+      status: 'in_progress',
+    })
+      .populate('candidateId', 'firstName lastName email')
+      .sort({ startedAt: -1 });
+
+    const sessions = activeInterviews.map((interview) => {
+      const candidate = interview.candidateId as any;
+      return {
+        _id: interview._id,
+        candidateId: candidate._id,
+        candidateName: `${candidate.firstName} ${candidate.lastName}`,
+        email: candidate.email,
+        startedAt: interview.startedAt,
+        status: 'in_progress',
+      };
+    });
+
+    res.json(sessions);
+  } catch (error: any) {
+    console.error('Get active sessions error:', error);
+    res.status(500).json({ error: 'Failed to fetch active sessions' });
+  }
+});
+
 export default router;

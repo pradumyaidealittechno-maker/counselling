@@ -1,15 +1,104 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, User, Briefcase, Link as LinkIcon, Send, CheckCircle, Clock, Video, Dna } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Mail, User, Link as LinkIcon, Send, CheckCircle, Clock, Video, Dna, Loader, Copy } from 'lucide-react';
+import api from '../services/api';
 
 export default function SendInvitation() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const candidateIdFromUrl = searchParams.get('candidateId');
+
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [selectedCandidateId, setSelectedCandidateId] = useState(candidateIdFromUrl || '');
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [interviewCode, setInterviewCode] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const handleSend = () => {
-    setSent(true);
-    setTimeout(() => navigate('/dashboard/candidates'), 2000);
+  const BASE_URL = window.location.origin; // e.g., http://localhost:5173
+  const API_URL = 'http://localhost:3001'; // Backend API server
+
+  useEffect(() => {
+    loadCandidates();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCandidateId) {
+      const candidate = candidates.find(c => c._id === selectedCandidateId);
+      setSelectedCandidate(candidate);
+      if (candidate) {
+        generateCode(selectedCandidateId);
+      }
+    }
+  }, [selectedCandidateId, candidates]);
+
+  const loadCandidates = async () => {
+    try {
+      const data = await api.candidates.getAll();
+      setCandidates(data || []);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load candidates:', error);
+      setLoading(false);
+    }
   };
+
+  const generateCode = async (candidateId: string) => {
+    setGenerating(true);
+    try {
+      const response = await fetch(`${API_URL}/api/interviews/generate-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          candidateId,
+          expiresInHours: 168 // 7 days
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setInterviewCode(data.code);
+      } else {
+        alert('Failed to generate interview code');
+      }
+    } catch (error) {
+      console.error('Failed to generate code:', error);
+      alert('Failed to generate interview code');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSendInvitation = async () => {
+    if (!selectedCandidate || !interviewCode) {
+      alert('Please select a candidate and generate a code');
+      return;
+    }
+
+    setSending(true);
+
+    // TODO: Implement actual email sending via backend
+    // For now, just simulate success
+    setTimeout(() => {
+      setSending(false);
+      setSent(true);
+      setTimeout(() => navigate('/dashboard/candidates'), 2000);
+    }, 1500);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Link copied to clipboard!');
+  };
+
+  const interviewLink = interviewCode ?
+    `${BASE_URL}/interview?code=${interviewCode}` :
+    'Generating...';
 
   if (sent) {
     return (
@@ -38,6 +127,15 @@ export default function SendInvitation() {
     );
   }
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
+        <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1rem' }}>
       {/* Main Form */}
@@ -52,88 +150,230 @@ export default function SendInvitation() {
         </div>
 
         <div className="card" style={{ padding: '1.25rem' }}>
-          {/* Form Fields - Two Column */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label className="label" style={{ fontSize: '0.75rem' }}>Candidate Name</label>
-              <div style={{ position: 'relative' }}>
-                <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input type="text" className="input" placeholder="John Doe" style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }} defaultValue="Emily Davis" />
-              </div>
-            </div>
-            <div>
-              <label className="label" style={{ fontSize: '0.75rem' }}>Email Address</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input type="email" className="input" placeholder="candidate@email.com" style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }} defaultValue="emily.d@email.com" />
-              </div>
-            </div>
-          </div>
-
+          {/* Candidate Selection */}
           <div style={{ marginBottom: '1rem' }}>
-            <label className="label" style={{ fontSize: '0.75rem' }}>Position</label>
+            <label className="label" style={{ fontSize: '0.75rem' }}>Select Candidate</label>
             <div style={{ position: 'relative' }}>
-              <Briefcase size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-              <select className="input" style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }}>
-                <option>Senior Software Engineer</option>
-                <option>Product Manager</option>
-                <option>UX Designer</option>
+              <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }} />
+              <select
+                className="input"
+                style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }}
+                value={selectedCandidateId}
+                onChange={(e) => setSelectedCandidateId(e.target.value)}
+              >
+                <option value="">-- Choose a candidate --</option>
+                {candidates.map((candidate) => (
+                  <option key={candidate._id} value={candidate._id}>
+                    {candidate.firstName} {candidate.lastName} ({candidate.email})
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
-          {/* Email Preview - Compact */}
-          <div>
-            <label className="label" style={{ fontSize: '0.75rem' }}>Email Preview</label>
-            <div style={{
-              background: '#f9fafb',
-              borderRadius: '0.5rem',
-              padding: '1rem',
-              border: '1px solid #e5e7eb',
-              fontSize: '0.75rem'
-            }}>
-              <div style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>
-                <p style={{ color: '#6b7280', marginBottom: '0.125rem', fontSize: '0.625rem' }}>Subject:</p>
-                <p style={{ fontWeight: 500, fontSize: '0.75rem' }}>Interview Invitation - Senior Software Engineer at Acme Corporation</p>
+          {selectedCandidate && (
+            <>
+              {/* Candidate Details - Read Only */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label className="label" style={{ fontSize: '0.75rem' }}>Candidate Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }}
+                      value={`${selectedCandidate.firstName} ${selectedCandidate.lastName}`}
+                      readOnly
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label" style={{ fontSize: '0.75rem' }}>Email Address</label>
+                  <div style={{ position: 'relative' }}>
+                    <Mail size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input
+                      type="email"
+                      className="input"
+                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }}
+                      value={selectedCandidate.email}
+                      readOnly
+                    />
+                  </div>
+                </div>
               </div>
-              <div style={{ lineHeight: 1.6 }}>
-                <p>Dear Emily,</p>
-                <p style={{ marginTop: '0.5rem' }}>Thank you for your interest in the Senior Software Engineer position at Acme Corporation.</p>
-                <p style={{ marginTop: '0.5rem' }}>We would like to invite you to complete an AI-powered video interview. This interview will take approximately 20-30 minutes.</p>
+
+              {/* Interview Code Display */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label className="label" style={{ fontSize: '0.75rem' }}>Interview Code (Auto-Generated)</label>
                 <div style={{
                   display: 'flex',
-                  alignItems: 'center',
                   gap: '0.5rem',
-                  background: 'white',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '0.375rem',
-                  border: '1px solid #e5e7eb',
-                  marginTop: '0.75rem'
+                  padding: '0.75rem',
+                  background: generating ? '#f9fafb' : 'rgba(16, 185, 129, 0.05)',
+                  border: `1px solid ${generating ? '#e5e7eb' : 'rgba(16, 185, 129, 0.2)'}`,
+                  borderRadius: '0.5rem'
                 }}>
-                  <LinkIcon size={14} color="#E91E63" />
-                  <span style={{ color: '#E91E63', fontSize: '0.75rem' }}>https://intelligens.ai/interview/abc123xyz</span>
+                  {generating ? (
+                    <>
+                      <Loader size={20} color="#10B981" style={{ animation: 'spin 1s linear infinite' }} />
+                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Generating code...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{
+                        flex: 1,
+                        fontFamily: 'monospace',
+                        fontSize: '1.25rem',
+                        fontWeight: 700,
+                        color: '#10B981',
+                        letterSpacing: '0.1em'
+                      }}>
+                        {interviewCode || 'Select candidate to generate'}
+                      </span>
+                      {interviewCode && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => copyToClipboard(interviewCode)}
+                          style={{ padding: '0.25rem 0.5rem' }}
+                        >
+                          <Copy size={14} />
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
-                <p style={{ marginTop: '0.75rem' }}>Best regards,<br />The Acme Corporation Hiring Team</p>
               </div>
-            </div>
-          </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-            <button className="btn btn-primary btn-sm" onClick={handleSend}>
-              <Send size={14} /> Send Invitation
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/candidates')}>
-              Cancel
-            </button>
-          </div>
+              {/* Email Preview */}
+              <div>
+                <label className="label" style={{ fontSize: '0.75rem' }}>Email Preview</label>
+                <div style={{
+                  background: '#f9fafb',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  border: '1px solid #e5e7eb',
+                  fontSize: '0.75rem'
+                }}>
+                  <div style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+                    <p style={{ color: '#6b7280', marginBottom: '0.125rem', fontSize: '0.625rem' }}>Subject:</p>
+                    <p style={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                      Interview Invitation - {selectedCandidate.jobId?.title || 'Position'} at Intelligens
+                    </p>
+                  </div>
+                  <div style={{ lineHeight: 1.6 }}>
+                    <p>Dear {selectedCandidate.firstName},</p>
+                    <p style={{ marginTop: '0.5rem' }}>
+                      Thank you for your interest in the {selectedCandidate.jobId?.title || 'position'} at Intelligens.
+                    </p>
+                    <p style={{ marginTop: '0.5rem' }}>
+                      We would like to invite you to complete an AI-powered video interview. This interview will take approximately 20-30 minutes.
+                    </p>
+
+                    <div style={{
+                      marginTop: '1rem',
+                      padding: '0.75rem',
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem'
+                    }}>
+                      <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.7rem', color: '#6b7280' }}>
+                        Your Interview Code:
+                      </p>
+                      <p style={{
+                        fontFamily: 'monospace',
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        color: '#10B981',
+                        letterSpacing: '0.1em',
+                        marginBottom: '0.75rem'
+                      }}>
+                        {interviewCode || 'GENERATING...'}
+                      </p>
+
+                      <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.7rem', color: '#6b7280' }}>
+                        Interview Link:
+                      </p>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        background: '#f9fafb',
+                        padding: '0.5rem',
+                        borderRadius: '0.375rem',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <LinkIcon size={14} color="#E91E63" />
+                        <span style={{ color: '#E91E63', fontSize: '0.7rem', wordBreak: 'break-all' }}>
+                          {interviewLink}
+                        </span>
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => copyToClipboard(interviewLink)}
+                          style={{ padding: '0.25rem', marginLeft: 'auto' }}
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
+                      Please complete the interview within 7 days. Click the link above or enter your code on our interview page.
+                    </p>
+
+                    <p style={{ marginTop: '0.75rem' }}>
+                      Best regards,<br />
+                      The Intelligens Hiring Team
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSendInvitation}
+                  disabled={sending || !interviewCode}
+                >
+                  {sending ? (
+                    <>
+                      <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      Send Invitation
+                    </>
+                  )}
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/candidates')}>
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
+
+          {!selectedCandidate && (
+            <div style={{
+              textAlign: 'center',
+              padding: '3rem 1rem',
+              color: '#6b7280',
+              background: '#f9fafb',
+              borderRadius: '0.5rem'
+            }}>
+              <User size={48} color="#D1D5DB" style={{ margin: '0 auto 1rem' }} />
+              <p style={{ fontSize: '0.875rem' }}>Select a candidate to begin</p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right Sidebar */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {/* Interview Info */}
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1rem',
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)',
           border: '1px solid rgba(233, 30, 99, 0.15)'
@@ -148,9 +388,9 @@ export default function SendInvitation() {
               { icon: Clock, label: 'Duration', value: '20-30 mins' },
               { icon: Dna, label: 'Questions', value: '5 Job DNA based' }
             ].map((item, i) => (
-              <div key={i} style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div key={i} style={{
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '0.5rem',
                 background: 'white',
@@ -180,7 +420,7 @@ export default function SendInvitation() {
         </div>
 
         {/* Tips */}
-        <div style={{ 
+        <div style={{
           padding: '0.75rem',
           background: '#f9fafb',
           borderRadius: '0.5rem',
@@ -188,7 +428,7 @@ export default function SendInvitation() {
         }}>
           <p style={{ fontSize: '0.625rem', color: '#6b7280', fontWeight: 500, marginBottom: '0.5rem' }}>💡 Tip</p>
           <p style={{ fontSize: '0.625rem', color: '#6b7280', lineHeight: 1.5 }}>
-            Candidates can complete the interview at their convenience. They'll receive a reminder 24 hours before the deadline.
+            The interview code is automatically generated and included in the email. The link will validate the code and start the interview.
           </p>
         </div>
       </div>

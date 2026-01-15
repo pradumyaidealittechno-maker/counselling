@@ -1,15 +1,54 @@
 import { Router, Response } from 'express';
 import { body, query, validationResult } from 'express-validator';
-import { Candidate } from '../models/Candidate.js';
-import { Job } from '../models/Job.js';
+import Candidate from '../models/Candidate.js';
+import Job from '../models/Job.js';
 import { Interview } from '../models/Interview.js';
 import { Evaluation } from '../models/Evaluation.js';
+
 import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { uploadResume, uploadResumes } from '../middleware/upload.js';
 import { s3Service, n8nService } from '../services/index.js';
 import { config } from '../config/index.js';
 
 const router = Router();
+
+const refreshCandidateResumeUrl = async (candidateDoc: any) => {
+  // Convert to plain object if it's a mongoose document
+  const candidate = candidateDoc.toObject ? candidateDoc.toObject() : candidateDoc;
+
+  try {
+    let key = '';
+    const originalUrl = candidate.resume?.url || candidate.resumeUrl;
+
+    if (originalUrl) {
+      try {
+        const urlObj = new URL(originalUrl);
+        // Robust key extraction: remove the leading slash
+        key = decodeURIComponent(urlObj.pathname.substring(1));
+
+        // If providing a full URL that includes bucket in host, pathname is the key.
+        // If using path-style (s3.amazonaws.com/bucket/key), pathname starts with bucket.
+        // We assume virtual-hosted style (bucket.s3.region.amazonaws.com/key) based on screenshots.
+        // If extraction fails to generate a working link, we might need to revisit.
+
+        if (key) {
+          const signedUrl = await s3Service.getSignedUrl(key);
+          if (candidate.resume) {
+            candidate.resume.url = signedUrl;
+          }
+          if (candidate.resumeUrl) {
+            candidate.resumeUrl = signedUrl;
+          }
+        }
+      } catch (e) {
+        console.warn('URL parsing failed for:', originalUrl);
+      }
+    }
+  } catch (error) {
+    console.warn('Error refreshing candidate URL:', error);
+  }
+  return candidate;
+};
 
 // All routes require authentication
 router.use(authenticate);
@@ -59,8 +98,13 @@ router.get(
         Candidate.countDocuments(filter),
       ]);
 
+      // Refresh resume URLs and get plain objects
+      const candidatesWithSignedUrls = await Promise.all(
+        candidates.map(candidate => refreshCandidateResumeUrl(candidate))
+      );
+
       res.json({
-        candidates,
+        candidates: candidatesWithSignedUrls,
         pagination: {
           page,
           limit,
@@ -141,7 +185,7 @@ router.post(
  */
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const candidate = await Candidate.findOne({
+    const candidateDoc = await Candidate.findOne({
       _id: req.params.id,
       companyId: req.user?.companyId,
     })
@@ -149,10 +193,12 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
       .populate('interviewId')
       .populate('evaluationId');
 
-    if (!candidate) {
+    if (!candidateDoc) {
       res.status(404).json({ error: 'Candidate not found' });
       return;
     }
+
+    const candidate = await refreshCandidateResumeUrl(candidateDoc);
 
     res.json(candidate);
   } catch (error) {
@@ -342,7 +388,7 @@ router.post('/:id/invite', async (req: AuthRequest, res: Response) => {
       companyId: req.user?.companyId,
       invitation: {
         sentAt: new Date(),
-        sentBy: req.userId,
+        sentBy: req.user?.id || 'system',
         expiresAt,
         remindersSent: 0,
         isUsed: false,
@@ -355,20 +401,17 @@ router.post('/:id/invite', async (req: AuthRequest, res: Response) => {
     candidate.interviewId = interview._id;
     await candidate.save();
 
-    // Get company name
-    const company = await import('../models/Company.js').then(m => m.Company.findById(req.user?.companyId));
+
 
     // Send email via n8n
     const interviewUrl = `${config.frontendUrl}/interview/${interview.invitation.code}`;
-    
-    await n8nService.sendInterviewInvitation(
+
+    await n8nService.sendInvitationEmail(
       candidate.email,
       `${candidate.firstName} ${candidate.lastName}`,
-      job.title,
-      company?.name || 'Company',
-      interview.invitation.code,
       interviewUrl,
-      expiresAt
+      interview.invitation.code,
+      job.title
     );
 
     res.json({
@@ -418,7 +461,7 @@ router.post(
 
       candidate.finalDecision = {
         decision,
-        decidedBy: req.user?._id,
+        decidedBy: req.user?.id,
         decidedAt: new Date(),
         notes,
       };

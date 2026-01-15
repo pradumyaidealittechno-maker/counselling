@@ -171,24 +171,28 @@ router.post('/', authenticate, async (req, res) => {
     // Generate interview link
     const interviewLink = `${process.env.FRONTEND_URL}/interview/${candidate._id}?code=${interviewCode}`;
 
-    // Send invitation email via n8n
-    try {
-      await n8nService.sendInvitationEmail(
-        email,
-        `${firstName} ${lastName}`,
-        interviewLink,
-        interviewCode,
-        job.title
-      );
-    } catch (emailError) {
-      console.error('Failed to send invitation email:', emailError);
-      // Continue even if email fails
+    if (!req.body.skipInvite) {
+      // Send invitation email via n8n
+      try {
+        await n8nService.sendInvitationEmail(
+          email,
+          `${firstName} ${lastName}`,
+          interviewLink,
+          interviewCode,
+          job.title
+        );
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        // Continue even if email fails
+      }
     }
 
     res.status(201).json({
       candidate,
       interviewLink,
-      message: 'Candidate created and invitation sent',
+      message: req.body.skipInvite
+        ? 'Candidate created successfully'
+        : 'Candidate created and invitation sent',
     });
   } catch (error: any) {
     console.error('Create candidate error:', error);
@@ -289,6 +293,24 @@ router.post('/:id/resend-invitation', authenticate, async (req, res) => {
   } catch (error: any) {
     console.error('Resend invitation error:', error);
     res.status(500).json({ error: 'Failed to resend invitation' });
+  }
+});
+
+// Delete candidate (protected)
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const candidate = await Candidate.findByIdAndDelete(req.params.id);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Note: We are NOT deleting the associated Job or generated Questions, as per requirements.
+    // If we wanted to clean up S3 files (resume, recording), we would do it here.
+
+    res.json({ message: 'Candidate deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete candidate error:', error);
+    res.status(500).json({ error: 'Failed to delete candidate' });
   }
 });
 

@@ -1,32 +1,39 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mic, MicOff, Video, VideoOff, Sparkles, Play, Pause, Square, Dna } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Mic, MicOff, Video, VideoOff, Sparkles, Play, Square, Dna } from 'lucide-react';
 
-const questions = [
-  'Tell me about your experience with distributed systems and microservices architecture.',
-  'How would you design a scalable API that handles millions of requests per day?',
-  'Describe a time when you had to mentor a junior developer. What was your approach?',
-  'How do you handle a production outage affecting critical services?',
-  'What makes you interested in this Senior Software Engineer role?'
-];
-
-const mockTranscript = [
-  { speaker: 'AI', text: 'Hello! I\'m Monika, your AI interviewer today. Thank you for taking the time to interview for the Senior Software Engineer position at Acme Corporation.' },
-  { speaker: 'AI', text: 'This interview will consist of 5 questions covering technical skills, behavioral aspects, and situational scenarios. Please take your time to answer each question thoroughly.' },
-  { speaker: 'AI', text: 'Let\'s begin with our first question: Tell me about your experience with distributed systems and microservices architecture.' },
-  { speaker: 'Candidate', text: 'Thank you for having me. I have over 6 years of experience working with distributed systems...' },
-];
+// Retell SDK will be loaded via CDN in index.html
+declare global {
+  interface Window {
+    RetellWebClient: any;
+  }
+}
 
 export default function VideoInterview() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const code = searchParams.get('code');
+
   const [started, setStarted] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [currentQuestion] = useState(1);
   const [micEnabled, setMicEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [timer, setTimer] = useState(0);
+  const [transcript, setTranscript] = useState<Array<{ speaker: string; text: string; time: number }>>([]);
+  const [candidateName, setCandidateName] = useState('Candidate');
+  const [candidateUid, setCandidateUid] = useState('');
 
+  // Refs
+  const retellClientRef = useRef<any>(null);
+  const webcamVideoRef = useRef<HTMLVideoElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const webcamStreamRef = useRef<MediaStream | null>(null);
+  const startTimeRef = useRef<number>(0);
+
+  // Timer effect
   useEffect(() => {
     let interval: number;
     if (isRecording) {
@@ -35,13 +42,36 @@ export default function VideoInterview() {
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // Validate code on mount
   useEffect(() => {
-    if (started) {
-      setAiSpeaking(true);
-      const timeout = setTimeout(() => setAiSpeaking(false), 3000);
-      return () => clearTimeout(timeout);
+    if (code) {
+      validateInterviewCode();
     }
-  }, [started, currentQuestion]);
+  }, [code]);
+
+  const validateInterviewCode = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/interviews/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+
+      const data = await response.json();
+      if (data.valid) {
+        setCandidateName(data.candidate_name || 'Candidate');
+        setCandidateUid(data.uid || code);
+        sessionStorage.setItem('candidate_name', data.candidate_name);
+        sessionStorage.setItem('candidate_uid', data.uid);
+      } else {
+        alert('Invalid interview code: ' + (data.message || 'Please check your code'));
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Code validation error:', error);
+      alert('Failed to validate code. Please try again.');
+    }
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -49,20 +79,231 @@ export default function VideoInterview() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStart = () => {
-    setStarted(true);
-    setIsRecording(true);
+  const startWebcam = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        audio: true
+      });
+
+      webcamStreamRef.current = stream;
+      if (webcamVideoRef.current) {
+        webcamVideoRef.current.srcObject = stream;
+      }
+
+      // Start recording
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 2500000
+      });
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorderRef.current = mediaRecorder;
+
+      console.log('✅ Webcam and recording started');
+      return true;
+    } catch (error) {
+      console.error('❌ Camera access denied:', error);
+      alert('⚠️ Camera Access Required\n\nYou MUST grant camera permissions to proceed with the interview.');
+      throw error;
+    }
   };
 
-  const handleEnd = () => {
-    navigate('/interview-complete');
+  const stopWebcam = () => {
+    if (webcamStreamRef.current) {
+      webcamStreamRef.current.getTracks().forEach(track => track.stop());
+      webcamStreamRef.current = null;
+    }
   };
 
-  const handleNextQuestion = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else {
-      handleEnd();
+  const getRetellToken = async () => {
+    try {
+      // Get agent ID from environment variable
+      const agentId = import.meta.env.VITE_RETELL_AGENT_ID;
+
+      if (!agentId) {
+        throw new Error('VITE_RETELL_AGENT_ID not configured. Please add it to .env file');
+      }
+
+      console.log('🔑 Requesting Retell token for agent:', agentId);
+
+      const response = await fetch('http://localhost:3001/api/interviews/create-web-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to get Retell token');
+      }
+
+      const data = await response.json();
+      console.log('✅ Retell token received');
+      return data.access_token;
+    } catch (error) {
+      console.error('❌ Failed to get Retell token:', error);
+      throw error;
+    }
+  };
+
+  const handleStart = async () => {
+    try {
+      // 1. Start webcam first (mandatory)
+      await startWebcam();
+
+      // 2. Notify backend interview started
+      try {
+        const browserInfo = {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language,
+          screenResolution: `${window.screen.width}x${window.screen.height}`
+        };
+
+        await fetch('http://localhost:3001/api/interviews/start-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidateId: candidateUid, browserInfo })
+        });
+
+        console.log('🎥 Session started - backend notified');
+      } catch (err) {
+        console.warn('Session notification failed (continuing):', err);
+      }
+
+      // 3. Get Retell token and start AI call
+      const token = await getRetellToken();
+
+      if (!window.RetellWebClient) {
+        throw new Error('Retell SDK not loaded');
+      }
+
+      const retellClient = new window.RetellWebClient();
+      retellClientRef.current = retellClient;
+
+      // Handle transcription updates
+      retellClient.on('update', (update: any) => {
+        if (update.transcript) {
+          const transcriptList = update.transcript.map((item: any, idx: number) => ({
+            speaker: item.role === 'agent' ? 'AI' : 'Candidate',
+            text: item.content,
+            time: idx * 10
+          }));
+          setTranscript(transcriptList);
+        }
+      });
+
+      // Handle conversation events
+      retellClient.on('conversationStarted', () => {
+        console.log('Retell conversation started');
+        setAiSpeaking(true);
+        setTimeout(() => setAiSpeaking(false), 3000);
+      });
+
+      retellClient.on('agent_start_talking', () => {
+        setAiSpeaking(true);
+      });
+
+      retellClient.on('agent_stop_talking', () => {
+        setAiSpeaking(false);
+      });
+
+      retellClient.on('call_ended', () => {
+        console.log('Call ended by Retell');
+        handleEnd();
+      });
+
+      // Start the call
+      await retellClient.startCall({ accessToken: token });
+
+      setStarted(true);
+      setIsRecording(true);
+      startTimeRef.current = Date.now();
+
+      console.log('✅ Interview started successfully');
+    } catch (error) {
+      console.error('Failed to start interview:', error);
+      alert('Failed to start interview. Please try again.');
+      stopWebcam();
+    }
+  };
+
+  const uploadRecording = async () => {
+    if (recordedChunksRef.current.length === 0) {
+      console.warn('No recording to upload');
+      return;
+    }
+
+    try {
+      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      const formData = new FormData();
+      formData.append('file', blob, `interview_${candidateUid}_${Date.now()}.webm`);
+      formData.append('candidate_name', candidateName);
+      formData.append('uid', candidateUid);
+
+      const response = await fetch('http://localhost:3001/api/interviews/save-recording', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        console.log('✅ Recording uploaded successfully');
+      } else {
+        console.error('Failed to upload recording');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+    }
+  };
+
+  const handleEnd = async () => {
+    try {
+      // Calculate duration
+      const duration = startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : timer;
+
+      // Stop Retell call
+      if (retellClientRef.current) {
+        retellClientRef.current.stopCall();
+      }
+
+      // Stop recording
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+
+        // Wait for final data
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Upload recording
+        await uploadRecording();
+      }
+
+      // Stop webcam
+      stopWebcam();
+
+      // Notify backend session ended
+      try {
+        await fetch('http://localhost:3001/api/interviews/end-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidateId: candidateUid, duration })
+        });
+        console.log('✅ Session ended - backend notified');
+      } catch (err) {
+        console.warn('End session notification failed:', err);
+      }
+
+      // Navigate to completion page
+      navigate('/interview-complete');
+    } catch (error) {
+      console.error('Error ending interview:', error);
+      navigate('/interview-complete');
     }
   };
 
@@ -77,7 +318,6 @@ export default function VideoInterview() {
         padding: '2rem'
       }}>
         <div style={{ maxWidth: '600px', textAlign: 'center' }}>
-          {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
             <div style={{
               width: '48px',
@@ -115,7 +355,7 @@ export default function VideoInterview() {
           <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
             This AI-powered interview will take approximately 20-30 minutes
           </p>
-          
+
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -136,7 +376,7 @@ export default function VideoInterview() {
                 <span style={{ color: '#E91E63' }}>✓</span> Find a quiet, well-lit environment
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: '#E91E63' }}>✓</span> You'll answer {questions.length} questions
+                <span style={{ color: '#E91E63' }}>✓</span> You'll answer 5 questions
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: '#E91E63' }}>✓</span> Take your time to provide thoughtful answers
@@ -165,7 +405,6 @@ export default function VideoInterview() {
     }}>
       {/* Left Panel - AI Interviewer */}
       <div style={{ background: 'white', padding: '1.25rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
-        {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
           <div style={{
             width: '32px',
@@ -180,8 +419,7 @@ export default function VideoInterview() {
           </div>
           <span style={{ fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
         </div>
-        
-        {/* AI Avatar */}
+
         <div style={{
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)',
           borderRadius: '1rem',
@@ -208,7 +446,6 @@ export default function VideoInterview() {
           <p style={{ color: '#E91E63', fontSize: '0.875rem' }}>AI Recruiter</p>
         </div>
 
-        {/* Audio Visualizer */}
         <div style={{
           background: aiSpeaking ? 'rgba(233, 30, 99, 0.05)' : '#f9fafb',
           borderRadius: '0.75rem',
@@ -232,15 +469,13 @@ export default function VideoInterview() {
           </div>
         </div>
 
-        {/* Current Question */}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, marginBottom: '1rem' }}>
           <p style={{ color: '#E91E63', fontSize: '0.75rem', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Question</p>
           <p style={{ color: '#1F2937', fontSize: '0.875rem', lineHeight: 1.6 }}>
-            {questions[currentQuestion]}
+            Listen carefully and provide thoughtful answers to each question.
           </p>
         </div>
 
-        {/* Job DNA Badge */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
           borderRadius: '0.5rem',
@@ -258,16 +493,16 @@ export default function VideoInterview() {
       <div style={{ background: 'white', padding: '1.25rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ color: '#1F2937', fontWeight: 600 }}>Live Transcription</h3>
-          <span style={{ 
-            color: '#E91E63', 
-            fontSize: '0.75rem', 
-            background: 'rgba(233, 30, 99, 0.1)', 
-            padding: '0.25rem 0.75rem', 
+          <span style={{
+            color: '#E91E63',
+            fontSize: '0.75rem',
+            background: 'rgba(233, 30, 99, 0.1)',
+            padding: '0.25rem 0.75rem',
             borderRadius: '9999px',
             fontWeight: 500
           }}>● Recording</span>
         </div>
-        
+
         <div style={{
           flex: 1,
           background: '#f9fafb',
@@ -276,28 +511,31 @@ export default function VideoInterview() {
           overflowY: 'auto',
           border: '1px solid #e5e7eb'
         }}>
-          {mockTranscript.map((item, i) => (
-            <div key={i} style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <span style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: item.speaker === 'AI' ? '#E91E63' : '#6366F1'
-                }}>
-                  {item.speaker === 'AI' ? 'Monika (AI)' : 'You'}
-                </span>
-                <span style={{ fontSize: '0.625rem', color: '#9ca3af' }}>
-                  {formatTime(i * 45)}
-                </span>
-              </div>
-              <p style={{ color: '#4b5563', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                {item.text}
-              </p>
+          {transcript.length === 0 ? (
+            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem' }}>
+              <p>Conversation will appear here...</p>
             </div>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#9ca3af' }}>
-            <span style={{ fontSize: '0.875rem' }}>...</span>
-          </div>
+          ) : (
+            transcript.map((item, i) => (
+              <div key={i} style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: item.speaker === 'AI' ? '#E91E63' : '#6366F1'
+                  }}>
+                    {item.speaker === 'AI' ? 'Monika (AI)' : 'You'}
+                  </span>
+                  <span style={{ fontSize: '0.625rem', color: '#9ca3af' }}>
+                    {formatTime(item.time)}
+                  </span>
+                </div>
+                <p style={{ color: '#4b5563', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                  {item.text}
+                </p>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -320,7 +558,7 @@ export default function VideoInterview() {
         {/* Video Preview */}
         <div style={{
           flex: 1,
-          background: videoEnabled ? 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)' : '#1F2937',
+          background: '#1F2937',
           borderRadius: '1rem',
           display: 'flex',
           alignItems: 'center',
@@ -331,49 +569,38 @@ export default function VideoInterview() {
           border: '1px solid #e5e7eb',
           minHeight: '280px'
         }}>
-          {videoEnabled ? (
-            <>
-              <div style={{ 
-                fontSize: '4rem',
-                width: '120px',
-                height: '120px',
-                background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <span style={{ fontSize: '3rem' }}>👤</span>
-              </div>
-              <div style={{
-                position: 'absolute',
-                bottom: '1rem',
-                left: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: 'white',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '0.5rem',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                {micEnabled && (
-                  <div style={{
-                    width: '8px',
-                    height: '8px',
-                    background: '#10b981',
-                    borderRadius: '50%',
-                    animation: 'pulse 1s infinite'
-                  }} />
-                )}
-                <span style={{ color: '#4b5563', fontSize: '0.75rem' }}>
-                  {micEnabled ? 'Mic on' : 'Mic off'}
-                </span>
-              </div>
-            </>
-          ) : (
-            <VideoOff size={48} color="#9ca3af" />
-          )}
+          <video
+            ref={webcamVideoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: 'scaleX(-1)'
+            }}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: '1rem',
+            left: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: 'rgba(0,0,0,0.7)',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '0.5rem'
+          }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              background: '#ef4444',
+              borderRadius: '50%',
+              animation: 'pulse 1s infinite'
+            }} />
+            <span style={{ color: 'white', fontSize: '0.75rem' }}>REC</span>
+          </div>
         </div>
 
         {/* Progress */}
@@ -381,12 +608,12 @@ export default function VideoInterview() {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Progress</span>
             <span style={{ color: '#1F2937', fontSize: '0.875rem', fontWeight: 500 }}>
-              Question {currentQuestion + 1} of {questions.length}
+              Question {currentQuestion} of 5
             </span>
           </div>
           <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{
-              width: `${((currentQuestion + 1) / questions.length) * 100}%`,
+              width: `${(currentQuestion / 5) * 100}%`,
               height: '100%',
               background: 'linear-gradient(90deg, #E91E63 0%, #6366F1 100%)',
               transition: 'width 0.3s',
@@ -431,54 +658,20 @@ export default function VideoInterview() {
           >
             {videoEnabled ? <Video size={20} color="#4b5563" /> : <VideoOff size={20} color="white" />}
           </button>
-          <button
-            onClick={() => setIsRecording(!isRecording)}
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              background: isRecording ? '#E91E63' : '#f3f4f6',
-              border: isRecording ? 'none' : '1px solid #e5e7eb',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s'
-            }}
-          >
-            {isRecording ? <Pause size={20} color="white" /> : <Play size={20} color="#4b5563" />}
-          </button>
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button
-            className="btn btn-primary"
-            style={{ 
-              flex: 1,
-              background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
-              boxShadow: '0 4px 14px rgba(233, 30, 99, 0.3)'
-            }}
-            onClick={handleNextQuestion}
-          >
-            {currentQuestion < questions.length - 1 ? 'Next Question' : 'Finish Interview'}
-          </button>
-          <button
-            onClick={handleEnd}
-            style={{
-              padding: '0.75rem',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              borderRadius: '0.5rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Square size={18} color="#ef4444" />
-          </button>
-        </div>
+        {/* Action Button */}
+        <button
+          className="btn btn-primary"
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)'
+          }}
+          onClick={handleEnd}
+        >
+          <Square size={18} /> End Interview
+        </button>
       </div>
 
       <style>{`

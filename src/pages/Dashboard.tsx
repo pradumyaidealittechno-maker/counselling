@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
+import {
   Briefcase, Users, Video, Sparkles, Plus, Upload, FileText,
   TrendingUp, ArrowUpRight, Dna, CheckCircle, Clock, Loader
 } from 'lucide-react';
@@ -71,7 +71,7 @@ export default function Dashboard() {
 
   const jobsWithDNA = jobs.filter(j => j.jobDNA);
   const jobsPendingDNA = jobs.filter(j => !j.jobDNA);
-  const avgDNAMatch = candidates.length > 0 
+  const avgDNAMatch = candidates.length > 0
     ? Math.round(candidates.reduce((acc, c) => acc + (c.interviewResult?.overallScore || 0), 0) / candidates.length)
     : 0;
 
@@ -138,7 +138,7 @@ export default function Dashboard() {
         <div className="card" style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h2 style={{ fontWeight: 600, color: '#1F2937', fontSize: '0.875rem' }}>Recent Jobs</h2>
-            <Link to="/dashboard/jobs/create" style={{ color: '#6366F1', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Link to="/dashboard/jobs" style={{ color: '#6366F1', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               View all <ArrowUpRight size={12} />
             </Link>
           </div>
@@ -305,7 +305,7 @@ export default function Dashboard() {
       </div>
 
       {/* DNA Stats Row */}
-      <div style={{ 
+      <div style={{
         marginTop: '1rem',
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',

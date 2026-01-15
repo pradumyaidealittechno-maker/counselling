@@ -64,20 +64,33 @@ router.post('/validate-code', async (req, res) => {
 // Create Retell web call (public endpoint for interview page)
 router.post('/create-web-call', async (req, res) => {
   try {
+    console.log('📞 Received request to create web call');
+    console.log('   Agent ID:', req.body.agentId);
+    console.log('   Retell API Key exists:', !!process.env.RETELL_API_KEY);
+    
     const { agentId } = req.body;
+    
+    if (!agentId) {
+      console.log('❌ No agent ID provided');
+      return res.status(400).json({ error: 'Agent ID is required' });
+    }
+    
     const callData = await retellService.createWebCall(agentId);
     
+    console.log('✅ Web call created successfully');
     res.json(callData);
   } catch (error: any) {
-    console.error('Create web call error:', error);
-    res.status(500).json({ error: 'Failed to create interview session' });
+    console.error('❌ Create web call error:');
+    console.error('   Error message:', error.message);
+    console.error('   Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Failed to create interview session' });
   }
 });
 
 // Save interview recording (public endpoint)
 router.post('/save-recording', upload.single('file'), async (req, res) => {
   try {
-    const { candidate_name, uid } = req.body;
+    const { uid } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -186,6 +199,146 @@ router.post('/submit-result', async (req, res) => {
   } catch (error: any) {
     console.error('Submit result error:', error);
     res.status(500).json({ error: 'Failed to submit interview results' });
+  }
+});
+
+// Generate interview code (protected - admin only)
+router.post('/generate-code', async (req, res) => {
+  try {
+    const { candidateId, expiresInHours = 168 } = req.body; // Default 7 days
+
+    if (!candidateId) {
+      return res.status(400).json({ error: 'Candidate ID is required' });
+    }
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Generate unique code
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+
+    // Update candidate with new code
+    candidate.interviewCode = code;
+    candidate.interviewCodeExpiry = expiresAt;
+    candidate.hasAccessedInterview = false;
+    await candidate.save();
+
+    console.log(`✅ Interview code generated for ${candidate.firstName} ${candidate.lastName}: ${code}`);
+
+    res.json({
+      code,
+      expiresAt,
+      candidateId: candidate._id,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`
+    });
+  } catch (error: any) {
+    console.error('Generate code error:', error);
+    res.status(500).json({ error: 'Failed to generate interview code' });
+  }
+});
+
+// Start interview session (public endpoint - called when interview starts)
+router.post('/start-session', async (req, res) => {
+  try {
+    const { candidateId, browserInfo } = req.body;
+
+    if (!candidateId) {
+      return res.status(400).json({ error: 'Candidate ID is required' });
+    }
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Update candidate status
+    candidate.interviewStatus = 'in_progress';
+    candidate.interviewStartedAt = new Date();
+    if (browserInfo) {
+      candidate.browserInfo = browserInfo;
+    }
+    await candidate.save();
+
+    console.log(`🎥 Interview STARTED: ${candidate.firstName} ${candidate.lastName} (${candidateId})`);
+
+    res.json({
+      success: true,
+      sessionId: candidate._id,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`,
+      startedAt: candidate.interviewStartedAt
+    });
+  } catch (error: any) {
+    console.error('Start session error:', error);
+    res.status(500).json({ error: 'Failed to start interview session' });
+  }
+});
+
+// End interview session (public endpoint - called when interview ends)
+router.post('/end-session', async (req, res) => {
+  try {
+    const { candidateId, sessionId, duration } = req.body;
+
+    const id = candidateId || sessionId;
+    if (!id) {
+      return res.status(400).json({ error: 'Candidate ID or Session ID is required' });
+    }
+
+    const candidate = await Candidate.findById(id);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Update candidate status
+    candidate.interviewStatus = 'completed';
+    candidate.interviewCompletedAt = new Date();
+    
+    if (duration) {
+      candidate.interviewDuration = duration;
+    } else if (candidate.interviewStartedAt) {
+      // Calculate duration if not provided
+      const elapsed = Math.floor((Date.now() - candidate.interviewStartedAt.getTime()) / 1000);
+      candidate.interviewDuration = elapsed;
+    }
+
+    await candidate.save();
+
+    console.log(`✅ Interview COMPLETED: ${candidate.firstName} ${candidate.lastName} (${id})`);
+
+    res.json({
+      success: true,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`,
+      completedAt: candidate.interviewCompletedAt,
+      duration: candidate.interviewDuration
+    });
+  } catch (error: any) {
+    console.error('End session error:', error);
+    res.status(500).json({ error: 'Failed to end interview session' });
+  }
+});
+
+// Get active interview sessions (protected - admin only)
+router.get('/active-sessions', async (_req, res) => {
+  try {
+    const activeCandidates = await Candidate.find({
+      interviewStatus: 'in_progress'
+    }).select('_id firstName lastName interviewStartedAt email');
+
+    const sessions = activeCandidates.map(candidate => ({
+      _id: candidate._id,
+      candidateId: candidate._id,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`,
+      email: candidate.email,
+      startedAt: candidate.interviewStartedAt,
+      status: 'in_progress'
+    }));
+
+    res.json(sessions);
+  } catch (error: any) {
+    console.error('Get active sessions error:', error);
+    res.status(500).json({ error: 'Failed to fetch active sessions' });
   }
 });
 

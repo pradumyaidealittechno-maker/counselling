@@ -9,13 +9,22 @@ export interface ICandidate extends Document {
   resumeS3Key?: string;
   linkedInUrl?: string;
   jobId: mongoose.Types.ObjectId;
-  interviewCode: string;
-  interviewCodeExpiry: Date;
+  status: 'new' | 'resume_screened' | 'pending_interview' | 'interview_completed' | 'decision_made' | 'hired' | 'rejected';
+  resume?: {
+    url: string;
+    fileName: string;
+    uploadedAt: Date;
+  };
+  interviewId?: mongoose.Types.ObjectId;
+  interviewCode?: string;
+  interviewCodeExpiry?: Date;
   interviewStatus: 'pending' | 'invited' | 'in_progress' | 'completed' | 'expired';
   interviewStartedAt?: Date;
   interviewCompletedAt?: Date;
+  interviewDuration?: number;
   interviewAttempts: number;
   hasAccessedInterview: boolean;
+  browserInfo?: Record<string, unknown>;
   recordingUrl?: string;
   recordingS3Key?: string;
   transcript: Array<{
@@ -34,7 +43,12 @@ export interface ICandidate extends Document {
     keyInsights: string[];
     redFlags: string[];
   };
-  finalDecision?: 'hired' | 'rejected' | 'pending';
+  finalDecision?: {
+    decision: 'Hire' | 'Hold' | 'Reject';
+    decidedBy?: string;
+    decidedAt?: Date;
+    notes?: string;
+  };
   notes?: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -63,23 +77,33 @@ const candidateSchema = new Schema<ICandidate>(
       type: String,
       trim: true,
     },
-    resumeUrl: String,
-    resumeS3Key: String,
+    resume: {
+      url: String,
+      fileName: String,
+      uploadedAt: Date,
+    },
+    resumeUrl: String, // Deprecated but kept for backward compatibility if needed
+    resumeS3Key: String, // Deprecated
     linkedInUrl: String,
     jobId: {
       type: Schema.Types.ObjectId,
       ref: 'Job',
       required: true,
     },
+    status: {
+      type: String,
+      enum: ['new', 'resume_screened', 'pending_interview', 'interview_completed', 'decision_made', 'hired', 'rejected'],
+      default: 'new',
+    },
+    interviewId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Interview',
+    },
     interviewCode: {
       type: String,
-      required: true,
       uppercase: true,
     },
-    interviewCodeExpiry: {
-      type: Date,
-      required: true,
-    },
+    interviewCodeExpiry: Date,
     interviewStatus: {
       type: String,
       enum: ['pending', 'invited', 'in_progress', 'completed', 'expired'],
@@ -87,6 +111,7 @@ const candidateSchema = new Schema<ICandidate>(
     },
     interviewStartedAt: Date,
     interviewCompletedAt: Date,
+    interviewDuration: Number,
     interviewAttempts: {
       type: Number,
       default: 0,
@@ -95,6 +120,7 @@ const candidateSchema = new Schema<ICandidate>(
       type: Boolean,
       default: false,
     },
+    browserInfo: Schema.Types.Mixed,
     recordingUrl: String,
     recordingS3Key: String,
     transcript: [
@@ -116,14 +142,19 @@ const candidateSchema = new Schema<ICandidate>(
       redFlags: [String],
     },
     finalDecision: {
-      type: String,
-      enum: ['hired', 'rejected', 'pending'],
+      decision: {
+        type: String,
+        enum: ['Hire', 'Hold', 'Reject'],
+      },
+      decidedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      decidedAt: Date,
+      notes: String,
     },
     notes: String,
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      // required: true, // Relaxed requirement as some flows might not have user immediately available or system created
     },
   },
   {

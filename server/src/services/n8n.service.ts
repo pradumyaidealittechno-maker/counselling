@@ -28,14 +28,18 @@ export interface InterviewResultPayload {
 }
 
 class N8nService {
-  private emailWebhook: string;
-  private questionsWebhook: string;
-  private resultWebhook: string;
+  constructor() { }
 
-  constructor() {
-    this.emailWebhook = process.env.N8N_WEBHOOK_EMAIL || '';
-    this.questionsWebhook = process.env.N8N_WEBHOOK_INTERVIEW_QUESTIONS || '';
-    this.resultWebhook = process.env.N8N_WEBHOOK_INTERVIEW_RESULT || '';
+  private get emailWebhook(): string {
+    return process.env.N8N_WEBHOOK_EMAIL || '';
+  }
+
+  private get questionsWebhook(): string {
+    return process.env.N8N_WEBHOOK_INTERVIEW_QUESTIONS || '';
+  }
+
+  private get resultWebhook(): string {
+    return process.env.N8N_WEBHOOK_INTERVIEW_RESULT || '';
   }
 
   async sendEmail(payload: EmailPayload): Promise<boolean> {
@@ -74,6 +78,43 @@ class N8nService {
     } catch (error: any) {
       console.error('❌ Failed to generate questions via n8n:', error.message);
       throw error;
+    }
+  }
+
+  async syncInterviewQuestions(payload: {
+    jobTitle: string;
+    jobDescription?: string;
+    jobDNA?: any;
+    questions: any[];
+    questionsText?: string;
+  }): Promise<boolean> {
+    try {
+      console.log('🔄 Attempting to sync questions to n8n');
+      console.log('Webhook configured:', !!this.questionsWebhook);
+      console.log('Payload size:', JSON.stringify(payload).length, 'bytes');
+
+      if (!this.questionsWebhook) {
+        console.error('❌ N8N questions webhook is missing/empty');
+        throw new Error('N8N questions webhook not configured');
+      }
+
+      console.log('Sending to:', this.questionsWebhook);
+
+      const response = await axios.post(this.questionsWebhook, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      });
+
+      console.log('✅ Interview questions synced to n8n. Status:', response.status);
+      return true;
+    } catch (error: any) {
+      console.error('❌ Failed to sync questions to n8n detailed error:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      return false;
     }
   }
 

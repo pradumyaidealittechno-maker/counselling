@@ -1,5 +1,6 @@
 import express from 'express';
 import Job from '../models/Job.js';
+import Candidate from '../models/Candidate.js';
 import { User } from '../models/User.js';
 import { Company } from '../models/Company.js';
 import { authenticate } from '../middleware/auth.js';
@@ -146,6 +147,54 @@ router.post('/:id/generate-questions', authenticate, async (req, res) => {
   }
 });
 
+// Sync interview questions to n8n (protected)
+router.post('/:id/sync-questions', authenticate, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (!job.interviewQuestions || job.interviewQuestions.length === 0) {
+      console.warn('⚠️ No questions found for job:', job._id);
+      return res.status(400).json({ error: 'No questions to sync' });
+    }
+
+    console.log('🔄 Syncing questions to n8n for job:', job.title, 'Count:', job.interviewQuestions.length);
+
+    // Create a clean payload with all relevant job details
+    const cleanQuestions = job.interviewQuestions.map((q: any) => {
+      // Handle mongoose document if applicable, otherwise use plain object
+      const plainQ = typeof q.toObject === 'function' ? q.toObject() : q;
+      // Remove internal mongoose _id if id exists, or keep _id as string
+      const { _id, ...rest } = plainQ;
+      return { ...rest, id: plainQ.id || _id };
+    });
+
+    // Format questions as text
+    const questionsText = job.interviewQuestions.map((q: any, index: number) => {
+      return `${index + 1}. ${q.text}\n   [${q.category}] - Duration: ${Math.floor(q.estimatedDuration / 60)}m ${q.estimatedDuration % 60}s`;
+    }).join('\n\n');
+
+    const success = await n8nService.syncInterviewQuestions({
+      jobTitle: job.title,
+      jobDescription: job.description,  // Added context
+      jobDNA: job.jobDNA,               // Added context
+      questions: cleanQuestions,
+      questionsText: questionsText      // Added formatted text
+    });
+
+    if (success) {
+      res.json({ message: 'Questions synced successfully to n8n' });
+    } else {
+      res.status(500).json({ error: 'Failed to sync questions to n8n' });
+    }
+  } catch (error: any) {
+    console.error('Sync questions error:', error);
+    res.status(500).json({ error: 'Failed to sync questions' });
+  }
+});
+
 // Get interview questions for a job (protected)
 router.get('/:id/questions', authenticate, async (req, res) => {
   try {
@@ -245,13 +294,19 @@ router.delete('/:id/questions/:questionId', authenticate, async (req, res) => {
 // Delete job (protected)
 router.delete('/:id', authenticate, async (req, res) => {
   try {
-    const job = await Job.findByIdAndDelete(req.params.id);
+    const job = await Job.findById(req.params.id);
 
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    res.json({ message: 'Job deleted successfully' });
+    // Delete all candidates associated with this job
+    await Candidate.deleteMany({ jobId: job._id });
+
+    // Delete the job
+    await job.deleteOne();
+
+    res.json({ message: 'Job and associated candidates deleted successfully' });
   } catch (error: any) {
     console.error('Delete job error:', error);
     res.status(500).json({ error: 'Failed to delete job' });
@@ -282,7 +337,7 @@ router.post('/:id/test-questions', authenticate, async (req, res) => {
 
     console.log('🧪 TEST: Generated', questions?.length || 0, 'questions');
 
-    res.json({ 
+    res.json({
       test: true,
       questionsGenerated: questions?.length || 0,
       questions: questions,

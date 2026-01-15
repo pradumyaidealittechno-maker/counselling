@@ -1,20 +1,22 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  Users, 
-  FileText, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  Users,
+  FileText,
+  Settings,
   Bell,
   Search,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  Video
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Jobs', href: '/dashboard/jobs/create', icon: Briefcase },
+  { name: 'Jobs', href: '/dashboard/jobs', icon: Briefcase },
   { name: 'Candidates', href: '/dashboard/candidates', icon: Users },
+  { name: 'Interviews', href: '/dashboard/interviews', icon: Video },
   { name: 'Reports', href: '/dashboard', icon: FileText },
   { name: 'Settings', href: '/dashboard', icon: Settings },
 ];
@@ -35,9 +37,9 @@ export default function DashboardLayout() {
         borderRight: '1px solid #e5e7eb'
       }}>
         {/* Logo */}
-        <Link to="/dashboard" style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <Link to="/dashboard" style={{
+          display: 'flex',
+          alignItems: 'center',
           gap: '0.75rem',
           marginBottom: '2rem'
         }}>
@@ -58,7 +60,7 @@ export default function DashboardLayout() {
         {/* Navigation */}
         <nav style={{ flex: 1 }}>
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href || 
+            const isActive = location.pathname === item.href ||
               (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
             return (
               <Link
@@ -100,9 +102,9 @@ export default function DashboardLayout() {
           padding: '1.25rem',
           border: '1px solid rgba(163, 139, 250, 0.3)'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '0.5rem',
             marginBottom: '0.75rem'
           }}>

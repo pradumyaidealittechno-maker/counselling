@@ -54,14 +54,14 @@ const getAuthToken = (): string | null => {
 // Helper function to handle API responses
 const handleResponse = async (response: Response) => {
   const data = await response.json().catch(() => ({ error: 'Invalid JSON response' }));
-  
+
   logger.response(response.status, data);
-  
+
   if (!response.ok) {
     logger.error(`Request failed with status ${response.status}`, data);
     throw new Error(data.error || `HTTP ${response.status}`);
   }
-  
+
   return data;
 };
 
@@ -69,7 +69,7 @@ const handleResponse = async (response: Response) => {
 const authFetch = async (url: string, options: RequestInit = {}) => {
   const token = getAuthToken();
   const fullUrl = `${API_URL}${url}`;
-  
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
@@ -106,42 +106,42 @@ export const api = {
       role?: string;
     }) => {
       logger.info('Registering new user...', { email: data.email });
-      
+
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      
+
       const result = await handleResponse(response);
-      
+
       if (result.token) {
         localStorage.setItem('auth_token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
         logger.success('Registration successful', { userId: result.user.id });
       }
-      
+
       return result;
     },
 
     login: async (email: string, password: string) => {
       logger.info('Logging in...', { email });
-      
+
       try {
         const response = await fetch(`${API_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         });
-        
+
         const result = await handleResponse(response);
-        
+
         if (result.token) {
           localStorage.setItem('auth_token', result.token);
           localStorage.setItem('user', JSON.stringify(result.user));
           logger.success('Login successful', { userId: result.user.id, email: result.user.email });
         }
-        
+
         return result;
       } catch (error: any) {
         logger.error('Login failed', error.message);
@@ -213,6 +213,12 @@ export const api = {
       });
     },
 
+    syncQuestions: async (id: string) => {
+      return authFetch(`/api/jobs/${id}/sync-questions`, {
+        method: 'POST',
+      });
+    },
+
     getQuestions: async (id: string) => {
       return authFetch(`/api/jobs/${id}/questions`);
     },
@@ -255,6 +261,7 @@ export const api = {
       phone?: string;
       jobId: string;
       linkedInUrl?: string;
+      skipInvite?: boolean;
     }) => {
       return authFetch('/api/candidates', {
         method: 'POST',
@@ -301,6 +308,12 @@ export const api = {
     resendInvitation: async (id: string) => {
       return authFetch(`/api/candidates/${id}/resend-invitation`, {
         method: 'POST',
+      });
+    },
+
+    delete: async (id: string) => {
+      return authFetch(`/api/candidates/${id}`, {
+        method: 'DELETE',
       });
     },
   },

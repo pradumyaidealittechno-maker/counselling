@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  Dna, Edit3, Trash2, Plus, Video, Mic, CheckCircle, GripVertical, 
-  Info, ChevronDown, ChevronUp, Target, Loader
+import {
+  Dna, Edit3, Trash2, Plus, Video, Mic, CheckCircle, GripVertical,
+  Info, ChevronDown, ChevronUp, Target, Loader, Share2
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -39,6 +39,7 @@ export default function InterviewBuilder() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export default function InterviewBuilder() {
 
   const handleGenerateQuestions = async () => {
     if (!job?._id) return;
-    
+
     try {
       setGenerating(true);
       const result = await api.jobs.generateQuestions(job._id);
@@ -80,7 +81,7 @@ export default function InterviewBuilder() {
 
   const handleDeleteQuestion = async (questionId: string) => {
     if (!job?._id) return;
-    
+
     try {
       await api.jobs.deleteQuestion(job._id, questionId);
       setJob(prev => prev ? {
@@ -98,8 +99,29 @@ export default function InterviewBuilder() {
     console.log('Edit question:', question);
   };
 
+  const handleSyncToN8n = async () => {
+    console.log('Sync to n8n clicked', job);
+    if (!job?._id) {
+      alert('Error: No job loaded');
+      return;
+    }
+
+    try {
+      setSyncing(true);
+      await api.jobs.syncQuestions(job._id);
+      alert('✅ Success! Questions have been synced to n8n.');
+    } catch (err: any) {
+      console.error('Failed to sync to n8n:', err);
+      const errorMessage = err.message || 'Failed to sync to n8n';
+      setError(errorMessage);
+      alert(`❌ Error: ${errorMessage}\n\nPlease check if the server is running and the webhook is configured.`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const questions = job?.interviewQuestions || [];
-  
+
   const getDNACoverage = () => {
     const coverage = { skill: 0, experience: 0, behavioral: 0, communication: 0, cultural: 0, total: 0 };
     questions.forEach(q => {
@@ -116,7 +138,7 @@ export default function InterviewBuilder() {
   };
 
   const coverage = getDNACoverage();
-  
+
   const questionsByCategory = {
     technical: questions.filter(q => q.category === 'technical'),
     behavioral: questions.filter(q => q.category === 'behavioral'),
@@ -177,12 +199,12 @@ export default function InterviewBuilder() {
           }}>
             <Dna size={40} color="#E91E63" />
           </div>
-          
+
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
             Generate Interview Questions
           </h2>
           <p style={{ color: '#6B7280', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
-            {job.jobDNA 
+            {job.jobDNA
               ? 'Use Job DNA™ to generate tailored interview questions that evaluate candidates against your specific requirements.'
               : 'Generate Job DNA first to create tailored interview questions.'}
           </p>
@@ -202,7 +224,7 @@ export default function InterviewBuilder() {
           )}
 
           {job.jobDNA ? (
-            <button 
+            <button
               className="btn btn-primary"
               onClick={handleGenerateQuestions}
               disabled={generating}
@@ -219,7 +241,7 @@ export default function InterviewBuilder() {
               )}
             </button>
           ) : (
-            <button 
+            <button
               className="btn btn-primary"
               onClick={() => navigate(`/dashboard/jobs/${job._id}/job-dna`)}
             >
@@ -372,7 +394,7 @@ export default function InterviewBuilder() {
       }}>
         <Info size={18} color="#E91E63" />
         <p style={{ fontSize: '0.8125rem', color: '#831843' }}>
-          Each question is linked to specific Job DNA™ traits with signals to evaluate. 
+          Each question is linked to specific Job DNA™ traits with signals to evaluate.
           This ensures consistent, fair evaluation across all candidates.
         </p>
       </div>
@@ -392,15 +414,17 @@ export default function InterviewBuilder() {
                 <Plus size={14} /> Add Question
               </button>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {categoryQuestions.map((q, i) => (
-                <QuestionCard 
-                  key={q.id || i} 
-                  question={q} 
+                <QuestionCard
+                  key={q.id || i}
+                  question={q}
                   index={i}
                   isExpanded={expandedQuestion === (q.id || `${category}-${i}`)}
                   onToggle={() => setExpandedQuestion(expandedQuestion === (q.id || `${category}-${i}`) ? null : (q.id || `${category}-${i}`))}
+                  onEdit={() => handleEditQuestion(q)}
+                  onDelete={() => handleDeleteQuestion(q.id)}
                 />
               ))}
             </div>
@@ -410,31 +434,43 @@ export default function InterviewBuilder() {
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-        <button 
+        <button
           className="btn btn-primary"
           onClick={() => navigate(`/dashboard/candidates?jobId=${jobId}`)}
         >
           <CheckCircle size={18} /> Finalize Interview
         </button>
-        <button className="btn btn-secondary">Save as Draft</button>
+        <button
+          className="btn btn-secondary"
+          onClick={handleSyncToN8n}
+          disabled={syncing}
+        >
+          {syncing ? <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Share2 size={18} />}
+          Sync to n8n
+        </button>
+        <button className="btn btn-ghost">Save as Draft</button>
       </div>
     </div>
   );
 }
 
-function QuestionCard({ 
-  question, 
-  index, 
-  isExpanded, 
-  onToggle 
-}: { 
-  question: InterviewQuestion; 
+function QuestionCard({
+  question,
+  index,
+  isExpanded,
+  onToggle,
+  onEdit,
+  onDelete
+}: {
+  question: InterviewQuestion;
   index: number;
   isExpanded: boolean;
   onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const primaryMapping = question.dnaMapping?.[0];
-  
+
   return (
     <div style={{
       background: '#F9FAFB',
@@ -451,10 +487,10 @@ function QuestionCard({
         cursor: 'pointer'
       }} onClick={onToggle}>
         <GripVertical size={16} color="#9CA3AF" style={{ cursor: 'grab', marginTop: '2px' }} />
-        <span style={{ 
-          width: '24px', 
-          height: '24px', 
-          background: '#E91E63', 
+        <span style={{
+          width: '24px',
+          height: '24px',
+          background: '#E91E63',
           color: 'white',
           borderRadius: '50%',
           display: 'flex',
@@ -464,19 +500,19 @@ function QuestionCard({
           fontWeight: 600,
           flexShrink: 0
         }}>{index + 1}</span>
-        
+
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#1F2937' }}>{question.text}</p>
-          
+
           {/* DNA Mapping Preview */}
           {question.dnaMapping && question.dnaMapping.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
               <Dna size={12} color="#E91E63" />
               <span style={{ fontSize: '0.6875rem', color: '#6B7280' }}>Evaluates:</span>
               {question.dnaMapping.slice(0, 2).map((mapping, i) => (
-                <span key={i} style={{ 
-                  fontSize: '0.625rem', 
-                  fontWeight: 500, 
+                <span key={i} style={{
+                  fontSize: '0.625rem',
+                  fontWeight: 500,
                   color: '#374151',
                   padding: '0.125rem 0.375rem',
                   background: 'white',
@@ -496,10 +532,10 @@ function QuestionCard({
                   fontSize: '0.5625rem',
                   padding: '0.125rem 0.375rem',
                   borderRadius: '9999px',
-                  background: primaryMapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' : 
-                             primaryMapping.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                  color: primaryMapping.importance === 'critical' ? '#DC2626' : 
-                         primaryMapping.importance === 'high' ? '#D97706' : '#6B7280',
+                  background: primaryMapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
+                    primaryMapping.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                  color: primaryMapping.importance === 'critical' ? '#DC2626' :
+                    primaryMapping.importance === 'high' ? '#D97706' : '#6B7280',
                   fontWeight: 500,
                   textTransform: 'capitalize'
                 }}>
@@ -511,15 +547,15 @@ function QuestionCard({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button 
-            onClick={() => handleEditQuestion(question)}
+          <button
+            onClick={onEdit}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
             title="Edit question"
           >
             <Edit3 size={14} color="#6B7280" />
           </button>
-          <button 
-            onClick={() => handleDeleteQuestion(question.id)}
+          <button
+            onClick={onDelete}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
             title="Delete question"
           >
@@ -531,8 +567,8 @@ function QuestionCard({
 
       {/* Expanded Details */}
       {isExpanded && (
-        <div style={{ 
-          padding: '1rem', 
+        <div style={{
+          padding: '1rem',
           borderTop: '1px solid #E5E7EB',
           background: 'white'
         }}>
@@ -561,17 +597,17 @@ function QuestionCard({
                         fontSize: '0.5625rem',
                         padding: '0.125rem 0.375rem',
                         borderRadius: '9999px',
-                        background: mapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' : 
-                                   mapping.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                        color: mapping.importance === 'critical' ? '#DC2626' : 
-                               mapping.importance === 'high' ? '#D97706' : '#6B7280',
+                        background: mapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
+                          mapping.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                        color: mapping.importance === 'critical' ? '#DC2626' :
+                          mapping.importance === 'high' ? '#D97706' : '#6B7280',
                         fontWeight: 500,
                         textTransform: 'capitalize'
                       }}>
                         {mapping.importance}
                       </span>
                     </div>
-                    
+
                     {mapping.signalsToEvaluate && mapping.signalsToEvaluate.length > 0 && (
                       <div>
                         <p style={{ fontSize: '0.625rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem' }}>
@@ -647,9 +683,9 @@ function QuestionCard({
 
           {/* Estimated Duration */}
           {question.estimatedDuration && (
-            <div style={{ 
-              marginTop: '0.75rem', 
-              paddingTop: '0.75rem', 
+            <div style={{
+              marginTop: '0.75rem',
+              paddingTop: '0.75rem',
               borderTop: '1px solid #E5E7EB',
               display: 'flex',
               alignItems: 'center',

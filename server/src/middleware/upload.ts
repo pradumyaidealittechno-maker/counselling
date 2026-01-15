@@ -24,3 +24,6 @@ export const upload = multer({
     }
   },
 });
+
+export const uploadResume = upload.single('resume');
+export const uploadResumes = upload.array('files', 20);
