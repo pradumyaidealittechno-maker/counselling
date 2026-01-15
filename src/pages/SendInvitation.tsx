@@ -19,7 +19,7 @@ export default function SendInvitation() {
 
   const BASE_URL = window.location.origin; // e.g., http://localhost:5173
   const API_URL = 'http://localhost:3001'; // Backend API server
-
+  
   useEffect(() => {
     loadCandidates();
   }, []);
@@ -81,14 +81,31 @@ export default function SendInvitation() {
     }
 
     setSending(true);
+    
+    try {
+      // Call backend API to send invitation via N8N webhook
+      const response = await fetch(`${API_URL}/api/candidates/${selectedCandidateId}/resend-invitation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
 
-    // TODO: Implement actual email sending via backend
-    // For now, just simulate success
-    setTimeout(() => {
+      if (response.ok) {
+        console.log('✅ Invitation sent successfully via N8N webhook');
+        setSent(true);
+        setTimeout(() => navigate('/dashboard/candidates'), 2000);
+      } else {
+        const error = await response.json();
+        alert(`Failed to send invitation: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to send invitation:', error);
+      alert('Failed to send invitation. Please try again.');
+    } finally {
       setSending(false);
-      setSent(true);
-      setTimeout(() => navigate('/dashboard/candidates'), 2000);
-    }, 1500);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -96,8 +113,8 @@ export default function SendInvitation() {
     alert('Link copied to clipboard!');
   };
 
-  const interviewLink = interviewCode ?
-    `${BASE_URL}/interview?code=${interviewCode}` :
+  const interviewLink = interviewCode ? 
+    `${BASE_URL}/interview?code=${interviewCode}` : 
     'Generating...';
 
   if (sent) {
@@ -155,8 +172,8 @@ export default function SendInvitation() {
             <label className="label" style={{ fontSize: '0.75rem' }}>Select Candidate</label>
             <div style={{ position: 'relative' }}>
               <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }} />
-              <select
-                className="input"
+              <select 
+                className="input" 
                 style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }}
                 value={selectedCandidateId}
                 onChange={(e) => setSelectedCandidateId(e.target.value)}
@@ -179,10 +196,10 @@ export default function SendInvitation() {
                   <label className="label" style={{ fontSize: '0.75rem' }}>Candidate Name</label>
                   <div style={{ position: 'relative' }}>
                     <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                    <input
-                      type="text"
-                      className="input"
-                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }}
+                    <input 
+                      type="text" 
+                      className="input" 
+                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }} 
                       value={`${selectedCandidate.firstName} ${selectedCandidate.lastName}`}
                       readOnly
                     />
@@ -192,10 +209,10 @@ export default function SendInvitation() {
                   <label className="label" style={{ fontSize: '0.75rem' }}>Email Address</label>
                   <div style={{ position: 'relative' }}>
                     <Mail size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                    <input
-                      type="email"
-                      className="input"
-                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }}
+                    <input 
+                      type="email" 
+                      className="input" 
+                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }} 
                       value={selectedCandidate.email}
                       readOnly
                     />
@@ -206,8 +223,8 @@ export default function SendInvitation() {
               {/* Interview Code Display */}
               <div style={{ marginBottom: '1rem' }}>
                 <label className="label" style={{ fontSize: '0.75rem' }}>Interview Code (Auto-Generated)</label>
-                <div style={{
-                  display: 'flex',
+                <div style={{ 
+                  display: 'flex', 
                   gap: '0.5rem',
                   padding: '0.75rem',
                   background: generating ? '#f9fafb' : 'rgba(16, 185, 129, 0.05)',
@@ -221,18 +238,18 @@ export default function SendInvitation() {
                     </>
                   ) : (
                     <>
-                      <span style={{
-                        flex: 1,
-                        fontFamily: 'monospace',
-                        fontSize: '1.25rem',
-                        fontWeight: 700,
+                      <span style={{ 
+                        flex: 1, 
+                        fontFamily: 'monospace', 
+                        fontSize: '1.25rem', 
+                        fontWeight: 700, 
                         color: '#10B981',
                         letterSpacing: '0.1em'
                       }}>
                         {interviewCode || 'Select candidate to generate'}
                       </span>
                       {interviewCode && (
-                        <button
+                        <button 
                           className="btn btn-ghost btn-sm"
                           onClick={() => copyToClipboard(interviewCode)}
                           style={{ padding: '0.25rem 0.5rem' }}
@@ -269,7 +286,7 @@ export default function SendInvitation() {
                     <p style={{ marginTop: '0.5rem' }}>
                       We would like to invite you to complete an AI-powered video interview. This interview will take approximately 20-30 minutes.
                     </p>
-
+                    
                     <div style={{
                       marginTop: '1rem',
                       padding: '0.75rem',
@@ -280,17 +297,17 @@ export default function SendInvitation() {
                       <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.7rem', color: '#6b7280' }}>
                         Your Interview Code:
                       </p>
-                      <p style={{
-                        fontFamily: 'monospace',
-                        fontSize: '1rem',
-                        fontWeight: 700,
+                      <p style={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: '1rem', 
+                        fontWeight: 700, 
                         color: '#10B981',
                         letterSpacing: '0.1em',
                         marginBottom: '0.75rem'
                       }}>
                         {interviewCode || 'GENERATING...'}
                       </p>
-
+                      
                       <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.7rem', color: '#6b7280' }}>
                         Interview Link:
                       </p>
@@ -307,7 +324,7 @@ export default function SendInvitation() {
                         <span style={{ color: '#E91E63', fontSize: '0.7rem', wordBreak: 'break-all' }}>
                           {interviewLink}
                         </span>
-                        <button
+                        <button 
                           className="btn btn-ghost"
                           onClick={() => copyToClipboard(interviewLink)}
                           style={{ padding: '0.25rem', marginLeft: 'auto' }}
@@ -316,11 +333,11 @@ export default function SendInvitation() {
                         </button>
                       </div>
                     </div>
-
+                    
                     <p style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
                       Please complete the interview within 7 days. Click the link above or enter your code on our interview page.
                     </p>
-
+                    
                     <p style={{ marginTop: '0.75rem' }}>
                       Best regards,<br />
                       The Intelligens Hiring Team
@@ -331,8 +348,8 @@ export default function SendInvitation() {
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-                <button
-                  className="btn btn-primary btn-sm"
+                <button 
+                  className="btn btn-primary btn-sm" 
                   onClick={handleSendInvitation}
                   disabled={sending || !interviewCode}
                 >
@@ -356,9 +373,9 @@ export default function SendInvitation() {
           )}
 
           {!selectedCandidate && (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem 1rem',
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '3rem 1rem', 
               color: '#6b7280',
               background: '#f9fafb',
               borderRadius: '0.5rem'

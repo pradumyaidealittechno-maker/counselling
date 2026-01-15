@@ -51,6 +51,7 @@ export default function Candidates() {
   const [candidateToUploadResume, setCandidateToUploadResume] = useState<string | null>(null);
 
   const singleFileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Check if jobId is in URL params
@@ -83,6 +84,14 @@ export default function Candidates() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUploadClick = () => {
+    if (!selectedJobId) {
+      alert('⚠️ Please select a job first!\n\nUse the dropdown above to select a job before uploading resumes.');
+      return;
+    }
+    fileInputRef.current?.click();
   };
 
   const handleSingleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,8 +227,70 @@ export default function Candidates() {
         </div>
       </div>
 
-      {/* Filters/Search Row */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+      {/* Upload Area */}
+      <div 
+        onClick={handleUploadClick}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!selectedJobId) {
+            alert('Please select a job before uploading resumes.');
+            return;
+          }
+          const files = e.dataTransfer.files;
+          if (files && files.length > 0) {
+            // Manually create a change event for the file input
+            const dt = new DataTransfer();
+            Array.from(files).forEach(file => dt.items.add(file));
+            if (fileInputRef.current) {
+              fileInputRef.current.files = dt.files;
+              handleSingleFileUpload({ target: fileInputRef.current } as any);
+            }
+          }
+        }}
+        style={{
+          border: '2px dashed #E5E7EB',
+          borderRadius: '0.75rem',
+          padding: '1.25rem',
+          textAlign: 'center',
+          marginBottom: '1rem',
+          background: '#F9FAFB',
+          cursor: selectedJobId ? 'pointer' : 'not-allowed',
+          opacity: selectedJobId ? 1 : 0.6,
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          if (selectedJobId) {
+            e.currentTarget.style.borderColor = '#E91E63';
+            e.currentTarget.style.background = 'rgba(233, 30, 99, 0.02)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#E5E7EB';
+          e.currentTarget.style.background = '#F9FAFB';
+        }}
+      >
+        <Upload size={24} color="#9CA3AF" style={{ marginBottom: '0.5rem' }} />
+        <p style={{ fontWeight: 500, marginBottom: '0.125rem', fontSize: '0.875rem' }}>
+          {selectedJobId ? 'Drag and drop resumes here' : 'Select a job first'}
+        </p>
+        <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+          {selectedJobId ? 'or click to browse (PDF, DOC, DOCX)' : 'Use the dropdown above to select a job'}
+        </p>
+      </div>
+
+      {/* Hidden file input for bulk uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleSingleFileUpload}
+        accept=".pdf,.doc,.docx"
+        multiple
+        style={{ display: 'none' }}
+      />
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
         <div style={{ flex: 1, position: 'relative' }}>
           <Search size={18} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input

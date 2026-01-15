@@ -172,3 +172,36 @@ router.get('/me', authenticate, async (req, res) => {
 });
 
 export default router;
+
+// Update user profile  
+router.put('/update-profile', authenticate, async (req, res) => {
+  console.log('\n🔐 AUTH: Update profile');
+  
+  try {
+    const { firstName, lastName } = req.body;
+    const userId = (req as any).user.id;
+
+    if (!firstName || !lastName) {
+      console.log('   ❌ Missing required fields');
+      return res.status(400).json({ error: 'First name and last name are required' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { firstName, lastName },
+      { new: true, select: '-password' }
+    );
+
+    if (!user) {
+      console.log('   ❌ User not found');
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`   ✅ Profile updated: ${user.email}\n`);
+    res.json(user);
+  } catch (error: any) {
+    console.error('   ❌ Update profile error:', error.message);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+

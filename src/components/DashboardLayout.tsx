@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Briefcase,
@@ -9,8 +9,12 @@ import {
   Search,
   ChevronDown,
   Sparkles,
-  Video
+  Video,
+  LogOut,
+  UserCircle,
+  Edit
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -23,6 +27,62 @@ const navigation = [
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState('HR Manager');
+  const [userInitials, setUserInitials] = useState('HM');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  useEffect(() => {
+    // Fetch user info from API
+    const fetchUserData = async () => {
+      try {
+        console.log('🔍 Fetching user data for header...');
+        const token = localStorage.getItem('auth_token'); // Fixed: use 'auth_token' not 'token'
+        
+        if (!token) {
+          console.log('❌ No token found in localStorage');
+          return;
+        }
+
+        console.log('✅ Token found, calling API...');
+        const response = await fetch('http://localhost:3001/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        console.log('📡 API Response status:', response.status);
+        
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('✅ User data received:', userData);
+          
+          if (userData.firstName && userData.lastName) {
+            const fullName = `${userData.firstName} ${userData.lastName}`;
+            console.log('👤 Setting user name to:', fullName);
+            setUserName(fullName);
+            setUserInitials(`${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase());
+          } else {
+            console.log('⚠️ firstName or lastName missing in userData');
+          }
+        } else {
+          const errorText = await response.text();
+          console.log('❌ API call failed:', response.status, errorText);
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    navigate('/');
+  };
+
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -184,7 +244,8 @@ export default function DashboardLayout() {
             </button>
 
             {/* User Menu */}
-            <div style={{
+            <div style={{ position: 'relative' }}>
+            <div onClick={() => setShowProfileMenu(!showProfileMenu)} style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.75rem',
@@ -201,13 +262,31 @@ export default function DashboardLayout() {
                 color: 'white',
                 fontWeight: 600
               }}>
-                JD
+                {userInitials}
               </div>
               <div>
-                <p style={{ fontWeight: 500, fontSize: '0.875rem', color: '#1F2937' }}>John Doe</p>
+                <p style={{ fontWeight: 500, fontSize: '0.875rem', color: '#1F2937' }}>{userName}</p>
                 <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>HR Manager</p>
               </div>
               <ChevronDown size={16} color="#6b7280" />
+            </div>
+              {showProfileMenu && (
+                <div style={{position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '220px', background: 'white', borderRadius: '0.75rem', boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '0.5rem', zIndex: 50}}>
+                  <Link to="/dashboard/profile" onClick={() => setShowProfileMenu(false)} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#374151', textDecoration: 'none', cursor: 'pointer'}}>
+                    <UserCircle size={18} />
+                    <span style={{fontSize: '0.875rem'}}>View Profile</span>
+                  </Link>
+                  <Link to="/dashboard/profile/edit" onClick={() => setShowProfileMenu(false)} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#374151', textDecoration: 'none', cursor: 'pointer'}}>
+                    <Edit size={18} />
+                    <span style={{fontSize: '0.875rem'}}>Update Profile</span>
+                  </Link>
+                  <div style={{height: '1px', background: '#e5e7eb', margin: '0.5rem 0'}} />
+                  <div onClick={handleLogout} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#DC2626', cursor: 'pointer'}}>
+                    <LogOut size={18} />
+                    <span style={{fontSize: '0.875rem', fontWeight: 500}}>Logout</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

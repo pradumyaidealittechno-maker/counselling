@@ -20,7 +20,7 @@ router.post('/validate-code', async (req, res) => {
 
     const candidate = await Candidate.findOne({
       interviewCode: code.toUpperCase(),
-    });
+    }).populate('jobId');
 
     if (!candidate) {
       return res.status(404).json({ valid: false, error: 'Invalid code' });
@@ -50,10 +50,17 @@ router.post('/validate-code', async (req, res) => {
       await candidate.save();
     }
 
+    // Get job details for dynamic display
+    const job = candidate.jobId as any;
+    const jobTitle = job?.title || 'Software Engineer';
+    const companyName = job?.company || 'Our Company';
+
     res.json({
       valid: true,
       candidate_name: `${candidate.firstName} ${candidate.lastName}`,
       uid: candidate._id.toString(),
+      job_title: jobTitle,
+      company_name: companyName,
     });
   } catch (error: any) {
     console.error('Validate code error:', error);

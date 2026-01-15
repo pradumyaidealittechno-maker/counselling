@@ -18,6 +18,8 @@ import InterviewComplete from './pages/InterviewComplete';
 import AnalysisReport from './pages/AnalysisReport';
 import FinalDecision from './pages/FinalDecision';
 import InterviewManagement from './pages/InterviewManagement';
+import Profile from './pages/Profile';
+import EditProfile from './pages/EditProfile';
 import DashboardLayout from './components/DashboardLayout';
 
 function App() {
@@ -51,6 +53,8 @@ function App() {
           <Route path="candidates/:id/report" element={<AnalysisReport />} />
           <Route path="candidates/:id/decision" element={<FinalDecision />} />
           <Route path="interviews" element={<InterviewManagement />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="profile/edit" element={<EditProfile />} />
         </Route>
       </Routes>
     </BrowserRouter>

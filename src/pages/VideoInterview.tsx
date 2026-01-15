@@ -24,6 +24,8 @@ export default function VideoInterview() {
   const [transcript, setTranscript] = useState<Array<{ speaker: string; text: string; time: number }>>([]);
   const [candidateName, setCandidateName] = useState('Candidate');
   const [candidateUid, setCandidateUid] = useState('');
+  const [jobTitle, setJobTitle] = useState('Software Engineer');
+  const [companyName, setCompanyName] = useState('Our Company');
 
   // Refs
   const retellClientRef = useRef<any>(null);
@@ -61,8 +63,12 @@ export default function VideoInterview() {
       if (data.valid) {
         setCandidateName(data.candidate_name || 'Candidate');
         setCandidateUid(data.uid || code);
+        setJobTitle(data.job_title || 'Software Engineer');
+        setCompanyName(data.company_name || 'Our Company');
         sessionStorage.setItem('candidate_name', data.candidate_name);
         sessionStorage.setItem('candidate_uid', data.uid);
+        sessionStorage.setItem('job_title', data.job_title);
+        sessionStorage.setItem('company_name', data.company_name);
       } else {
         alert('Invalid interview code: ' + (data.message || 'Please check your code'));
         window.location.href = '/';
@@ -89,6 +95,10 @@ export default function VideoInterview() {
       webcamStreamRef.current = stream;
       if (webcamVideoRef.current) {
         webcamVideoRef.current.srcObject = stream;
+        // Explicitly play the video stream
+        webcamVideoRef.current.play().catch(err => {
+          console.error('Error playing video:', err);
+        });
       }
 
       // Start recording
@@ -126,7 +136,7 @@ export default function VideoInterview() {
     try {
       // Get agent ID from environment variable
       const agentId = import.meta.env.VITE_RETELL_AGENT_ID;
-
+      
       if (!agentId) {
         throw new Error('VITE_RETELL_AGENT_ID not configured. Please add it to .env file');
       }
@@ -276,10 +286,10 @@ export default function VideoInterview() {
       // Stop recording
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
-
+        
         // Wait for final data
         await new Promise(resolve => setTimeout(resolve, 1000));
-
+        
         // Upload recording
         await uploadRecording();
       }
@@ -299,11 +309,23 @@ export default function VideoInterview() {
         console.warn('End session notification failed:', err);
       }
 
-      // Navigate to completion page
-      navigate('/interview-complete');
+      // Navigate to completion page with job details
+      navigate('/interview-complete', {
+        state: {
+          jobTitle,
+          companyName,
+          candidateName
+        }
+      });
     } catch (error) {
       console.error('Error ending interview:', error);
-      navigate('/interview-complete');
+      navigate('/interview-complete', {
+        state: {
+          jobTitle,
+          companyName,
+          candidateName
+        }
+      });
     }
   };
 
@@ -350,7 +372,7 @@ export default function VideoInterview() {
             Welcome to Your Interview
           </h1>
           <p style={{ color: '#E91E63', fontWeight: 500, marginBottom: '0.5rem' }}>
-            Senior Software Engineer at Acme Corporation
+            {jobTitle} at {companyName}
           </p>
           <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
             This AI-powered interview will take approximately 20-30 minutes
@@ -419,7 +441,7 @@ export default function VideoInterview() {
           </div>
           <span style={{ fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
         </div>
-
+        
         <div style={{
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)',
           borderRadius: '1rem',
@@ -578,7 +600,8 @@ export default function VideoInterview() {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              transform: 'scaleX(-1)'
+              borderRadius: '0.75rem',
+              transform: 'scaleX(-1)' // Mirror effect
             }}
           />
           <div style={{
@@ -663,7 +686,7 @@ export default function VideoInterview() {
         {/* Action Button */}
         <button
           className="btn btn-primary"
-          style={{
+          style={{ 
             width: '100%',
             background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)'

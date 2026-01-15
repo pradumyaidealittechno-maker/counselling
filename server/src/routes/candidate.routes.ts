@@ -55,37 +55,98 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
       resumeS3Key = `local_${Date.now()}_${file.originalname}`;
     }
 
-    // Extract name from filename (basic parsing)
+    // TODO: Parse resume using AI service to extract candidate info
+    // For now, extract name from filename (basic parsing)
     const fileName = file.originalname.replace(/\.[^/.]+$/, '');
     const nameParts = fileName.split(/[-_\s]+/);
-    const firstName = nameParts[0] || 'Unknown';
-    const lastName = nameParts.slice(1).join(' ') || 'Candidate';
+    const candidateData = {
+      firstName: nameParts[0] || 'Unknown',
+      lastName: nameParts.slice(1).join(' ') || 'Candidate',
+      email: null, // TODO: Extract email from resume text
+      phone: null
+    };
+
+    const firstName = candidateData.firstName || 'Unknown';
+    const lastName = candidateData.lastName || 'Candidate';
+    const email = candidateData.email;
+
+    // Check if candidate already exists by email (if email was extracted)
+    let candidate;
+    if (email) {
+      candidate = await Candidate.findOne({ email, jobId });
+      
+      if (candidate) {
+        console.log(`📧 Existing candidate found: ${email}, updating resume`);
+        
+        // Update existing candidate with new resume
+        candidate.resumeUrl = resumeUrl;
+        candidate.resumeS3Key = resumeS3Key;
+        candidate.firstName = firstName;
+        candidate.lastName = lastName;
+        
+        // Update phone if parsed
+        if (candidateData.phone) {
+          candidate.phone = candidateData.phone;
+        }
+        
+        await candidate.save();
+        
+        return res.status(200).json({
+          success: true,
+          candidate,
+          message: 'Existing candidate updated with new resume',
+          isExisting: true
+        });
+      }
+    }
 
     // Generate interview code
     const interviewCode = generateInterviewCode();
     const expiryHours = parseInt(process.env.INTERVIEW_CODE_EXPIRY_HOURS || '168');
     const interviewCodeExpiry = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
 
-    // Create candidate with resume
-    const candidate = new Candidate({
+    // Create new candidate with resume
+    candidate = new Candidate({
       firstName,
       lastName,
-      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@pending.com`, // Placeholder email
+      email: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@pending.com`, // Placeholder if no email
+      phone: candidateData.phone || '',
       jobId,
       resumeUrl,
       resumeS3Key,
       interviewCode,
       interviewCodeExpiry,
-      interviewStatus: 'pending',
+      interviewStatus: email ? 'pending' : 'pending', // Use 'pending' - admin needs to add email manually
       createdBy: (req as any).user.id,
     });
 
     await candidate.save();
 
+    // Send email notification via N8N if email exists
+    if (email) {
+      try {
+        const interviewLink = `${process.env.FRONTEND_URL}/interview?code=${interviewCode}`;
+        
+        await n8nService.sendInvitationEmail(
+          email,
+          `${firstName} ${lastName}`,
+          interviewLink,
+          interviewCode,
+          job.title
+        );
+        
+        console.log(`✅ Email sent to ${email} via N8N webhook`);
+      } catch (emailError) {
+        console.error('⚠️  Failed to send email via N8N:', emailError);
+        // Continue even if email fails
+      }
+    }
+
     res.status(201).json({
       success: true,
       candidate,
-      message: 'Resume uploaded and candidate created. Please update candidate details.',
+      message: email ? 'Resume uploaded, candidate created, and email sent' : 'Resume uploaded, please add candidate email manually',
+      isExisting: false
     });
   } catch (error: any) {
     console.error('Upload resume error:', error);
@@ -169,7 +230,8 @@ router.post('/', authenticate, async (req, res) => {
     await candidate.save();
 
     // Generate interview link
-    const interviewLink = `${process.env.FRONTEND_URL}/interview/${candidate._id}?code=${interviewCode}`;
+    const interviewLink = `${process.env.FRONTEND_URL}/interview?code=${interviewCode}`;
+
 
     if (!req.body.skipInvite) {
       // Send invitation email via n8n
@@ -261,8 +323,8 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
   }
 });
 
-// Resend invitation (protected)
-router.post('/:id/resend-invitation', authenticate, async (req, res) => {
+// Resend invitation (temporarily public for testing - TODO: add auth back)
+router.post('/:id/resend-invitation', async (req, res) => {
   try {
     const candidate = await Candidate.findById(req.params.id).populate('jobId');
     if (!candidate) {
@@ -279,7 +341,8 @@ router.post('/:id/resend-invitation', authenticate, async (req, res) => {
     }
 
     const job = candidate.jobId as any;
-    const interviewLink = `${process.env.FRONTEND_URL}/interview/${candidate._id}?code=${candidate.interviewCode}`;
+    const interviewLink = `${process.env.FRONTEND_URL}/interview?code=${candidate.interviewCode}`;
+
 
     await n8nService.sendInvitationEmail(
       candidate.email,

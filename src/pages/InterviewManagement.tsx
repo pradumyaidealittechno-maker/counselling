@@ -17,10 +17,8 @@ export default function InterviewManagement() {
   const [activeSessions, setActiveSessions] = useState<InterviewSession[]>([]);
   const [recentInterviews, setRecentInterviews] = useState<InterviewSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generatingCode, setGeneratingCode] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [candidates, setCandidates] = useState<any[]>([]);
-
   const [endingInterview, setEndingInterview] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,7 +89,10 @@ export default function InterviewManagement() {
     }
   };
 
-
+  // Filter recent interviews based on search term
+  const filteredRecentInterviews = recentInterviews.filter(interview =>
+    interview.candidateName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleEndInterview = async (candidateId: string, candidateName: string) => {
     if (!confirm(`Are you sure you want to end the interview for ${candidateName}?`)) {
@@ -123,43 +124,6 @@ export default function InterviewManagement() {
     }
   };
 
-  const generateInterviewCode = async () => {
-    if (!selectedCandidate) {
-      alert('Please select a candidate');
-      return;
-    }
-
-    setGeneratingCode(true);
-    try {
-      const response = await fetch(`${API_URL}/api/interviews/generate-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          candidateId: selectedCandidate,
-          expiresInHours: 168 // 7 days
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        alert(`Interview code generated: ${data.code}\n\nExpires: ${new Date(data.expiresAt).toLocaleString()}`);
-        loadData();
-      } else {
-        const error = await response.json();
-        alert(`Failed to generate code: ${error.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Failed to generate code:', error);
-      alert('Failed to generate interview code');
-    } finally {
-      setGeneratingCode(false);
-      setSelectedCandidate('');
-    }
-  };
-
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '00:00';
     const mins = Math.floor(seconds / 60);
@@ -186,133 +150,153 @@ export default function InterviewManagement() {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem', color: '#1F2937' }}>
-          Interview Management 🎥
+      {/* Header with Gradient */}
+      <div style={{ 
+        marginBottom: '2rem',
+        padding: '1.5rem',
+        background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+        borderRadius: '1rem',
+        boxShadow: '0 10px 40px rgba(233, 30, 99, 0.25)'
+      }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white' }}>
+          🎥 Interview Management
         </h1>
-        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>Manage interview sessions, generate codes, and view recordings</p>
+        <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem' }}>Monitor live sessions, track completed interviews, and manage candidates</p>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      {/* Enhanced Stats Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
+        <div className="card" style={{ 
+          padding: '1.5rem',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%)',
+          border: '2px solid rgba(16, 185, 129, 0.15)',
+          boxShadow: '0 4px 15px rgba(16, 185, 129, 0.1)',
+          transition: 'all 0.3s',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-4px)';
+          e.currentTarget.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.2)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.1)';
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
-              width: '40px',
-              height: '40px',
-              background: 'rgba(16, 185, 129, 0.1)',
-              borderRadius: '10px',
+              width: '56px',
+              height: '56px',
+              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              borderRadius: '14px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)'
             }}>
-              <Video size={20} color="#10B981" />
+              <Video size={28} color="white" />
             </div>
             <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10B981' }}>{activeSessions.length}</p>
-              <p style={{ color: '#6B7280', fontSize: '0.75rem' }}>Active Now</p>
+              <p style={{ fontSize: '2rem', fontWeight: 800, color: '#10B981', lineHeight: 1 }}>{activeSessions.length}</p>
+              <p style={{ color: '#6B7280', fontSize: '0.8125rem', fontWeight: 500, marginTop: '0.25rem' }}>Active Now</p>
             </div>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="card" style={{ 
+          padding: '1.5rem',
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.02) 100%)',
+          border: '2px solid rgba(99, 102, 241, 0.15)',
+          boxShadow: '0 4px 15px rgba(99, 102, 241, 0.1)',
+          transition: 'all 0.3s',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-4px)';
+          e.currentTarget.style.boxShadow = '0 8px 25px rgba(99, 102, 241, 0.2)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 15px rgba(99, 102, 241, 0.1)';
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
-              width: '40px',
-              height: '40px',
-              background: 'rgba(99, 102, 241, 0.1)',
-              borderRadius: '10px',
+              width: '56px',
+              height: '56px',
+              background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+              borderRadius: '14px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)'
             }}>
-              <CheckCircle size={20} color="#6366F1" />
+              <CheckCircle size={28} color="white" />
             </div>
             <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6366F1' }}>{recentInterviews.length}</p>
-              <p style={{ color: '#6B7280', fontSize: '0.75rem' }}>Completed</p>
+              <p style={{ fontSize: '2rem', fontWeight: 800, color: '#6366F1', lineHeight: 1 }}>{recentInterviews.length}</p>
+              <p style={{ color: '#6B7280', fontSize: '0.8125rem', fontWeight: 500, marginTop: '0.25rem' }}>Completed</p>
             </div>
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="card" style={{ 
+          padding: '1.5rem',
+          background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(233, 30, 99, 0.02) 100%)',
+          border: '2px solid rgba(233, 30, 99, 0.15)',
+          boxShadow: '0 4px 15px rgba(233, 30, 99, 0.1)',
+          transition: 'all 0.3s',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-4px)';
+          e.currentTarget.style.boxShadow = '0 8px 25px rgba(233, 30, 99, 0.2)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 15px rgba(233, 30, 99, 0.1)';
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
-              width: '40px',
-              height: '40px',
-              background: 'rgba(233, 30, 99, 0.1)',
-              borderRadius: '10px',
+              width: '56px',
+              height: '56px',
+              background: 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)',
+              borderRadius: '14px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 4px 15px rgba(233, 30, 99, 0.3)'
             }}>
-              <Users size={20} color="#E91E63" />
+              <Users size={28} color="white" />
             </div>
             <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#E91E63' }}>{candidates.length}</p>
-              <p style={{ color: '#6B7280', fontSize: '0.75rem' }}>Total Candidates</p>
+              <p style={{ fontSize: '2rem', fontWeight: 800, color: '#E91E63', lineHeight: 1 }}>{candidates.length}</p>
+              <p style={{ color: '#6B7280', fontSize: '0.8125rem', fontWeight: 500, marginTop: '0.25rem' }}>Total Candidates</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Generate Interview Code Section */}
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontWeight: 600, color: '#1F2937', fontSize: '1rem', marginBottom: '1rem' }}>
-          Generate Interview Code
-        </h2>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-              Select Candidate
-            </label>
-            <select
-              value={selectedCandidate}
-              onChange={(e) => setSelectedCandidate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #D1D5DB',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem'
-              }}
-            >
-              <option value="">-- Choose a candidate --</option>
-              {candidates.map((candidate) => (
-                <option key={candidate._id} value={candidate._id}>
-                  {candidate.firstName} {candidate.lastName} - {candidate.email}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={generateInterviewCode}
-            disabled={generatingCode || !selectedCandidate}
-            className="btn btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            {generatingCode ? (
-              <>
-                <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Video size={16} />
-                Generate Code
-              </>
-            )}
-          </button>
         </div>
       </div>
 
       {/* Active Sessions */}
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontWeight: 600, color: '#1F2937', fontSize: '1rem' }}>
-            Active Interview Sessions
-          </h2>
+      <div className="card" style={{ 
+        padding: '1.75rem',
+        marginBottom: '2rem',
+        border: '2px solid rgba(16, 185, 129, 0.15)',
+        boxShadow: '0 4px 20px rgba(16, 185, 129, 0.08)',
+        background: 'white'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              width: '10px',
+              height: '10px',
+              background: '#10B981',
+              borderRadius: '50%',
+              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)'
+            }} />
+            <h2 style={{ fontWeight: 700, color: '#1F2937', fontSize: '1.125rem' }}>
+              Live Sessions
+            </h2>
+          </div>
           <div style={{
             padding: '0.25rem 0.75rem',
             background: 'rgba(16, 185, 129, 0.1)',
@@ -397,19 +381,53 @@ export default function InterviewManagement() {
       </div>
 
       {/* Recent Interviews */}
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <h2 style={{ fontWeight: 600, color: '#1F2937', fontSize: '1rem', marginBottom: '1rem' }}>
-          Recent Interviews
-        </h2>
+      <div className="card" style={{ 
+        padding: '1.75rem',
+        border: '2px solid rgba(99, 102, 241, 0.15)',
+        boxShadow: '0 4px 20px rgba(99, 102, 241, 0.08)',
+        background: 'white'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h2 style={{ fontWeight: 700, color: '#1F2937', fontSize: '1.125rem' }}>
+            📋 Recent Interviews
+          </h2>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="🔍 Search by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: '0.625rem 1rem',
+                border: '2px solid #e5e7eb',
+                borderRadius: '0.75rem',
+                fontSize: '0.875rem',
+                width: '240px',
+                transition: 'all 0.2s',
+                outline: 'none'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#6366F1';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+          </div>
+        </div>
 
-        {recentInterviews.length === 0 ? (
+        {filteredRecentInterviews.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: '#6B7280' }}>
             <CheckCircle size={48} color="#D1D5DB" style={{ margin: '0 auto 1rem' }} />
-            <p style={{ fontSize: '0.875rem' }}>No completed interviews yet</p>
+            <p style={{ fontSize: '0.875rem' }}>
+              {searchTerm ? 'No interviews found matching your search' : 'No completed interviews yet'}
+            </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {recentInterviews.slice(0, 10).map((interview) => (
+            {filteredRecentInterviews.slice(0, 10).map((interview) => (
               <div key={interview._id} style={{
                 padding: '1rem',
                 background: '#F9FAFB',
