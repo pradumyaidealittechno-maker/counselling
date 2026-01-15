@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Brain, CheckCircle, Loader, Dna, ArrowRight, Shield } from 'lucide-react';
 
 const trainingSteps = [
@@ -10,6 +10,7 @@ const trainingSteps = [
 
 export default function AITraining() {
   const navigate = useNavigate();
+  const { jobId } = useParams<{ jobId: string }>();
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [complete, setComplete] = useState(false);
@@ -182,7 +183,7 @@ export default function AITraining() {
           <button 
             className="btn btn-primary" 
             style={{ width: '100%', marginTop: '2rem' }}
-            onClick={() => navigate('/dashboard/jobs/interview-builder')}
+            onClick={() => navigate(jobId ? `/dashboard/jobs/${jobId}/interview-builder` : '/dashboard/jobs/interview-builder')}
           >
             View Interview Questions <ArrowRight size={18} />
           </button>

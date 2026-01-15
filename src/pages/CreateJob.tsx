@@ -1,119 +1,392 @@
-import { Link } from 'react-router-dom';
-import { Upload, Linkedin, Dna, ArrowRight, File } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Upload, Linkedin, Dna, ArrowRight, File, Loader, AlertCircle } from 'lucide-react';
+import api from '../services/api';
 
 export default function CreateJob() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showDetailsForm, setShowDetailsForm] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [jobDetails, setJobDetails] = useState({
+    title: '',
+    department: '',
+    location: '',
+    employmentType: 'full-time' as 'full-time' | 'part-time' | 'contract' | 'internship',
+    experienceLevel: 'mid' as 'entry' | 'mid' | 'senior' | 'lead',
+    description: ''
+  });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    setUploadedFile(file);
+    
+    // Extract filename and show details form
+    const fileName = file.name.replace(/\.[^/.]+$/, '');
+    setJobDetails(prev => ({
+      ...prev,
+      title: fileName || 'Uploaded Job',
+      description: `Job description uploaded from file: ${file.name}\n\nPlease update the job details below.`
+    }));
+    
+    setShowDetailsForm(true);
+  };
+
+  const handleCreateJob = async () => {
+    // Validate required fields
+    if (!jobDetails.title.trim()) {
+      setError('Job title is required');
+      return;
+    }
+    if (!jobDetails.department.trim()) {
+      setError('Department is required');
+      return;
+    }
+    if (!jobDetails.location.trim()) {
+      setError('Location is required');
+      return;
+    }
+    if (!jobDetails.description.trim()) {
+      setError('Job description is required');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError(null);
+
+      const jobData = {
+        ...jobDetails,
+        source: uploadedFile ? {
+          type: 'upload',
+          fileName: uploadedFile.name
+        } : undefined
+      };
+
+      const job = await api.jobs.create(jobData);
+      
+      // Navigate to job DNA page with jobId
+      navigate(`/dashboard/jobs/${job._id}/job-dna`);
+    } catch (err: any) {
+      console.error('Failed to create job:', err);
+      setError(err.message || 'Failed to create job');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>Create New Job</h1>
-        <p style={{ color: '#6b7280' }}>Choose how you want to create your job posting and generate Job DNA</p>
-      </div>
+      {!showDetailsForm ? (
+        <>
+          <div style={{ marginBottom: '2rem' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>Create New Job</h1>
+            <p style={{ color: '#6b7280' }}>Choose how you want to create your job posting and generate Job DNA</p>
+          </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem', maxWidth: '900px' }}>
-        {/* Upload JD */}
-        <Link to="/dashboard/jobs/job-dna" className="card card-hover" style={{
-          padding: '2.5rem',
-          border: '2px dashed #e5e7eb',
-          textAlign: 'center',
-          cursor: 'pointer',
-          display: 'block'
-        }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-            borderRadius: '1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem'
-          }}>
-            <Upload size={36} color="#6366f1" />
-          </div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-            Upload Job Description
-          </h3>
-          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-            Upload a PDF or DOC file to generate Job DNA
-          </p>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            color: '#9ca3af',
-            fontSize: '0.875rem'
-          }}>
-            <File size={16} />
-            <span>PDF, DOC, DOCX supported</span>
-          </div>
-          <button className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-            Upload File <ArrowRight size={18} />
-          </button>
-        </Link>
+          {error && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '0.5rem',
+              marginBottom: '1.5rem',
+              color: '#DC2626',
+              fontSize: '0.875rem',
+              maxWidth: '900px'
+            }}>
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
 
-        {/* LinkedIn Import */}
-        <Link to="/dashboard/jobs/linkedin-import" className="card card-hover" style={{
-          padding: '2.5rem',
-          border: '2px solid #e5e7eb',
-          textAlign: 'center',
-          cursor: 'pointer',
-          display: 'block'
-        }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            background: 'linear-gradient(135deg, rgba(10, 102, 194, 0.1) 0%, rgba(0, 119, 181, 0.1) 100%)',
-            borderRadius: '1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem'
-          }}>
-            <Linkedin size={36} color="#0a66c2" />
-          </div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-            Import from LinkedIn
-          </h3>
-          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-            Import job details and auto-generate Job DNA
-          </p>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            color: '#9ca3af',
-            fontSize: '0.875rem'
-          }}>
-            <Dna size={16} />
-            <span>AI-powered extraction</span>
-          </div>
-          <button className="btn btn-secondary" style={{ marginTop: '1.5rem' }}>
-            Import from LinkedIn <ArrowRight size={18} />
-          </button>
-        </Link>
-      </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".pdf,.doc,.docx"
+            style={{ display: 'none' }}
+          />
 
-      {/* Job DNA Info */}
-      <div style={{
-        marginTop: '2rem',
-        padding: '1.5rem',
-        background: 'rgba(99, 102, 241, 0.05)',
-        border: '1px solid rgba(99, 102, 241, 0.2)',
-        borderRadius: '1rem',
-        maxWidth: '900px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <Dna size={20} color="#6366f1" />
-          <span style={{ fontWeight: 600 }}>What is Job DNA?</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem', maxWidth: '900px' }}>
+            {/* Upload JD */}
+            <div 
+              className="card card-hover" 
+              style={{
+                padding: '2.5rem',
+                border: '2px dashed #e5e7eb',
+                textAlign: 'center',
+                cursor: uploading ? 'wait' : 'pointer',
+                opacity: uploading ? 0.7 : 1
+              }}
+              onClick={!uploading ? handleUploadClick : undefined}
+            >
+              <div style={{
+                width: '80px',
+                height: '80px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                borderRadius: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem'
+              }}>
+                {uploading ? (
+                  <Loader size={36} color="#6366f1" style={{ animation: 'spin 1s linear infinite' }} />
+                ) : (
+                  <Upload size={36} color="#6366f1" />
+                )}
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+                Upload Job Description
+              </h3>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                Upload a PDF or DOC file to generate Job DNA
+              </p>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                color: '#9ca3af',
+                fontSize: '0.875rem'
+              }}>
+                <File size={16} />
+                <span>PDF, DOC, DOCX supported</span>
+              </div>
+              <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} disabled={uploading}>
+                {uploading ? 'Uploading...' : 'Upload File'} <ArrowRight size={18} />
+              </button>
+            </div>
+
+            {/* LinkedIn Import */}
+            <Link to="/dashboard/jobs/linkedin-import" className="card card-hover" style={{
+              padding: '2.5rem',
+              border: '2px solid #e5e7eb',
+              textAlign: 'center',
+              cursor: 'pointer',
+              display: 'block'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                background: 'linear-gradient(135deg, rgba(10, 102, 194, 0.1) 0%, rgba(0, 119, 181, 0.1) 100%)',
+                borderRadius: '1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.5rem'
+              }}>
+                <Linkedin size={36} color="#0a66c2" />
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+                Import from LinkedIn
+              </h3>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                Import job details and auto-generate Job DNA
+              </p>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                color: '#9ca3af',
+                fontSize: '0.875rem'
+              }}>
+                <Dna size={16} />
+                <span>AI-powered extraction</span>
+              </div>
+              <button className="btn btn-secondary" style={{ marginTop: '1.5rem' }}>
+                Import from LinkedIn <ArrowRight size={18} />
+              </button>
+            </Link>
+          </div>
+
+          {/* Job DNA Info */}
+          <div style={{
+            marginTop: '2rem',
+            padding: '1.5rem',
+            background: 'rgba(99, 102, 241, 0.05)',
+            border: '1px solid rgba(99, 102, 241, 0.2)',
+            borderRadius: '1rem',
+            maxWidth: '900px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <Dna size={20} color="#6366f1" />
+              <span style={{ fontWeight: 600 }}>What is Job DNA?</span>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#4b5563' }}>
+              Job DNA transforms your job description into structured role intelligence across 5 dimensions: 
+              Skill, Experience, Behavioral, Communication, and Cultural DNA. This powers fair, consistent 
+              AI interviews with explainable recommendations.
+            </p>
+          </div>
+        </>
+      ) : (
+        <div style={{ maxWidth: '700px' }}>
+          <div style={{ marginBottom: '2rem' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>Job Details</h1>
+            <p style={{ color: '#6b7280' }}>Complete the job details to generate Job DNA</p>
+          </div>
+
+          {error && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '0.5rem',
+              marginBottom: '1.5rem',
+              color: '#DC2626',
+              fontSize: '0.875rem'
+            }}>
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+
+          <div className="card" style={{ padding: '2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                  Job Title <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={jobDetails.title}
+                  onChange={(e) => setJobDetails(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g., Senior Full Stack Developer"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                    Department <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={jobDetails.department}
+                    onChange={(e) => setJobDetails(prev => ({ ...prev, department: e.target.value }))}
+                    placeholder="e.g., Engineering"
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                    Location <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={jobDetails.location}
+                    onChange={(e) => setJobDetails(prev => ({ ...prev, location: e.target.value }))}
+                    placeholder="e.g., Remote, New York"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                    Employment Type
+                  </label>
+                  <select
+                    className="input"
+                    value={jobDetails.employmentType}
+                    onChange={(e) => setJobDetails(prev => ({ ...prev, employmentType: e.target.value as any }))}
+                  >
+                    <option value="full-time">Full-time</option>
+                    <option value="part-time">Part-time</option>
+                    <option value="contract">Contract</option>
+                    <option value="internship">Internship</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                    Experience Level
+                  </label>
+                  <select
+                    className="input"
+                    value={jobDetails.experienceLevel}
+                    onChange={(e) => setJobDetails(prev => ({ ...prev, experienceLevel: e.target.value as any }))}
+                  >
+                    <option value="entry">Entry Level</option>
+                    <option value="mid">Mid Level</option>
+                    <option value="senior">Senior Level</option>
+                    <option value="lead">Lead/Principal</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                  Job Description <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <textarea
+                  className="input"
+                  value={jobDetails.description}
+                  onChange={(e) => setJobDetails(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter the full job description..."
+                  rows={8}
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowDetailsForm(false);
+                    setUploadedFile(null);
+                    setError(null);
+                  }}
+                  disabled={uploading}
+                >
+                  Back
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCreateJob}
+                  disabled={uploading}
+                  style={{ flex: 1 }}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                      Creating Job...
+                    </>
+                  ) : (
+                    <>
+                      Create Job & Generate DNA
+                      <ArrowRight size={18} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <p style={{ fontSize: '0.875rem', color: '#4b5563' }}>
-          Job DNA transforms your job description into structured role intelligence across 5 dimensions: 
-          Skill, Experience, Behavioral, Communication, and Cultural DNA. This powers fair, consistent 
-          AI interviews with explainable recommendations.
-        </p>
-      </div>
+      )}
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

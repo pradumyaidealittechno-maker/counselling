@@ -1,12 +1,48 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Mail, Lock, User, Building, ArrowRight, Dna, Video, Brain } from 'lucide-react';
+import { Sparkles, Mail, Lock, User, Building, ArrowRight, Dna, Video, Brain, AlertCircle } from 'lucide-react';
+import api from '../services/api';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    company: ''
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/onboarding');
+    setError('');
+    setLoading(true);
+
+    console.log('%c📝 Signup Form Submitted', 'color: #8B5CF6; font-weight: bold;');
+    console.log('   Email:', formData.email);
+    console.log('   Name:', formData.firstName, formData.lastName);
+    console.log('   Company:', formData.company);
+
+    try {
+      console.log('%c📡 Calling API...', 'color: #3B82F6;');
+      const result = await api.auth.register(formData);
+      console.log('%c✅ Registration successful!', 'color: #10B981; font-weight: bold;', result);
+      navigate('/onboarding');
+    } catch (err: any) {
+      console.error('%c❌ Registration failed:', 'color: #EF4444; font-weight: bold;', err.message);
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -164,46 +200,121 @@ export default function Signup() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {error && (
+            <div style={{
+              background: '#FEE2E2',
+              border: '1px solid #FCA5A5',
+              borderRadius: '0.5rem',
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <AlertCircle size={18} color="#DC2626" />
+              <span style={{ color: '#DC2626', fontSize: '0.875rem' }}>{error}</span>
+            </div>
+          )}
+          
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div>
               <label className="label">First Name</label>
               <div style={{ position: 'relative' }}>
                 <User size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input type="text" className="input" placeholder="John" style={{ paddingLeft: '40px' }} />
+                <input 
+                  type="text" 
+                  name="firstName"
+                  className="input" 
+                  placeholder="John" 
+                  style={{ paddingLeft: '40px' }}
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                />
               </div>
             </div>
             <div>
               <label className="label">Last Name</label>
-              <input type="text" className="input" placeholder="Doe" />
+              <input 
+                type="text" 
+                name="lastName"
+                className="input" 
+                placeholder="Doe"
+                value={formData.lastName}
+                onChange={handleChange}
+                required
+                disabled={loading}
+              />
             </div>
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label className="label">Work Email</label>
             <div style={{ position: 'relative' }}>
               <Mail size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="email" className="input" placeholder="you@company.com" style={{ paddingLeft: '40px' }} />
+              <input 
+                type="email" 
+                name="email"
+                className="input" 
+                placeholder="you@company.com" 
+                style={{ paddingLeft: '40px' }}
+                value={formData.email}
+                onChange={handleChange}
+                required
+                disabled={loading}
+              />
             </div>
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label className="label">Company Name</label>
             <div style={{ position: 'relative' }}>
               <Building size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="text" className="input" placeholder="Acme Inc." style={{ paddingLeft: '40px' }} />
+              <input 
+                type="text" 
+                name="company"
+                className="input" 
+                placeholder="Acme Inc." 
+                style={{ paddingLeft: '40px' }}
+                value={formData.company}
+                onChange={handleChange}
+                required
+                disabled={loading}
+              />
             </div>
           </div>
           <div style={{ marginBottom: '1.5rem' }}>
             <label className="label">Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="password" className="input" placeholder="••••••••" style={{ paddingLeft: '40px' }} />
+              <input 
+                type="password" 
+                name="password"
+                className="input" 
+                placeholder="••••••••" 
+                style={{ paddingLeft: '40px' }}
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={8}
+                disabled={loading}
+              />
             </div>
+            <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
+              Minimum 8 characters
+            </p>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ 
-            width: '100%',
-            background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
-            boxShadow: '0 4px 14px rgba(233, 30, 99, 0.3)'
-          }}>
-            Create Account <ArrowRight size={18} />
+          <button 
+            type="submit" 
+            className="btn btn-primary" 
+            style={{ 
+              width: '100%',
+              background: loading ? '#9CA3AF' : 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+              boxShadow: '0 4px 14px rgba(233, 30, 99, 0.3)',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+            disabled={loading}
+          >
+            {loading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={18} />
           </button>
           <p style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center', marginTop: '1rem' }}>
             By signing up, you agree to our Terms of Service and Privacy Policy

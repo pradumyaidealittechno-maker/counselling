@@ -11,7 +11,8 @@ import AITraining from './pages/AITraining';
 import InterviewBuilder from './pages/InterviewBuilder';
 import Candidates from './pages/Candidates';
 import SendInvitation from './pages/SendInvitation';
-import VideoInterview from './pages/VideoInterview';
+// VideoInterview is available but not currently used in routes
+import CandidateInterview from './pages/CandidateInterview';
 import InterviewComplete from './pages/InterviewComplete';
 import AnalysisReport from './pages/AnalysisReport';
 import FinalDecision from './pages/FinalDecision';
@@ -27,8 +28,8 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/onboarding" element={<Onboarding />} />
         
-        {/* Interview Route (Candidate-facing) */}
-        <Route path="/interview/:id" element={<VideoInterview />} />
+        {/* Interview Routes (Candidate-facing) */}
+        <Route path="/interview/:id" element={<CandidateInterview />} />
         <Route path="/interview-complete" element={<InterviewComplete />} />
         
         {/* Dashboard Routes */}
@@ -37,7 +38,9 @@ function App() {
           <Route path="jobs/create" element={<CreateJob />} />
           <Route path="jobs/linkedin-import" element={<LinkedInImport />} />
           <Route path="jobs/job-dna" element={<JobDNA />} />
-          <Route path="jobs/ai-training" element={<AITraining />} />
+          <Route path="jobs/:jobId/job-dna" element={<JobDNA />} />
+          <Route path="jobs/:jobId/ai-training" element={<AITraining />} />
+          <Route path="jobs/:jobId/interview-builder" element={<InterviewBuilder />} />
           <Route path="jobs/interview-builder" element={<InterviewBuilder />} />
           <Route path="candidates" element={<Candidates />} />
           <Route path="candidates/invite" element={<SendInvitation />} />

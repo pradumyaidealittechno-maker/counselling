@@ -1,12 +1,34 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Mail, Lock, ArrowRight, Dna, CheckCircle } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, Dna, CheckCircle, AlertCircle } from 'lucide-react';
+import api from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+
+    console.log('%c🔐 Login Form Submitted', 'color: #8B5CF6; font-weight: bold;');
+    console.log('   Email:', email);
+
+    try {
+      console.log('%c📡 Calling API...', 'color: #3B82F6;');
+      const result = await api.auth.login(email, password);
+      console.log('%c✅ Login successful!', 'color: #10B981; font-weight: bold;', result);
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error('%c❌ Login failed:', 'color: #EF4444; font-weight: bold;', err.message);
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -160,33 +182,73 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {error && (
+            <div style={{
+              background: '#FEE2E2',
+              border: '1px solid #FCA5A5',
+              borderRadius: '0.5rem',
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <AlertCircle size={18} color="#DC2626" />
+              <span style={{ color: '#DC2626', fontSize: '0.875rem' }}>{error}</span>
+            </div>
+          )}
+          
           <div style={{ marginBottom: '1rem' }}>
             <label className="label">Email</label>
             <div style={{ position: 'relative' }}>
               <Mail size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="email" className="input" placeholder="you@company.com" style={{ paddingLeft: '40px' }} defaultValue="john@acme.com" />
+              <input 
+                type="email" 
+                className="input" 
+                placeholder="you@company.com" 
+                style={{ paddingLeft: '40px' }} 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
+              />
             </div>
           </div>
           <div style={{ marginBottom: '1.5rem' }}>
             <label className="label">Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="password" className="input" placeholder="••••••••" style={{ paddingLeft: '40px' }} defaultValue="password" />
+              <input 
+                type="password" 
+                className="input" 
+                placeholder="••••••••" 
+                style={{ paddingLeft: '40px' }} 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input type="checkbox" />
+              <input type="checkbox" disabled={loading} />
               <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Remember me</span>
             </label>
             <a href="#" style={{ fontSize: '0.875rem', color: '#E91E63' }}>Forgot password?</a>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ 
-            width: '100%',
-            background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
-            boxShadow: '0 4px 14px rgba(233, 30, 99, 0.3)'
-          }}>
-            Sign in <ArrowRight size={18} />
+          <button 
+            type="submit" 
+            className="btn btn-primary" 
+            style={{ 
+              width: '100%',
+              background: loading ? '#9CA3AF' : 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+              boxShadow: '0 4px 14px rgba(233, 30, 99, 0.3)',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+            disabled={loading}
+          >
+            {loading ? 'Signing in...' : 'Sign in'} <ArrowRight size={18} />
           </button>
         </form>
       </div>

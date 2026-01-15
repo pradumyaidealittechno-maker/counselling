@@ -1,0 +1,134 @@
+import axios from 'axios';
+
+export interface EmailPayload {
+  to: string;
+  subject: string;
+  body: string;
+  candidateName?: string;
+  interviewLink?: string;
+  interviewCode?: string;
+}
+
+export interface InterviewQuestionsPayload {
+  jobTitle: string;
+  jobDescription: string;
+  requiredSkills: string[];
+  experienceLevel: string;
+  jobDNA?: any;
+}
+
+export interface InterviewResultPayload {
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  interviewData: any;
+  transcript: any[];
+  duration: number;
+  recordingUrl?: string;
+}
+
+class N8nService {
+  private emailWebhook: string;
+  private questionsWebhook: string;
+  private resultWebhook: string;
+
+  constructor() {
+    this.emailWebhook = process.env.N8N_WEBHOOK_EMAIL || '';
+    this.questionsWebhook = process.env.N8N_WEBHOOK_INTERVIEW_QUESTIONS || '';
+    this.resultWebhook = process.env.N8N_WEBHOOK_INTERVIEW_RESULT || '';
+  }
+
+  async sendEmail(payload: EmailPayload): Promise<boolean> {
+    try {
+      if (!this.emailWebhook) {
+        console.warn('N8N email webhook not configured');
+        return false;
+      }
+
+      const response = await axios.post(this.emailWebhook, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      console.log('✅ Email sent via n8n:', response.data);
+      return true;
+    } catch (error: any) {
+      console.error('❌ Failed to send email via n8n:', error.message);
+      return false;
+    }
+  }
+
+  async generateInterviewQuestions(payload: InterviewQuestionsPayload): Promise<any> {
+    try {
+      if (!this.questionsWebhook) {
+        throw new Error('N8N questions webhook not configured');
+      }
+
+      const response = await axios.post(this.questionsWebhook, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      });
+
+      console.log('✅ Interview questions generated via n8n');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to generate questions via n8n:', error.message);
+      throw error;
+    }
+  }
+
+  async sendInterviewResult(payload: InterviewResultPayload): Promise<any> {
+    try {
+      if (!this.resultWebhook) {
+        console.warn('N8N result webhook not configured');
+        return null;
+      }
+
+      const response = await axios.post(this.resultWebhook, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 60000,
+      });
+
+      console.log('✅ Interview result sent to n8n for processing');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to send interview result to n8n:', error.message);
+      throw error;
+    }
+  }
+
+  async sendInvitationEmail(
+    candidateEmail: string,
+    candidateName: string,
+    interviewLink: string,
+    interviewCode: string,
+    jobTitle: string
+  ): Promise<boolean> {
+    const emailBody = `
+      <h2>Interview Invitation</h2>
+      <p>Dear ${candidateName},</p>
+      <p>You have been invited to participate in an AI-powered interview for the position of <strong>${jobTitle}</strong>.</p>
+      <p><strong>Your Interview Code:</strong> ${interviewCode}</p>
+      <p><strong>Interview Link:</strong> <a href="${interviewLink}">${interviewLink}</a></p>
+      <p>Please click the link above to start your interview. Make sure you have:</p>
+      <ul>
+        <li>A working camera and microphone</li>
+        <li>A quiet environment</li>
+        <li>Stable internet connection</li>
+      </ul>
+      <p>The interview will be conducted by our AI interviewer and typically takes 30-45 minutes.</p>
+      <p>Good luck!</p>
+    `;
+
+    return await this.sendEmail({
+      to: candidateEmail,
+      subject: `Interview Invitation - ${jobTitle}`,
+      body: emailBody,
+      candidateName,
+      interviewLink,
+      interviewCode,
+    });
+  }
+}
+
+export default new N8nService();

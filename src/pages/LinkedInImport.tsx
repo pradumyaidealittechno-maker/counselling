@@ -1,23 +1,67 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Linkedin, Search, Loader, CheckCircle, ArrowRight } from 'lucide-react';
+import { Linkedin, Search, Loader, CheckCircle, ArrowRight, AlertCircle } from 'lucide-react';
+import api from '../services/api';
 
 export default function LinkedInImport() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<'input' | 'fetching'>('input');
+  const [step, setStep] = useState<'input' | 'fetching' | 'error'>('input');
   const [fetchProgress, setFetchProgress] = useState(0);
+  const [linkedInUrl, setLinkedInUrl] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFetch = () => {
+  const handleFetch = async () => {
+    if (!linkedInUrl.trim()) {
+      setError('Please enter a LinkedIn job URL');
+      return;
+    }
+
     setStep('fetching');
+    setError(null);
+    
+    // Simulate progress while creating job
     let progress = 0;
     const interval = setInterval(() => {
-      progress += 25;
-      setFetchProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => navigate('/dashboard/jobs/job-dna'), 500);
-      }
-    }, 700);
+      progress += 20;
+      setFetchProgress(Math.min(progress, 80));
+    }, 500);
+
+    try {
+      // Create a new job with the LinkedIn URL as source
+      const jobData = {
+        title: 'Imported Job',
+        description: `Job imported from LinkedIn: ${linkedInUrl}\n\nPlease update the job details and generate Job DNA.`,
+        department: 'To be updated',
+        location: 'To be updated',
+        employmentType: 'full-time',
+        experienceLevel: 'mid',
+        source: {
+          type: 'linkedin',
+          linkedInUrl: linkedInUrl
+        }
+      };
+
+      const job = await api.jobs.create(jobData);
+      
+      clearInterval(interval);
+      setFetchProgress(100);
+      
+      // Navigate to job DNA page with the new job
+      setTimeout(() => {
+        navigate(`/dashboard/jobs/${job._id}/job-dna`);
+      }, 500);
+    } catch (err: any) {
+      clearInterval(interval);
+      console.error('Failed to create job:', err);
+      setError(err.message || 'Failed to import job from LinkedIn');
+      setStep('error');
+    }
+  };
+
+  const handleRetry = () => {
+    setStep('input');
+    setFetchProgress(0);
+    setError(null);
   };
 
   return (
@@ -56,6 +100,24 @@ export default function LinkedInImport() {
             </div>
           </div>
 
+          {error && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '0.5rem',
+              marginBottom: '1rem',
+              color: '#DC2626',
+              fontSize: '0.875rem'
+            }}>
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+
           <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
             <Search size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
@@ -63,7 +125,8 @@ export default function LinkedInImport() {
               className="input"
               placeholder="https://www.linkedin.com/jobs/view/..."
               style={{ paddingLeft: '40px' }}
-              defaultValue="https://www.linkedin.com/jobs/view/3847291056"
+              value={linkedInUrl}
+              onChange={(e) => setLinkedInUrl(e.target.value)}
             />
           </div>
 
@@ -88,15 +151,16 @@ export default function LinkedInImport() {
             <Loader size={36} color="#6366f1" style={{ animation: 'spin 1s linear infinite' }} />
           </div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>
-            Generating Job DNA™
+            Creating Job from LinkedIn
           </h3>
           <div style={{ maxWidth: '400px', margin: '0 auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', textAlign: 'left', marginBottom: '1.5rem' }}>
               {[
-                { label: 'Fetching job content', done: fetchProgress >= 25 },
-                { label: 'Analyzing job description', done: fetchProgress >= 50 },
-                { label: 'Identifying skills & experience', done: fetchProgress >= 75 },
-                { label: 'Extracting behavioral signals', done: fetchProgress >= 100 }
+                { label: 'Validating LinkedIn URL', done: fetchProgress >= 20 },
+                { label: 'Creating job record', done: fetchProgress >= 40 },
+                { label: 'Setting up Job DNA framework', done: fetchProgress >= 60 },
+                { label: 'Preparing for analysis', done: fetchProgress >= 80 },
+                { label: 'Redirecting to Job DNA', done: fetchProgress >= 100 }
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   {item.done ? (
@@ -116,6 +180,37 @@ export default function LinkedInImport() {
                 transition: 'width 0.3s'
               }} />
             </div>
+          </div>
+        </div>
+      )}
+
+      {step === 'error' && (
+        <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.5rem'
+          }}>
+            <AlertCircle size={36} color="#EF4444" />
+          </div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: '#DC2626' }}>
+            Import Failed
+          </h3>
+          <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>
+            {error || 'Something went wrong while importing the job'}
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={handleRetry}>
+              Try Again
+            </button>
+            <button className="btn btn-secondary" onClick={() => navigate('/dashboard/jobs/create')}>
+              Create Manually
+            </button>
           </div>
         </div>
       )}
