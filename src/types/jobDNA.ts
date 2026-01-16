@@ -2,7 +2,7 @@
 // Proprietary Role-Intelligence Framework by Intelligens
 
 // Importance levels for DNA traits
-export type ImportanceLevel = 'High' | 'Medium' | 'Low';
+export type ImportanceLevel = 'critical' | 'high' | 'medium' | 'low';
 
 // DNA Dimensions
 export type DNADimension = 

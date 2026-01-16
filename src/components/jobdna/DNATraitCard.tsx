@@ -12,11 +12,11 @@ interface DNATraitCardProps {
   showDetails?: boolean;
 }
 
-export default function DNATraitCard({ 
-  trait, 
-  index, 
-  onEdit, 
-  onDelete, 
+export default function DNATraitCard({
+  trait,
+  index,
+  onEdit,
+  onDelete,
   onImportanceChange,
   editable = true,
   showDetails = true
@@ -40,17 +40,17 @@ export default function DNATraitCard({
       {/* Main Row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
         {editable && (
-          <GripVertical 
-            size={16} 
-            color="#9CA3AF" 
-            style={{ cursor: 'grab', marginTop: '2px', flexShrink: 0 }} 
+          <GripVertical
+            size={16}
+            color="#9CA3AF"
+            style={{ cursor: 'grab', marginTop: '2px', flexShrink: 0 }}
           />
         )}
-        
-        <span style={{ 
-          width: '20px', 
-          height: '20px', 
-          background: '#E91E63', 
+
+        <span style={{
+          width: '20px',
+          height: '20px',
+          background: '#E91E63',
           color: 'white',
           borderRadius: '50%',
           display: 'flex',
@@ -83,7 +83,7 @@ export default function DNATraitCard({
               {trait.trait}
             </p>
           )}
-          
+
           {trait.description && showDetails && (
             <p style={{ fontSize: '0.625rem', color: '#6B7280', marginTop: '0.125rem' }}>
               {trait.description}
@@ -117,13 +117,13 @@ export default function DNATraitCard({
 
           {editable && (
             <>
-              <button 
+              <button
                 onClick={() => onEdit?.(trait)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
               >
                 <Edit3 size={14} color="#6B7280" />
               </button>
-              <button 
+              <button
                 onClick={() => onDelete?.(trait.id)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
               >
@@ -136,16 +136,16 @@ export default function DNATraitCard({
 
       {/* Skill DNA specific details */}
       {skillTrait && showDetails && (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '0.75rem', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
           marginLeft: editable ? '2.25rem' : '1.75rem',
           flexWrap: 'wrap'
         }}>
           <SkillCategoryBadge category={skillTrait.category} size="sm" />
           <SkillDepthIndicator depth={skillTrait.depth} size="sm" />
-          
+
           {skillTrait.tools && skillTrait.tools.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <Info size={10} color="#9CA3AF" />
@@ -160,10 +160,10 @@ export default function DNATraitCard({
 
       {/* Experience DNA specific details */}
       {experienceTrait && showDetails && (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '0.75rem', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
           marginLeft: editable ? '2.25rem' : '1.75rem',
           flexWrap: 'wrap'
         }}>
@@ -181,7 +181,7 @@ export default function DNATraitCard({
               {experienceTrait.yearsRange.flexible && ' (flexible)'}
             </span>
           )}
-          
+
           {experienceTrait.seniorityLevel && (
             <span style={{
               padding: '0.125rem 0.5rem',

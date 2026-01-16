@@ -97,9 +97,9 @@ export default function AnalysisReport() {
   if (!recommendation) {
     return (
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <Link to="/dashboard/candidates" style={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
+        <Link to="/dashboard/candidates" style={{
+          display: 'inline-flex',
+          alignItems: 'center',
           gap: '0.5rem',
           color: '#6B7280',
           marginBottom: '1.5rem',
@@ -126,7 +126,7 @@ export default function AnalysisReport() {
             {candidate.firstName} {candidate.lastName}
           </h2>
           <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{candidate.job?.title || 'No job assigned'}</p>
-          
+
           <div style={{
             padding: '1.5rem',
             background: 'rgba(245, 158, 11, 0.1)',
@@ -215,7 +215,7 @@ export default function AnalysisReport() {
             <Dna size={16} color="#E91E63" />
             <h2 style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#1F2937' }}>DNA Match Overview</h2>
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
             <div style={{
               width: '120px',
@@ -249,7 +249,7 @@ export default function AnalysisReport() {
             if (!evaluation) return null;
             const score = evaluation.overallScore;
             const scoreColor = score >= 90 ? '#10B981' : score >= 80 ? '#E91E63' : '#F59E0B';
-            
+
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
                 <span style={{ width: '120px', fontSize: '0.75rem', color: '#6B7280' }}>
@@ -324,18 +324,18 @@ export default function AnalysisReport() {
           <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem' }}>AI Recommendation</h3>
           <div style={{
             padding: '1rem',
-            background: recommendation.recommendation === 'Hire' 
-              ? 'rgba(16, 185, 129, 0.1)' 
-              : recommendation.recommendation === 'Hold' 
-              ? 'rgba(245, 158, 11, 0.1)' 
-              : 'rgba(239, 68, 68, 0.1)',
+            background: recommendation.recommendation === 'Hire'
+              ? 'rgba(16, 185, 129, 0.1)'
+              : recommendation.recommendation === 'Hold'
+                ? 'rgba(245, 158, 11, 0.1)'
+                : 'rgba(239, 68, 68, 0.1)',
             borderRadius: '0.5rem',
             textAlign: 'center',
             marginBottom: '0.75rem'
           }}>
-            <p style={{ 
-              fontSize: '1.5rem', 
-              fontWeight: 700, 
+            <p style={{
+              fontSize: '1.5rem',
+              fontWeight: 700,
               color: recommendation.recommendation === 'Hire' ? '#10B981' : recommendation.recommendation === 'Hold' ? '#F59E0B' : '#EF4444'
             }}>
               {recommendation.recommendation}
@@ -350,7 +350,7 @@ export default function AnalysisReport() {
         </div>
 
         {/* Score Legend */}
-        <div style={{ 
+        <div style={{
           padding: '0.75rem',
           background: '#F9FAFB',
           borderRadius: '0.5rem',
@@ -375,7 +375,7 @@ export default function AnalysisReport() {
         </div>
 
         {/* DNA Transparency Notice */}
-        <div style={{ 
+        <div style={{
           padding: '0.75rem',
           background: 'rgba(233, 30, 99, 0.05)',
           borderRadius: '0.5rem',
@@ -383,10 +383,10 @@ export default function AnalysisReport() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.375rem' }}>
             <Dna size={12} color="#E91E63" />
-            <span style={{ fontSize: '0.625rem', fontWeight: 600, color: '#BE185D' }}>Job DNA™ Transparency</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#BE185D' }}>Job DNA™ Transparency</span>
           </div>
-          <p style={{ fontSize: '0.5625rem', color: '#9D174D', lineHeight: 1.5 }}>
-            All evaluations are based on the approved Job DNA™ framework. 
+          <p style={{ fontSize: '0.75rem', color: '#9D174D', lineHeight: 1.5 }}>
+            All evaluations are based on the approved Job DNA™ framework.
             Each score is linked to specific traits with evidence from the interview transcript.
           </p>
         </div>

@@ -89,10 +89,10 @@ export default function Dashboard() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem', color: '#1F2937' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--foreground)' }}>
           Welcome back, {userName} 👋
         </h1>
-        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>Here's what's happening with your recruitment pipeline</p>
+        <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>Here's what's happening with your recruitment pipeline</p>
       </div>
 
       {/* Quick Actions */}
@@ -137,7 +137,7 @@ export default function Dashboard() {
         {/* Recent Jobs */}
         <div className="card" style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ fontWeight: 600, color: '#1F2937', fontSize: '0.875rem' }}>Recent Jobs</h2>
+            <h2 style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: '0.875rem' }}>Recent Jobs</h2>
             <Link to="/dashboard/jobs" style={{ color: '#6366F1', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               View all <ArrowUpRight size={12} />
             </Link>
@@ -158,13 +158,13 @@ export default function Dashboard() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '0.75rem',
-                  background: '#F9FAFB',
+                  background: 'var(--gray-100)',
                   borderRadius: '0.5rem',
                   textDecoration: 'none'
                 }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.125rem' }}>
-                      <p style={{ fontWeight: 500, color: '#1F2937', fontSize: '0.875rem' }}>{job.title}</p>
+                      <p style={{ fontWeight: 500, color: 'var(--foreground)', fontSize: '0.875rem' }}>{job.title}</p>
                       <span style={{
                         padding: '0.125rem 0.375rem',
                         borderRadius: '9999px',
@@ -180,7 +180,7 @@ export default function Dashboard() {
                         {job.jobDNA ? 'DNA Ready' : 'DNA Pending'}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>{job.department || 'No department'}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{job.department || 'No department'}</p>
                   </div>
                   <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.625rem' }}>
                     {job.status}
@@ -194,7 +194,7 @@ export default function Dashboard() {
         {/* Recent Candidates */}
         <div className="card" style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ fontWeight: 600, color: '#1F2937', fontSize: '0.875rem' }}>Recent Candidates</h2>
+            <h2 style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: '0.875rem' }}>Recent Candidates</h2>
             <Link to="/dashboard/candidates" style={{ color: '#6366F1', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               View all <ArrowUpRight size={12} />
             </Link>
@@ -215,7 +215,7 @@ export default function Dashboard() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '0.75rem',
-                  background: '#F9FAFB',
+                  background: 'var(--gray-100)',
                   borderRadius: '0.5rem'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -234,10 +234,10 @@ export default function Dashboard() {
                       {candidate.firstName?.[0]}{candidate.lastName?.[0]}
                     </div>
                     <div>
-                      <p style={{ fontWeight: 500, marginBottom: '0.125rem', color: '#1F2937', fontSize: '0.875rem' }}>
+                      <p style={{ fontWeight: 500, marginBottom: '0.125rem', color: 'var(--foreground)', fontSize: '0.875rem' }}>
                         {candidate.firstName} {candidate.lastName}
                       </p>
-                      <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>{candidate.job?.title || 'No job assigned'}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{candidate.job?.title || 'No job assigned'}</p>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>

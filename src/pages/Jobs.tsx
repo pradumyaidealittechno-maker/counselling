@@ -129,7 +129,7 @@ export default function Jobs() {
                                     <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>{job.company}</td>
                                     <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>{job.location}</td>
                                     <td style={{ padding: '0.75rem' }}>
-                                        <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.6875rem' }}>
+                                        <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.75rem' }}>
                                             {job.status}
                                         </span>
                                     </td>

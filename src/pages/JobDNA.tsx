@@ -39,6 +39,8 @@ export default function JobDNA() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [culturalDNAEnabled, setCulturalDNAEnabled] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     loadJob();
@@ -91,6 +93,35 @@ export default function JobDNA() {
     }
   };
 
+  const handleImportanceChange = (dimension: 'skillDNA' | 'experienceDNA' | 'behavioralDNA' | 'communicationDNA' | 'culturalDNA', traitId: string, newLevel: ImportanceLevel) => {
+    if (!job?.jobDNA) return;
+
+    const updatedDNA = { ...job.jobDNA };
+    const traits = updatedDNA[dimension] as DNATrait[];
+    const traitIndex = traits.findIndex(t => (t as any).id === traitId);
+
+    if (traitIndex > -1) {
+      traits[traitIndex] = { ...traits[traitIndex], importance: newLevel };
+      setJob({ ...job, jobDNA: updatedDNA });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!job?._id) return;
+    try {
+      setSaving(true);
+      await api.jobs.update(job._id, { jobDNA: job.jobDNA });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save changes';
+      console.error('Failed to save Job DNA:', err);
+      setError(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
@@ -129,7 +160,7 @@ export default function JobDNA() {
             <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.75rem' }}>Job DNA</span>
           </div>
           <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1F2937', marginBottom: '0.25rem' }}>{job.title}</h1>
-          <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>{job.department || 'No department'} - Created {new Date(job.createdAt).toLocaleDateString()}</p>
+          <p style={{ fontSize: '0.85rem', color: '#6B7280' }}>{job.department || 'No department'} - Created {new Date(job.createdAt).toLocaleDateString()}</p>
         </div>
         <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
@@ -172,14 +203,14 @@ export default function JobDNA() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '0.5rem', marginBottom: '1rem' }}>
           <FileText size={16} color="#6366F1" />
-          <div style={{ flex: 1 }}><p style={{ fontSize: '0.75rem', fontWeight: 500, color: '#1F2937' }}>AI-Generated Job DNA</p></div>
+          <div style={{ flex: 1 }}><p style={{ fontSize: '0.95rem', fontWeight: 500, color: '#1F2937' }}>AI-Generated Job DNA</p></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={12} color="#6B7280" /><span style={{ fontSize: '0.625rem', color: '#6B7280' }}>Created {new Date(job.createdAt).toLocaleDateString()}</span></div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-          <DNASection title="Skill DNA" traits={jobDNA.skillDNA} color="#6366F1" />
-          <DNASection title="Experience DNA" traits={jobDNA.experienceDNA} color="#10B981" />
-          <DNASection title="Behavioral DNA" traits={jobDNA.behavioralDNA} color="#F59E0B" />
-          <DNASection title="Communication DNA" traits={jobDNA.communicationDNA} color="#3B82F6" />
+          <DNASection title="Skill DNA" traits={jobDNA.skillDNA} color="#6366F1" onImportanceChange={(id, level) => handleImportanceChange('skillDNA', id, level)} />
+          <DNASection title="Experience DNA" traits={jobDNA.experienceDNA} color="#10B981" onImportanceChange={(id, level) => handleImportanceChange('experienceDNA', id, level)} />
+          <DNASection title="Behavioral DNA" traits={jobDNA.behavioralDNA} color="#F59E0B" onImportanceChange={(id, level) => handleImportanceChange('behavioralDNA', id, level)} />
+          <DNASection title="Communication DNA" traits={jobDNA.communicationDNA} color="#3B82F6" onImportanceChange={(id, level) => handleImportanceChange('communicationDNA', id, level)} />
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#F9FAFB', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
@@ -188,7 +219,7 @@ export default function JobDNA() {
               <div style={{ width: '20px', height: '20px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: culturalDNAEnabled ? '22px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
             </button>
           </div>
-          {culturalDNAEnabled && jobDNA.culturalDNA.length > 0 && <div style={{ marginTop: '0.75rem' }}><DNASection title="Cultural DNA" traits={jobDNA.culturalDNA} color="#E91E63" /></div>}
+          {culturalDNAEnabled && jobDNA.culturalDNA.length > 0 && <div style={{ marginTop: '0.75rem' }}><DNASection title="Cultural DNA" traits={jobDNA.culturalDNA} color="#E91E63" onImportanceChange={(id, level) => handleImportanceChange('culturalDNA', id, level)} /></div>}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -207,7 +238,15 @@ export default function JobDNA() {
         </div>
         <div className="card" style={{ padding: '1rem' }}>
           <button className="btn btn-primary btn-sm" onClick={handleApprove} style={{ width: '100%', marginBottom: '0.5rem' }}><Shield size={14} /> Approve and Train AI</button>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginBottom: '0.5rem' }}><Save size={14} /> Save Draft</button>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleSave}
+            disabled={saving}
+            style={{ width: '100%', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+          >
+            {saving ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
+            {saveSuccess ? 'Changes Saved!' : 'Save Draft'}
+          </button>
           <button className="btn btn-ghost btn-sm" style={{ width: '100%' }}>Edit Later</button>
         </div>
         <div style={{ padding: '0.75rem', background: '#F9FAFB', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
@@ -218,7 +257,7 @@ export default function JobDNA() {
   );
 }
 
-function DNASection({ title, traits, color }: { title: string; traits: DNATrait[]; color: string }) {
+function DNASection({ title, traits, color, onImportanceChange }: { title: string; traits: DNATrait[]; color: string; onImportanceChange: (id: string, level: ImportanceLevel) => void }) {
   return (
     <div className="card" style={{ padding: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><Dna size={14} color={color} /><span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1F2937' }}>{title}</span><span style={{ fontSize: '0.75rem', color: '#6B7280' }}>({traits.length})</span></div>
@@ -227,10 +266,32 @@ function DNASection({ title, traits, color }: { title: string; traits: DNATrait[
           {traits.slice(0, 5).map((trait, i) => (
             <div key={trait.id || i} style={{ padding: '0.5rem', background: '#F9FAFB', borderRadius: '0.375rem', border: '1px solid #E5E7EB' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#1F2937' }}>{trait.name}</span>
-                <span style={{ fontSize: '0.5625rem', padding: '0.125rem 0.375rem', borderRadius: '9999px', background: trait.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' : trait.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)', color: trait.importance === 'critical' ? '#DC2626' : trait.importance === 'high' ? '#D97706' : '#6B7280', fontWeight: 500, textTransform: 'capitalize' }}>{trait.importance}</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#1F2937' }}>{trait.name}</span>
+                <select
+                  value={trait.importance}
+                  onChange={(e) => onImportanceChange(trait.id, e.target.value as ImportanceLevel)}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '0.125rem 0.5rem',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    background: trait.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' : trait.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : trait.importance === 'medium' ? 'rgba(107, 114, 128, 0.1)' : 'rgba(156, 163, 175, 0.1)',
+                    color: trait.importance === 'critical' ? '#DC2626' : trait.importance === 'high' ? '#D97706' : trait.importance === 'medium' ? '#4B5563' : '#6B7280',
+                    fontWeight: 600,
+                    textTransform: 'capitalize',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    appearance: 'none',
+                    textAlign: 'center'
+                  }}
+                >
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
               </div>
-              <p style={{ fontSize: '0.6875rem', color: '#6B7280' }}>{trait.description}</p>
+              <p style={{ fontSize: '0.85rem', color: '#6B7280' }}>{trait.description}</p>
             </div>
           ))}
           {traits.length > 5 && <p style={{ fontSize: '0.75rem', color: '#6366F1', cursor: 'pointer' }}>+{traits.length - 5} more traits</p>}

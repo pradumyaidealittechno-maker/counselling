@@ -12,9 +12,12 @@ import {
   Video,
   LogOut,
   UserCircle,
-  Edit
+  Edit,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -28,6 +31,7 @@ const navigation = [
 export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [userName, setUserName] = useState('HR Manager');
   const [userInitials, setUserInitials] = useState('HM');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -38,7 +42,7 @@ export default function DashboardLayout() {
       try {
         console.log('🔍 Fetching user data for header...');
         const token = localStorage.getItem('auth_token'); // Fixed: use 'auth_token' not 'token'
-        
+
         if (!token) {
           console.log('❌ No token found in localStorage');
           return;
@@ -52,11 +56,11 @@ export default function DashboardLayout() {
         });
 
         console.log('📡 API Response status:', response.status);
-        
+
         if (response.ok) {
           const userData = await response.json();
           console.log('✅ User data received:', userData);
-          
+
           if (userData.firstName && userData.lastName) {
             const fullName = `${userData.firstName} ${userData.lastName}`;
             console.log('👤 Setting user name to:', fullName);
@@ -89,12 +93,12 @@ export default function DashboardLayout() {
       {/* Sidebar */}
       <aside style={{
         width: '260px',
-        background: 'white',
-        color: '#1F2937',
+        background: 'var(--card-bg)',
+        color: 'var(--foreground)',
         padding: '1.5rem',
         display: 'flex',
         flexDirection: 'column',
-        borderRight: '1px solid #e5e7eb'
+        borderRight: '1px solid var(--border)'
       }}>
         {/* Logo */}
         <Link to="/dashboard" style={{
@@ -114,7 +118,7 @@ export default function DashboardLayout() {
           }}>
             <Sparkles size={24} color="white" />
           </div>
-          <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
+          <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--foreground)' }}>Intelligens</span>
         </Link>
 
         {/* Navigation */}
@@ -139,7 +143,7 @@ export default function DashboardLayout() {
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.background = '#F9FAFB';
+                    e.currentTarget.style.background = 'var(--gray-50)';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -169,9 +173,9 @@ export default function DashboardLayout() {
             marginBottom: '0.75rem'
           }}>
             <Sparkles size={18} color="#A78BFA" />
-            <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1F2937' }}>AI Assistant</span>
+            <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--foreground)' }}>AI Assistant</span>
           </div>
-          <p style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
             Get AI-powered insights for your hiring decisions
           </p>
           <button className="btn btn-primary btn-sm" style={{ width: '100%' }}>
@@ -185,8 +189,8 @@ export default function DashboardLayout() {
         {/* Top Bar */}
         <header style={{
           height: '70px',
-          background: 'white',
-          borderBottom: '1px solid #e5e7eb',
+          background: 'var(--card-bg)',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -197,12 +201,12 @@ export default function DashboardLayout() {
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            background: '#f3f4f6',
+            background: 'var(--gray-100)',
             padding: '0.5rem 1rem',
             borderRadius: '0.5rem',
             width: '400px'
           }}>
-            <Search size={18} color="#6b7280" />
+            <Search size={18} color="var(--gray-500)" />
             <input
               type="text"
               placeholder="Search candidates, jobs..."
@@ -211,13 +215,35 @@ export default function DashboardLayout() {
                 background: 'transparent',
                 outline: 'none',
                 width: '100%',
-                fontSize: '0.875rem'
+                fontSize: '0.875rem',
+                color: 'var(--foreground)'
               }}
             />
           </div>
 
           {/* Right Section */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.5rem',
+                borderRadius: '0.5rem',
+                color: 'var(--gray-500)',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-100)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+            >
+              {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
+            </button>
+
             {/* Notifications */}
             <button style={{
               position: 'relative',
@@ -225,7 +251,7 @@ export default function DashboardLayout() {
               border: 'none',
               cursor: 'pointer'
             }}>
-              <Bell size={22} color="#6b7280" />
+              <Bell size={22} color="var(--gray-500)" />
               <span style={{
                 position: 'absolute',
                 top: '-4px',
@@ -245,45 +271,45 @@ export default function DashboardLayout() {
 
             {/* User Menu */}
             <div style={{ position: 'relative' }}>
-            <div onClick={() => setShowProfileMenu(!showProfileMenu)} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              cursor: 'pointer'
-            }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+              <div onClick={() => setShowProfileMenu(!showProfileMenu)} style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontWeight: 600
+                gap: '0.75rem',
+                cursor: 'pointer'
               }}>
-                {userInitials}
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 600
+                }}>
+                  {userInitials}
+                </div>
+                <div>
+                  <p style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--foreground)' }}>{userName}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>HR Manager</p>
+                </div>
+                <ChevronDown size={16} color="var(--gray-500)" />
               </div>
-              <div>
-                <p style={{ fontWeight: 500, fontSize: '0.875rem', color: '#1F2937' }}>{userName}</p>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>HR Manager</p>
-              </div>
-              <ChevronDown size={16} color="#6b7280" />
-            </div>
               {showProfileMenu && (
-                <div style={{position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '220px', background: 'white', borderRadius: '0.75rem', boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', padding: '0.5rem', zIndex: 50}}>
-                  <Link to="/dashboard/profile" onClick={() => setShowProfileMenu(false)} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#374151', textDecoration: 'none', cursor: 'pointer'}}>
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '220px', background: 'var(--card-bg)', borderRadius: '0.75rem', boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)', border: '1px solid var(--border)', padding: '0.5rem', zIndex: 50 }}>
+                  <Link to="/dashboard/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: 'var(--foreground)', textDecoration: 'none', cursor: 'pointer' }}>
                     <UserCircle size={18} />
-                    <span style={{fontSize: '0.875rem'}}>View Profile</span>
+                    <span style={{ fontSize: '0.875rem' }}>View Profile</span>
                   </Link>
-                  <Link to="/dashboard/profile/edit" onClick={() => setShowProfileMenu(false)} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#374151', textDecoration: 'none', cursor: 'pointer'}}>
+                  <Link to="/dashboard/profile/edit" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: 'var(--foreground)', textDecoration: 'none', cursor: 'pointer' }}>
                     <Edit size={18} />
-                    <span style={{fontSize: '0.875rem'}}>Update Profile</span>
+                    <span style={{ fontSize: '0.875rem' }}>Update Profile</span>
                   </Link>
-                  <div style={{height: '1px', background: '#e5e7eb', margin: '0.5rem 0'}} />
-                  <div onClick={handleLogout} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#DC2626', cursor: 'pointer'}}>
+                  <div style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }} />
+                  <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#DC2626', cursor: 'pointer' }}>
                     <LogOut size={18} />
-                    <span style={{fontSize: '0.875rem', fontWeight: 500}}>Logout</span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Logout</span>
                   </div>
                 </div>
               )}
@@ -292,7 +318,7 @@ export default function DashboardLayout() {
         </header>
 
         {/* Page Content */}
-        <main style={{ flex: 1, padding: '1.5rem', overflow: 'auto', background: 'white' }}>
+        <main style={{ flex: 1, padding: '1.5rem', overflow: 'auto', background: 'var(--background)' }}>
           <Outlet />
         </main>
       </div>

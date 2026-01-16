@@ -508,10 +508,10 @@ function QuestionCard({
           {question.dnaMapping && question.dnaMapping.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
               <Dna size={12} color="#E91E63" />
-              <span style={{ fontSize: '0.6875rem', color: '#6B7280' }}>Evaluates:</span>
+              <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>Evaluates:</span>
               {question.dnaMapping.slice(0, 2).map((mapping, i) => (
                 <span key={i} style={{
-                  fontSize: '0.625rem',
+                  fontSize: '0.75rem',
                   fontWeight: 500,
                   color: '#374151',
                   padding: '0.125rem 0.375rem',
@@ -529,7 +529,7 @@ function QuestionCard({
               )}
               {primaryMapping && (
                 <span style={{
-                  fontSize: '0.5625rem',
+                  fontSize: '0.75rem',
                   padding: '0.125rem 0.375rem',
                   borderRadius: '9999px',
                   background: primaryMapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
