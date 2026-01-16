@@ -17,6 +17,7 @@ export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selecte
         phone: '',
         linkedInUrl: '',
         jobId: selectedJobId || '',
+        experience: '',
     });
 
     const [jobs, setJobs] = useState<Array<{ _id: string; title: string }>>([]);
@@ -68,6 +69,7 @@ export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selecte
                 phone: '',
                 linkedInUrl: '',
                 jobId: '',
+                experience: '',
             });
         } catch (err: any) {
             console.error('Failed to create candidate:', err);
@@ -184,6 +186,23 @@ export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selecte
                                     <option key={job._id} value={job._id}>{job.title}</option>
                                 ))}
                             </select>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label className="label">Experience *</label>
+                        <div style={{ position: 'relative' }}>
+                            <Briefcase size={16} color="#9CA3AF" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                            <input
+                                type="text"
+                                name="experience"
+                                className="input"
+                                required
+                                placeholder="e.g., 3 years, 5+ years, Fresher"
+                                value={formData.experience}
+                                onChange={handleChange}
+                                style={{ paddingLeft: '36px' }}
+                            />
                         </div>
                     </div>
 

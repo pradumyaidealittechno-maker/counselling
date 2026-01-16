@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Mail, User, Link as LinkIcon, Send, CheckCircle, Clock, Video, Dna, Loader, Copy } from 'lucide-react';
+import { Mail, User, Send, CheckCircle, Clock, Video, Dna, Loader, Copy } from 'lucide-react';
 import api from '../services/api';
 
 export default function SendInvitation() {
@@ -17,6 +17,13 @@ export default function SendInvitation() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
+  // Editable fields
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+
   const BASE_URL = window.location.origin; // e.g., http://localhost:5173
   const API_URL = 'http://localhost:3001'; // Backend API server
   
@@ -29,10 +36,42 @@ export default function SendInvitation() {
       const candidate = candidates.find(c => c._id === selectedCandidateId);
       setSelectedCandidate(candidate);
       if (candidate) {
+        setFirstName(candidate.firstName);
+        setLastName(candidate.lastName);
+        setEmail(candidate.email);
+        
+        const jobTitle = candidate.jobId?.title || 'Position';
+        setSubject(`Interview Invitation - ${jobTitle} at Intelligens`);
+        
+        // We'll update the message when the code generates, but set a base one now
         generateCode(selectedCandidateId);
       }
     }
   }, [selectedCandidateId, candidates]);
+
+  // Update message when code changes
+  useEffect(() => {
+    if (selectedCandidate && interviewCode) {
+        const jobTitle = selectedCandidate.jobId?.title || 'Position';
+        const link = `${BASE_URL}/interview?code=${interviewCode}`;
+        
+        setMessage(`
+<h2>Interview Invitation</h2>
+<p>Dear ${firstName || 'Candidate'},</p>
+<p>You have been invited to participate in an AI-powered interview for the position of <strong>${jobTitle}</strong>.</p>
+<p><strong>Your Interview Code:</strong> ${interviewCode}</p>
+<p><strong>Interview Link:</strong> <a href="${link}">${link}</a></p>
+<p>Please click the link above to start your interview. Make sure you have:</p>
+<ul>
+  <li>A working camera and microphone</li>
+  <li>A quiet environment</li>
+  <li>Stable internet connection</li>
+</ul>
+<p>The interview will be conducted by our AI interviewer and typically takes 30-45 minutes.</p>
+<p>Good luck!</p>
+`);
+    }
+  }, [interviewCode, selectedCandidate]); // Intentionally not including firstName/lastName dependencies to avoid overwriting user edits constantly
 
   const loadCandidates = async () => {
     try {
@@ -89,7 +128,14 @@ export default function SendInvitation() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        },
+        body: JSON.stringify({
+            firstName,
+            lastName,
+            email,
+            subject,
+            message
+        })
       });
 
       if (response.ok) {
@@ -113,9 +159,7 @@ export default function SendInvitation() {
     alert('Link copied to clipboard!');
   };
 
-  const interviewLink = interviewCode ? 
-    `${BASE_URL}/interview?code=${interviewCode}` : 
-    'Generating...';
+  /* Unused variable interviewLink removed */
 
   if (sent) {
     return (
@@ -190,34 +234,48 @@ export default function SendInvitation() {
 
           {selectedCandidate && (
             <>
-              {/* Candidate Details - Read Only */}
+              {/* Candidate Details - Editable */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label className="label" style={{ fontSize: '0.75rem' }}>Candidate Name</label>
+                  <label className="label" style={{ fontSize: '0.75rem' }}>First Name</label>
                   <div style={{ position: 'relative' }}>
                     <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                     <input 
                       type="text" 
                       className="input" 
-                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }} 
-                      value={`${selectedCandidate.firstName} ${selectedCandidate.lastName}`}
-                      readOnly
+                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }} 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
                     />
                   </div>
                 </div>
                 <div>
+                  <label className="label" style={{ fontSize: '0.75rem' }}>Last Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input 
+                      type="text" 
+                      className="input" 
+                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }} 
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ marginBottom: '1rem' }}>
                   <label className="label" style={{ fontSize: '0.75rem' }}>Email Address</label>
                   <div style={{ position: 'relative' }}>
                     <Mail size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                     <input 
                       type="email" 
                       className="input" 
-                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem', background: '#f9fafb' }} 
-                      value={selectedCandidate.email}
-                      readOnly
+                      style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }} 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
-                </div>
               </div>
 
               {/* Interview Code Display */}
@@ -262,86 +320,45 @@ export default function SendInvitation() {
                 </div>
               </div>
 
-              {/* Email Preview */}
+              {/* Email Editor */}
               <div>
-                <label className="label" style={{ fontSize: '0.75rem' }}>Email Preview</label>
+                <label className="label" style={{ fontSize: '0.75rem' }}>Email Content</label>
                 <div style={{
-                  background: '#f9fafb',
+                  background: 'white',
                   borderRadius: '0.5rem',
-                  padding: '1rem',
                   border: '1px solid #e5e7eb',
-                  fontSize: '0.75rem'
+                  overflow: 'hidden'
                 }}>
-                  <div style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>
-                    <p style={{ color: '#6b7280', marginBottom: '0.125rem', fontSize: '0.625rem' }}>Subject:</p>
-                    <p style={{ fontWeight: 500, fontSize: '0.75rem' }}>
-                      Interview Invitation - {selectedCandidate.jobId?.title || 'Position'} at Intelligens
-                    </p>
-                  </div>
-                  <div style={{ lineHeight: 1.6 }}>
-                    <p>Dear {selectedCandidate.firstName},</p>
-                    <p style={{ marginTop: '0.5rem' }}>
-                      Thank you for your interest in the {selectedCandidate.jobId?.title || 'position'} at Intelligens.
-                    </p>
-                    <p style={{ marginTop: '0.5rem' }}>
-                      We would like to invite you to complete an AI-powered video interview. This interview will take approximately 20-30 minutes.
-                    </p>
-                    
-                    <div style={{
-                      marginTop: '1rem',
-                      padding: '0.75rem',
-                      background: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '0.5rem'
-                    }}>
-                      <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                        Your Interview Code:
-                      </p>
-                      <p style={{ 
-                        fontFamily: 'monospace', 
-                        fontSize: '1rem', 
-                        fontWeight: 700, 
-                        color: '#10B981',
-                        letterSpacing: '0.1em',
-                        marginBottom: '0.75rem'
-                      }}>
-                        {interviewCode || 'GENERATING...'}
-                      </p>
-                      
-                      <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                        Interview Link:
-                      </p>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        background: '#f9fafb',
-                        padding: '0.5rem',
-                        borderRadius: '0.375rem',
-                        border: '1px solid #e5e7eb'
-                      }}>
-                        <LinkIcon size={14} color="#E91E63" />
-                        <span style={{ color: '#E91E63', fontSize: '0.7rem', wordBreak: 'break-all' }}>
-                          {interviewLink}
-                        </span>
-                        <button 
-                          className="btn btn-ghost"
-                          onClick={() => copyToClipboard(interviewLink)}
-                          style={{ padding: '0.25rem', marginLeft: 'auto' }}
-                        >
-                          <Copy size={12} />
-                        </button>
-                      </div>
+                  <div style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.625rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>Subject:</label>
+                        <input 
+                            type="text"
+                            value={subject}
+                            onChange={(e) => setSubject(e.target.value)}
+                            style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: '0.25rem', fontSize: '0.875rem' }}
+                        />
                     </div>
-                    
-                    <p style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
-                      Please complete the interview within 7 days. Click the link above or enter your code on our interview page.
-                    </p>
-                    
-                    <p style={{ marginTop: '0.75rem' }}>
-                      Best regards,<br />
-                      The Intelligens Hiring Team
-                    </p>
+                  </div>
+                  
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    style={{
+                        width: '100%',
+                        minHeight: '300px',
+                        padding: '0.75rem',
+                        border: 'none',
+                        resize: 'vertical',
+                        fontFamily: 'monospace',
+                        fontSize: '0.8125rem',
+                        lineHeight: '1.5',
+                        outline: 'none'
+                    }}
+                    placeholder="Enter email HTML content here..."
+                  />
+                  <div style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', borderTop: '1px solid #e5e7eb', fontSize: '0.625rem', color: '#6b7280' }}>
+                    HTML tags supported. Ensure Interview Code and Link are included.
                   </div>
                 </div>
               </div>

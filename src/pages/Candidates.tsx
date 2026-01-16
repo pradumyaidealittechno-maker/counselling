@@ -21,7 +21,12 @@ interface Candidate {
     overallScore?: number;
     recommendation?: string;
   };
-  job?: {
+  jobId: {
+    _id: string;
+    title: string;
+    department?: string;
+  };
+  job?: { // Keep for backward compatibility if needed
     _id: string;
     title: string;
   };
@@ -80,7 +85,8 @@ export default function Candidates() {
     try {
       setLoading(true);
       const data = await api.candidates.getAll();
-      setCandidates(data || []);
+      // Backend returns { candidates: [...], pagination: {...} }
+      setCandidates(data?.candidates || data || []);
     } catch (err) {
       console.error('Failed to load candidates:', err);
     } finally {
@@ -143,7 +149,7 @@ export default function Candidates() {
     const email = (c.email || '').toLowerCase();
 
     const matchesSearch = fullName.includes(term) || email.includes(term);
-    const matchesJob = !selectedJobId || c.job?._id === selectedJobId;
+    const matchesJob = !selectedJobId || (c.jobId as any)?._id === selectedJobId || c.job?._id === selectedJobId;
     
     // Date filter
     let matchesDate = true;
@@ -244,7 +250,7 @@ export default function Candidates() {
             <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>Pending</span>
           </div>
           <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#F59E0B' }}>
-            {candidates.filter(c => c.status === 'pending_interview' || c.status === 'invited').length}
+            {candidates.filter(c => ['new', 'resume_screened', 'invited', 'pending_interview'].includes(c.status)).length}
           </p>
         </div>
       </div>
@@ -415,7 +421,7 @@ export default function Candidates() {
           <thead>
             <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Candidate</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Role</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Job Role</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Experience</th>
               <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
@@ -469,7 +475,7 @@ export default function Candidates() {
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>{candidate.job?.title || 'Not assigned'}</td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>{(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}</td>
                     <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>{candidate.experience || 'N/A'}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                       {score ? (

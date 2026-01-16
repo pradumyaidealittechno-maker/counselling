@@ -178,7 +178,7 @@ router.get('/', authenticate, async (req, res) => {
       if (result) {
         (candidateObj as any).interviewAnalysis = result;
         // Ensure status reflects readiness
-        candidateObj.status = 'ai_analysis_ready'; 
+        (candidateObj as any).status = 'ai_analysis_ready'; 
       }
 
       return candidateObj;
@@ -373,25 +373,34 @@ router.post('/:id/resend-invitation', async (req, res) => {
       return res.status(404).json({ error: 'Candidate not found' });
     }
 
+    const { firstName, lastName, email, subject, message } = req.body;
+
+    // Update candidate details if provided
+    if (firstName) candidate.firstName = firstName;
+    if (lastName) candidate.lastName = lastName;
+    if (email) candidate.email = email;
+    
     // Generate new code if expired
-    if (new Date() > candidate.interviewCodeExpiry) {
+    if (candidate.interviewCodeExpiry && new Date() > candidate.interviewCodeExpiry) {
       candidate.interviewCode = generateInterviewCode();
       const expiryHours = parseInt(process.env.INTERVIEW_CODE_EXPIRY_HOURS || '168');
       candidate.interviewCodeExpiry = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
       candidate.interviewStatus = 'invited';
-      await candidate.save();
     }
+    
+    await candidate.save();
 
     const job = candidate.jobId as any;
     const interviewLink = `${process.env.FRONTEND_URL}/interview?code=${candidate.interviewCode}`;
-
 
     await n8nService.sendInvitationEmail(
       candidate.email,
       `${candidate.firstName} ${candidate.lastName}`,
       interviewLink,
-      candidate.interviewCode,
-      job.title
+      candidate.interviewCode || 'ERROR',
+      job.title,
+      subject,
+      message
     );
 
     res.json({ message: 'Invitation resent successfully' });

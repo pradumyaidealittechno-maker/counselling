@@ -5,6 +5,7 @@ export interface ICandidate extends Document {
   lastName: string;
   email: string;
   phone?: string;
+  experience?: string;
   resumeUrl?: string;
   resumeS3Key?: string;
   linkedInUrl?: string;
@@ -74,6 +75,10 @@ const candidateSchema = new Schema<ICandidate>(
       trim: true,
     },
     phone: {
+      type: String,
+      trim: true,
+    },
+    experience: {
       type: String,
       trim: true,
     },

@@ -155,9 +155,11 @@ class N8nService {
     candidateName: string,
     interviewLink: string,
     interviewCode: string,
-    jobTitle: string
+    jobTitle: string,
+    customSubject?: string,
+    customBody?: string
   ): Promise<boolean> {
-    const emailBody = `
+    const emailBody = customBody || `
       <h2>Interview Invitation</h2>
       <p>Dear ${candidateName},</p>
       <p>You have been invited to participate in an AI-powered interview for the position of <strong>${jobTitle}</strong>.</p>
@@ -175,7 +177,7 @@ class N8nService {
 
     return await this.sendEmail({
       to: candidateEmail,
-      subject: `Interview Invitation - ${jobTitle}`,
+      subject: customSubject || `Interview Invitation - ${jobTitle}`,
       body: emailBody,
       candidateName,
       interviewLink,

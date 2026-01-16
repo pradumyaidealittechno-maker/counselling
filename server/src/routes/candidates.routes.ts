@@ -139,7 +139,7 @@ router.post(
         return;
       }
 
-      const { firstName, lastName, email, phone, jobId, source, tags } = req.body;
+      const { firstName, lastName, email, phone, jobId, source, tags, experience } = req.body;
 
       // Verify job exists and belongs to company
       const job = await Job.findOne({
@@ -166,10 +166,15 @@ router.post(
         lastName,
         email,
         phone,
+        experience,
         source: source || 'manual',
         tags: tags || [],
-        status: 'resume_screened',
+        status: 'new',
+        createdBy: req.user?.id,
       });
+
+      // Populate job details before sending response
+      await candidate.populate('jobId', 'title department');
 
       res.status(201).json(candidate);
     } catch (error) {

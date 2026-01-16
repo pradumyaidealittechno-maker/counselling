@@ -295,6 +295,7 @@ export const api = {
       phone?: string;
       jobId: string;
       linkedInUrl?: string;
+      experience?: string;
       skipInvite?: boolean;
     }) => {
       return authFetch('/api/candidates', {
