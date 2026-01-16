@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { 
+import {
   CheckCircle, Clock, XCircle, ThumbsUp, AlertTriangle, Loader
 } from 'lucide-react';
 import api from '../services/api';
@@ -71,7 +71,7 @@ export default function FinalDecision() {
 
   const handleSubmit = async () => {
     if (!decision || !id) return;
-    
+
     try {
       setSubmitting(true);
       // Map frontend values to backend values
@@ -81,14 +81,14 @@ export default function FinalDecision() {
         'reject': 'rejected'
       };
       const backendDecision = decisionMap[decision] || decision;
-      
+
       // Use different API based on route
       if (isFromReports) {
         await api.reports.updateDecision(id, backendDecision, notes);
       } else {
         await api.candidates.updateDecision(id, backendDecision, notes);
       }
-      
+
       setSubmitted(true);
       setTimeout(() => navigate('/dashboard/reports'), 2000);
     } catch (err: any) {
@@ -124,7 +124,7 @@ export default function FinalDecision() {
   }
 
   const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
-  
+
   // Parse score from reportData
   let aiScore = 0;
   if (reportData?.competencyAssessment?.overallScore) {
@@ -144,11 +144,11 @@ export default function FinalDecision() {
         <div style={{
           width: '80px',
           height: '80px',
-          background: decision === 'hire' 
+          background: decision === 'hire'
             ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
             : decision === 'hold'
-            ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
-            : 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+              ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
+              : 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
@@ -156,8 +156,8 @@ export default function FinalDecision() {
           margin: '0 auto 1.5rem'
         }}>
           {decision === 'hire' ? <CheckCircle size={40} color="white" /> :
-           decision === 'hold' ? <Clock size={40} color="white" /> :
-           <XCircle size={40} color="white" />}
+            decision === 'hold' ? <Clock size={40} color="white" /> :
+              <XCircle size={40} color="white" />}
         </div>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>
           Decision Recorded
@@ -182,8 +182,8 @@ export default function FinalDecision() {
       </div>
 
       {/* Candidate Summary Card */}
-      <div className="card" style={{ 
-        padding: '2rem', 
+      <div className="card" style={{
+        padding: '2rem',
         marginBottom: '2rem',
         background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
         border: '1px solid #E5E7EB'
@@ -248,7 +248,7 @@ export default function FinalDecision() {
       {/* Strengths & Concerns Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
         {/* Strengths */}
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           border: '2px solid #D1FAE5',
           background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)'
@@ -279,7 +279,7 @@ export default function FinalDecision() {
         </div>
 
         {/* Concerns */}
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           border: '2px solid #FEF3C7',
           background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%)'
@@ -315,7 +315,7 @@ export default function FinalDecision() {
         <h3 style={{ fontWeight: 700, marginBottom: '1.5rem', fontSize: '1.25rem', color: '#111827' }}>
           Your Decision
         </h3>
-        
+
         {/* Decision Buttons */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
           {[
@@ -339,7 +339,7 @@ export default function FinalDecision() {
                 alignItems: 'center',
                 gap: '0.75rem',
                 transform: decision === option.id ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: decision === option.id 
+                boxShadow: decision === option.id
                   ? `0 10px 25px -5px ${option.color}40, 0 10px 10px -5px ${option.color}20`
                   : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
               }}
@@ -366,13 +366,13 @@ export default function FinalDecision() {
                 justifyContent: 'center',
                 transition: 'all 0.3s'
               }}>
-                <option.icon 
-                  size={28} 
-                  color={decision === option.id ? 'white' : '#9CA3AF'} 
+                <option.icon
+                  size={28}
+                  color={decision === option.id ? 'white' : '#9CA3AF'}
                 />
               </div>
-              <p style={{ 
-                fontWeight: 700, 
+              <p style={{
+                fontWeight: 700,
                 fontSize: '1.125rem',
                 color: decision === option.id ? option.color : '#374151',
                 margin: 0
@@ -385,29 +385,29 @@ export default function FinalDecision() {
 
         {/* Additional Notes */}
         <div>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
             marginBottom: '0.75rem',
             paddingBottom: '0.75rem',
             borderBottom: '1px solid #E5E7EB'
           }}>
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               id="notes-toggle"
-              style={{ 
-                width: '18px', 
+              style={{
+                width: '18px',
                 height: '18px',
                 accentColor: '#E91E63',
                 cursor: 'pointer'
-              }} 
+              }}
             />
-            <label 
+            <label
               htmlFor="notes-toggle"
-              style={{ 
-                fontSize: '0.9375rem', 
-                color: '#374151', 
+              style={{
+                fontSize: '0.9375rem',
+                color: '#374151',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
@@ -415,13 +415,13 @@ export default function FinalDecision() {
               Additional Notes (Optional)
             </label>
           </div>
-          <textarea 
-            className="input" 
-            rows={4} 
+          <textarea
+            className="input"
+            rows={4}
             placeholder="Add any notes or feedback about this candidate..."
-            style={{ 
-              resize: 'vertical', 
-              fontSize: '0.875rem', 
+            style={{
+              resize: 'vertical',
+              fontSize: '0.875rem',
               width: '100%',
               borderRadius: '0.75rem',
               border: '2px solid #E5E7EB',
@@ -440,13 +440,13 @@ export default function FinalDecision() {
 
       {/* Action Buttons */}
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        <button 
-          className="btn btn-primary" 
+        <button
+          className="btn btn-primary"
           disabled={!decision || submitting}
           onClick={handleSubmit}
-          style={{ 
+          style={{
             opacity: decision && !submitting ? 1 : 0.5,
-            background: decision && !submitting 
+            background: decision && !submitting
               ? 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)'
               : '#9CA3AF',
             color: 'white',
@@ -457,7 +457,7 @@ export default function FinalDecision() {
             borderRadius: '0.75rem',
             border: 'none',
             cursor: decision && !submitting ? 'pointer' : 'not-allowed',
-            boxShadow: decision && !submitting 
+            boxShadow: decision && !submitting
               ? '0 10px 15px -3px rgba(233, 30, 99, 0.3), 0 4px 6px -2px rgba(233, 30, 99, 0.2)'
               : 'none',
             transition: 'all 0.3s',
@@ -491,8 +491,8 @@ export default function FinalDecision() {
             </>
           )}
         </button>
-        <Link 
-          to="/dashboard/reports" 
+        <Link
+          to="/dashboard/reports"
           className="btn btn-ghost"
           style={{
             padding: '1rem 2rem',

@@ -1,4 +1,6 @@
 import express from 'express';
+// import { createRequire } from 'module'; // Removed to fix TS error
+// const require = createRequire(import.meta.url); // Removed to fix TS error
 import Job from '../models/Job.js';
 import Candidate from '../models/Candidate.js';
 import { User } from '../models/User.js';
@@ -8,6 +10,7 @@ import aiService from '../services/ai.service.js';
 import n8nService from '../services/n8n.service.js';
 
 import { upload } from '../middleware/upload.js';
+import pdfParse from 'pdf-parse';
 const router = express.Router();
 
 // Parse Job Description from file (protected)
@@ -20,46 +23,38 @@ router.post('/parse-jd', authenticate, upload.single('file'), async (req, res) =
     let text = '';
 
     if (req.file.mimetype === 'application/pdf') {
-      console.log('📄 PDF Parse: File received', req.file.originalname, req.file.size);
-
+      console.log('📄 Parsing PDF:', req.file.originalname);
       try {
-        // Use inline require to bypass complex ESM/CJS interop issues with this specific legacy lib
-        // @ts-ignore
-        let pdfParse = require('pdf-parse');
-
-        console.log('📄 PDF Parse: Loaded module via require. Type:', typeof pdfParse);
-        if (typeof pdfParse === 'object') {
-          console.log('📄 PDF Parse: Module keys:', Object.keys(pdfParse));
-        }
-
-        // Handle potential default export wrapping which happens in some TS/ESM environments
-        if (typeof pdfParse !== 'function' && (pdfParse as any).default) {
-          console.log('📄 PDF Parse: Detected default export wrapper, unwrapping...');
-          pdfParse = (pdfParse as any).default;
-        }
-
-        console.log('📄 PDF Parse: Final parser type:', typeof pdfParse);
-
-        // @ts-ignore
         const data = await pdfParse(req.file.buffer);
-        console.log('📄 PDF Parse: Success, text length:', data.text ? data.text.length : 0);
+        console.log('✅ PDF Parsed, length:', (data.text || '').length);
         text = data.text;
-      } catch (distErr: any) {
-        console.error('📄 PDF Parse: Library Error details:', JSON.stringify(distErr, Object.getOwnPropertyNames(distErr)));
-        throw new Error(`PDF Parsing failed: ${distErr.message}`);
+      } catch (err: any) {
+        console.error('❌ PDF Parse Error:', err);
+        // Fallback message
+        text = "Could not auto-parse PDF. The file might be corrupted or in an unsupported format. Please copy text manually.";
       }
-
+    } else if (req.file.mimetype === 'text/plain') {
+      console.log('📄 Parsing Text File:', req.file.originalname);
+      text = req.file.buffer.toString('utf-8');
+    } else if (
+      req.file.mimetype === 'application/msword' ||
+      req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      return res.status(400).json({
+        error: 'Word documents are not yet supported. Please save as PDF or copy text content.'
+      });
     } else {
-      return res.status(400).json({ error: 'Only PDF files are currently supported for auto-parsing' });
+      return res.status(400).json({ error: 'Supported formats: PDF, TXT' });
     }
 
-    // Basic cleanup of pdf text to remove excessive whitespace if needed
-    // preserving newlines is important for structure
+    // Basic cleanup
     text = text ? text.trim() : '';
 
-    // Extract metadata using simple regex
-    const locationMatch = text.match(/Location:\s*([^\n\r]+)/i);
-    const experienceMatch = text.match(/Experience:\s*([^\n\r]+)/i);
+    // Extract metadata using improved regex
+    // Matches "Location: City" or "Location - City" or "Location \n City"
+    const locationMatch = text.match(/Location[:\s-]+([^\n\r]+)/i);
+    // Matches "Experience: 3-5 Years" or "Experience Level: Senior"
+    const experienceMatch = text.match(/Experience(?: Level)?[:\s-]+([^\n\r]+)/i);
 
     const extractedData = {
       text,
@@ -67,7 +62,7 @@ router.post('/parse-jd', authenticate, upload.single('file'), async (req, res) =
       experience: experienceMatch ? experienceMatch[1].trim() : undefined
     };
 
-    console.log('📄 PDF Parse: Extracted metadata:', {
+    console.log('📊 Extracted Metadata:', {
       location: extractedData.location,
       experience: extractedData.experience
     });

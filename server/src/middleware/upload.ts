@@ -12,6 +12,7 @@ export const upload = multer({
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
       'video/webm',
       'video/mp4',
       'video/x-matroska',
