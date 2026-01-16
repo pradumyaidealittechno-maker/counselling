@@ -152,10 +152,10 @@ export default function VideoInterview() {
 
       console.log('🔑 Requesting Retell token for agent:', agentId);
 
-      const response = await fetch('https://hrapi.intelligens.app/api/interviews/create-web-call', {
+      const response = await fetch('https://api.retellai.com/v2/create-web-call', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId })
+        headers: { 'Content-Type': 'application/json','Authorization':'Bearer key_a39793c1ec275256ccefc270dfb2' },
+        body: JSON.stringify({ "agent_id":"agent_9f1f95bdc1e8caef6c4d35080a" })
       });
 
       if (!response.ok) {
