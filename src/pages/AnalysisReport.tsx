@@ -137,21 +137,20 @@ export default function AnalysisReport() {
     if (interviewAnalysis) {
       // Helper to parse pipe-formatted score string: "| Title | 4/10 | Description |"
       const parsePipeScore = (str: string) => {
-        if (!str) return { score: 0, rawScore: '0/10', text: '' };
+        if (!str) return { score: 0, rawScore: '0', text: '' };
         const parts = str.split('|').map(s => s.trim()).filter(Boolean);
         // parts[0] = Title, parts[1] = Score (4/10), parts[2] = Description
         const scorePart = parts[1] || '0/10';
         const [earned, total] = scorePart.split('/').map(Number);
         const normalizedScore = (!isNaN(earned) && !isNaN(total) && total > 0) ? (earned / total) * 100 : 0;
-        return { score: normalizedScore, rawScore: scorePart, text: parts[2] || '' };
+        
+        // Show only the numerator number (e.g. "4" instead of "4/10")
+        const displayScore = !isNaN(earned) ? earned.toString() : '0';
+
+        return { score: normalizedScore, rawScore: displayScore, text: parts[2] || '' };
       };
 
-      // Helper to parse overall Score "18/50"
-      const parseOverallScore = (str: string) => {
-         if (!str) return 0;
-         const [earned, total] = str.split('/').map(Number);
-         return (!isNaN(earned) && !isNaN(total) && total > 0) ? Math.round((earned / total) * 100) : 0;
-      };
+      /* Unused helper removed */
 
       const tech = parsePipeScore(interviewAnalysis.competencyAssessment?.technicalSkills);
       const comm = parsePipeScore(interviewAnalysis.competencyAssessment?.communication);
@@ -163,11 +162,17 @@ export default function AnalysisReport() {
         'Skill DNA (Technical)': tech.rawScore,
         'Experience DNA': exp.rawScore,
         'Behavioral DNA (Cultural Fit)': cult.rawScore,
-        'Communication DNA': comm.rawScore
+        'Communication DNA': comm.rawScore,
+        'Problem Solving DNA': prob.rawScore
       });
 
+      // Calculate overall score from the 5 traits to ensure consistency
+      const calculatedOverallScore = Math.round(
+        (tech.score + exp.score + cult.score + comm.score + prob.score) / 5
+      );
+
       return {
-        overallScore: parseOverallScore(interviewAnalysis.competencyAssessment?.overallScore),
+        overallScore: calculatedOverallScore,
         recommendation: interviewAnalysis.recommendation?.hiringRecommendation || 'Pending',
         confidence: 85, // Default/Placeholder
         summary: interviewAnalysis.executiveSummary || interviewAnalysis.overallAssessment?.summary || 'Analysis completed.',
@@ -197,6 +202,12 @@ export default function AnalysisReport() {
             overallScore: comm.score,
             rawScore: comm.rawScore,
             traits: [{ name: 'Communication', score: comm.score, evidence: comm.text }]
+          },
+          problemSolvingDNA: {
+            dimension: 'Problem Solving',
+            overallScore: prob.score,
+            rawScore: prob.rawScore,
+            traits: [{ name: 'Problem Solving', score: prob.score, evidence: prob.text }]
           }
         }
       };
@@ -359,7 +370,7 @@ export default function AnalysisReport() {
                 justifyContent: 'center'
               }}>
                 <span style={{ fontSize: '2rem', fontWeight: 700, color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B' }}>
-                  {recommendation.overallScore}%
+                  {Number(recommendation.overallScore / 10).toFixed(1)}
                 </span>
                 <span style={{ fontSize: '0.625rem', color: '#6B7280' }}>Overall Match</span>
               </div>

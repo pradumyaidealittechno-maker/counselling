@@ -553,7 +553,7 @@ export default function Candidates() {
                         ) : (
                           <div style={{ display: 'flex', gap: '0.25rem' }}>
                             {/* Show Send Invitation button for candidates with status 'new' */}
-                            {candidate.status === 'new' && (candidate.resumeUrl || candidate.resume?.url) ? (
+                            {candidate.status === 'new' && (
                               <Link
                                 to={`/dashboard/candidates/invite?candidateId=${candidate._id}`}
                                 className="btn btn-sm btn-primary"
@@ -561,7 +561,9 @@ export default function Candidates() {
                               >
                                 <Mail size={12} /> Send Invitation
                               </Link>
-                            ) : (!candidate.resumeUrl && !candidate.resume?.url) ? (
+                            )}
+                             
+                            {(!candidate.resumeUrl && !candidate.resume?.url) && (
                               <button
                                 className="btn btn-sm btn-ghost"
                                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}
@@ -569,7 +571,7 @@ export default function Candidates() {
                               >
                                 <Upload size={12} /> Upload Resume
                               </button>
-                            ) : null}
+                            )}
                           </div>
                         )}
                         <div style={{ position: 'relative' }}>
