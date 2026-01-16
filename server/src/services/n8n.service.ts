@@ -44,12 +44,18 @@ class N8nService {
 
   async sendEmail(payload: EmailPayload): Promise<boolean> {
     try {
-      if (!this.emailWebhook) {
-        console.warn('N8N email webhook not configured');
+      const emailWebhook = process.env.N8N_WEBHOOK_EMAIL;
+      
+      if (!emailWebhook) {
+        console.warn('⚠️  N8N_WEBHOOK_EMAIL not configured in .env');
         return false;
       }
 
-      const response = await axios.post(this.emailWebhook, payload, {
+      console.log('📧 Sending email via N8N webhook:', emailWebhook);
+      console.log('   To:', payload.to);
+      console.log('   Subject:', payload.subject);
+
+      const response = await axios.post(emailWebhook, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 10000,
       });
@@ -57,18 +63,22 @@ class N8nService {
       console.log('✅ Email sent via n8n:', response.data);
       return true;
     } catch (error: any) {
-      console.error('❌ Failed to send email via n8n:', error.message);
+      console.error('❌ Failed to send email via n8n:');
+      console.error('   Error:', error.message);
+      console.error('   Response:', error.response?.data);
       return false;
     }
   }
 
   async generateInterviewQuestions(payload: InterviewQuestionsPayload): Promise<any> {
     try {
-      if (!this.questionsWebhook) {
-        throw new Error('N8N questions webhook not configured');
+      const questionsWebhook = process.env.N8N_WEBHOOK_INTERVIEW_QUESTIONS;
+      
+      if (!questionsWebhook) {
+        throw new Error('N8N_WEBHOOK_INTERVIEW_QUESTIONS not configured in .env');
       }
 
-      const response = await axios.post(this.questionsWebhook, payload, {
+      const response = await axios.post(questionsWebhook, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 30000,
       });
@@ -120,12 +130,14 @@ class N8nService {
 
   async sendInterviewResult(payload: InterviewResultPayload): Promise<any> {
     try {
-      if (!this.resultWebhook) {
-        console.warn('N8N result webhook not configured');
+      const resultWebhook = process.env.N8N_WEBHOOK_INTERVIEW_RESULT;
+      
+      if (!resultWebhook) {
+        console.warn('N8N_WEBHOOK_INTERVIEW_RESULT not configured');
         return null;
       }
 
-      const response = await axios.post(this.resultWebhook, payload, {
+      const response = await axios.post(resultWebhook, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 60000,
       });

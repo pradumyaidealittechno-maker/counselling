@@ -1,7 +1,19 @@
-import { Link } from 'react-router-dom';
-import { CheckCircle, Sparkles, Clock, ArrowRight, Dna } from 'lucide-react';
+import { CheckCircle, Sparkles, Clock, Dna } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+
 
 export default function InterviewComplete() {
+  const location = useLocation();
+  
+  // Get job details from navigation state or sessionStorage
+  const jobTitle = location.state?.jobTitle || 
+                   sessionStorage.getItem('job_title') || 
+                   'Software Engineer';
+  
+  const companyName = location.state?.companyName || 
+                      sessionStorage.getItem('company_name') || 
+                      'Our Company';
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -46,7 +58,7 @@ export default function InterviewComplete() {
           Interview Completed!
         </h1>
         <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
-          Thank you for completing your interview for the Senior Software Engineer position at Acme Corporation.
+          Thank you for completing your interview for the {jobTitle} position at {companyName}.
         </p>
 
         {/* AI Analysis Card */}
@@ -114,13 +126,6 @@ export default function InterviewComplete() {
             ))}
           </div>
         </div>
-
-        <Link to="/" className="btn btn-primary btn-lg" style={{
-          background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
-          boxShadow: '0 4px 20px rgba(233, 30, 99, 0.4)'
-        }}>
-          Return to Home <ArrowRight size={20} />
-        </Link>
       </div>
 
       <style>{`
