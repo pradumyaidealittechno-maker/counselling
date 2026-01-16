@@ -21,7 +21,7 @@ const navigation = [
   { name: 'Jobs', href: '/dashboard/jobs', icon: Briefcase },
   { name: 'Candidates', href: '/dashboard/candidates', icon: Users },
   { name: 'Interviews', href: '/dashboard/interviews', icon: Video },
-  { name: 'Reports', href: '/dashboard', icon: FileText },
+  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Settings', href: '/dashboard', icon: Settings },
 ];
 

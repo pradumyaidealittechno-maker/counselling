@@ -1,5 +1,6 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { CandidateResult } from '../models/CandidateResult.js';
 import Candidate from '../models/Candidate.js';
 import Job from '../models/Job.js';
 import { authenticate } from '../middleware/auth.js';
@@ -161,7 +162,29 @@ router.get('/', authenticate, async (req, res) => {
       .populate('jobId', 'title company')
       .sort({ createdAt: -1 });
 
-    res.json(candidates);
+    // Fetch all candidate results
+    const results = await CandidateResult.find({});
+
+    // Map results to candidates (fuzzy match by name)
+    const candidatesWithResults = candidates.map((candidate) => {
+      const candidateObj = candidate.toObject();
+      const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
+      
+      const result = results.find((r: any) => {
+        const rName = r.candidateInformation?.fullName?.toLowerCase();
+        return rName && (rName.includes(fullName) || fullName.includes(rName));
+      });
+
+      if (result) {
+        (candidateObj as any).interviewAnalysis = result;
+        // Ensure status reflects readiness
+        candidateObj.status = 'ai_analysis_ready'; 
+      }
+
+      return candidateObj;
+    });
+
+    res.json(candidatesWithResults);
   } catch (error: any) {
     console.error('Get candidates error:', error);
     res.status(500).json({ error: 'Failed to fetch candidates' });
@@ -179,7 +202,26 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Candidate not found' });
     }
 
-    res.json(candidate);
+    // Fetch matching result using fuzzy search on name
+    const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
+    
+    // Find matching result in candidate_result collection
+    // We try to match by name since we might not have a direct link yet
+    const results = await CandidateResult.find({
+      'candidateInformation.fullName': { $exists: true }
+    });
+
+    const result = results.find(r => {
+      const rName = r.candidateInformation?.fullName?.toLowerCase();
+      return rName && (rName.includes(fullName) || fullName.includes(rName));
+    });
+
+    const candidateObj = candidate.toObject();
+    if (result) {
+      (candidateObj as any).interviewAnalysis = result;
+    }
+
+    res.json(candidateObj);
   } catch (error: any) {
     console.error('Get candidate error:', error);
     res.status(500).json({ error: 'Failed to fetch candidate' });

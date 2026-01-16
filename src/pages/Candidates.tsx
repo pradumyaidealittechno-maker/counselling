@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Search, Mail, MoreVertical, FileText, Eye, Dna, TrendingUp, Users, Plus, Loader } from 'lucide-react';
+import { Upload, Search, Mail, MoreVertical, FileText, Dna, TrendingUp, Users, Plus, Loader } from 'lucide-react';
 import api from '../services/api';
 import AddCandidateDialog from '../components/AddCandidateDialog';
 
@@ -346,6 +346,7 @@ export default function Candidates() {
                   DNA Match
                 </div>
               </th>
+              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Date Added</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Status</th>
               <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Actions</th>
             </tr>
@@ -353,7 +354,7 @@ export default function Candidates() {
           <tbody>
             {filteredCandidates.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#6B7280' }}>
+                <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#6B7280' }}>
                   <Users size={40} color="#D1D5DB" style={{ marginBottom: '0.75rem' }} />
                   <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>No candidates found</p>
                   <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
@@ -367,6 +368,7 @@ export default function Candidates() {
                 const score = candidate.interviewResult?.overallScore;
                 const decision = candidate.interviewResult?.recommendation;
                 const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
+                const createdDate = (candidate as any).createdAt ? new Date((candidate as any).createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 
                 return (
                   <tr key={candidate._id} style={{ borderBottom: '1px solid #E5E7EB' }}>
@@ -417,6 +419,7 @@ export default function Candidates() {
                         <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>—</span>
                       )}
                     </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.75rem', color: '#6B7280' }}>{createdDate}</td>
                     <td style={{ padding: '0.75rem' }}>
                       <span style={{
                         padding: '0.25rem 0.625rem',
@@ -433,8 +436,21 @@ export default function Candidates() {
                     <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
                         {(candidate.status === 'interview_complete' || candidate.status === 'ai_analysis_ready') ? (
-                          <Link to={`/dashboard/candidates/${candidate._id}/report`} className="btn btn-sm btn-primary" style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}>
-                            <Eye size={12} /> View Report
+                          <Link 
+                            to={`/dashboard/candidates/${candidate._id}/report`} 
+                            className="btn btn-sm" 
+                            style={{ 
+                              padding: '0.25rem 0.75rem', 
+                              fontSize: '0.75rem', 
+                              backgroundColor: '#E91E63', 
+                              color: 'white',
+                              border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                          >
+                            <FileText size={12} /> View Report
                           </Link>
                         ) : candidate.status === 'pending_interview' || candidate.status === 'invited' ? (
                           <div style={{ display: 'flex', gap: '0.25rem' }}>
@@ -453,7 +469,16 @@ export default function Candidates() {
                           </div>
                         ) : (
                           <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            {(!candidate.resumeUrl && !candidate.resume?.url) ? (
+                            {/* Show Send Invitation button for candidates with status 'new' */}
+                            {candidate.status === 'new' && (candidate.resumeUrl || candidate.resume?.url) ? (
+                              <Link
+                                to={`/dashboard/candidates/invite?candidateId=${candidate._id}`}
+                                className="btn btn-sm btn-primary"
+                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              >
+                                <Mail size={12} /> Send Invitation
+                              </Link>
+                            ) : (!candidate.resumeUrl && !candidate.resume?.url) ? (
                               <button
                                 className="btn btn-sm btn-ghost"
                                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}
@@ -461,18 +486,7 @@ export default function Candidates() {
                               >
                                 <Upload size={12} /> Upload Resume
                               </button>
-                            ) : (
-                              <button
-                                className="btn btn-sm btn-ghost"
-                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.6875rem' }}
-                                onClick={() => {
-                                  const url = candidate.resume?.url || candidate.resumeUrl;
-                                  if (url) window.open(url, '_blank');
-                                }}
-                              >
-                                <FileText size={12} /> View Resume
-                              </button>
-                            )}
+                            ) : null}
                           </div>
                         )}
                         <div style={{ position: 'relative' }}>

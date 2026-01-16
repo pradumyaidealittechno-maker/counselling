@@ -171,6 +171,24 @@ export const api = {
     },
   },
 
+  // Reports APIs
+  reports: {
+    getAll: async () => {
+      return authFetch('/api/reports');
+    },
+
+    getById: async (id: string) => {
+      return authFetch(`/api/reports/${id}`);
+    },
+
+    updateDecision: async (id: string, decision: string, notes?: string) => {
+      return authFetch(`/api/reports/${id}/decision`, {
+        method: 'PATCH',
+        body: JSON.stringify({ finalDecision: decision, notes }),
+      });
+    },
+  },
+
   // Job APIs
   jobs: {
     getAll: async () => {

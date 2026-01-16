@@ -44,6 +44,15 @@ export default function VideoInterview() {
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // Ensure video stream is attached when component updates or view changes
+  useEffect(() => {
+    if (started && webcamVideoRef.current && webcamStreamRef.current) {
+      console.log('🔄 Re-attaching video stream to element');
+      webcamVideoRef.current.srcObject = webcamStreamRef.current;
+      webcamVideoRef.current.play().catch(e => console.error('Error playing video:', e));
+    }
+  }, [started, webcamVideoRef.current]);
+
   // Validate code on mount
   useEffect(() => {
     if (code) {

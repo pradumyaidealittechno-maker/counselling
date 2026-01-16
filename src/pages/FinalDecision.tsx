@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
-  ArrowLeft, CheckCircle, Clock, XCircle, Sparkles, 
-  ThumbsUp, ThumbsDown, MessageSquare, Dna, AlertTriangle, Users, Loader
+  CheckCircle, Clock, XCircle, ThumbsUp, AlertTriangle, Loader
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -12,19 +11,6 @@ interface Candidate {
   lastName: string;
   email: string;
   status: string;
-  experience?: string;
-  interviewResult?: {
-    overallScore: number;
-    recommendation: string;
-    confidence: number;
-    summary: string;
-    keyStrengths: string[];
-    keyConcerns: string[];
-    comparisonToOtherCandidates?: {
-      percentile: number;
-      totalCandidates: number;
-    };
-  };
   job?: {
     title: string;
   };
@@ -32,29 +18,52 @@ interface Candidate {
 
 export default function FinalDecision() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const [decision, setDecision] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Detect if coming from reports route
+  const isFromReports = location.pathname.includes('/reports/');
+
   useEffect(() => {
-    loadCandidate();
+    loadData();
   }, [id]);
 
-  const loadCandidate = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       if (id) {
-        const data = await api.candidates.getById(id);
-        setCandidate(data);
+        if (isFromReports) {
+          // Load report data
+          const data = await api.reports.getById(id);
+          setReportData(data);
+          // Create virtual candidate object
+          const virtualCandidate = {
+            _id: id,
+            firstName: data.candidateInformation?.fullName?.split(' ')[0] || 'Unknown',
+            lastName: data.candidateInformation?.fullName?.split(' ').slice(1).join(' ') || '',
+            email: data.candidateInformation?.email || '',
+            status: 'pending',
+            job: { title: data.candidateInformation?.positionAppliedFor || '' }
+          };
+          setCandidate(virtualCandidate);
+        } else {
+          // Load candidate data
+          const data = await api.candidates.getById(id);
+          setCandidate(data);
+          setReportData((data as any).interviewAnalysis);
+        }
       }
     } catch (err: any) {
-      console.error('Failed to load candidate:', err);
-      setError(err.message || 'Failed to load candidate');
+      console.error('Failed to load data:', err);
+      setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -65,12 +74,26 @@ export default function FinalDecision() {
     
     try {
       setSubmitting(true);
-      await api.candidates.updateDecision(id, decision, notes);
+      // Map frontend values to backend values
+      const decisionMap: { [key: string]: string } = {
+        'hire': 'hired',
+        'hold': 'pending',
+        'reject': 'rejected'
+      };
+      const backendDecision = decisionMap[decision] || decision;
+      
+      // Use different API based on route
+      if (isFromReports) {
+        await api.reports.updateDecision(id, backendDecision, notes);
+      } else {
+        await api.candidates.updateDecision(id, backendDecision, notes);
+      }
+      
       setSubmitted(true);
-      setTimeout(() => navigate('/dashboard/candidates'), 2000);
+      setTimeout(() => navigate('/dashboard/reports'), 2000);
     } catch (err: any) {
       console.error('Failed to submit decision:', err);
-      setError(err.message || 'Failed to submit decision');
+      alert(err.message || 'Failed to submit decision');
       setSubmitting(false);
     }
   };
@@ -79,7 +102,7 @@ export default function FinalDecision() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading candidate...</p>
+        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -88,20 +111,32 @@ export default function FinalDecision() {
   if (error || !candidate) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <Users size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
+        <AlertTriangle size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1F2937' }}>
-          Candidate Not Found
+          Data Not Found
         </h2>
-        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{error || 'The candidate you are looking for does not exist.'}</p>
-        <Link to="/dashboard/candidates" className="btn btn-primary">
-          Back to Candidates
+        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{error || 'Unable to load candidate data.'}</p>
+        <Link to="/dashboard/reports" className="btn btn-primary">
+          Back to Reports
         </Link>
       </div>
     );
   }
 
-  const recommendation = candidate.interviewResult;
   const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
+  
+  // Parse score from reportData
+  let aiScore = 0;
+  if (reportData?.competencyAssessment?.overallScore) {
+    const [earned, total] = reportData.competencyAssessment.overallScore.split('/').map(Number);
+    if (!isNaN(earned) && !isNaN(total) && total > 0) {
+      aiScore = Math.round((earned / total) * 100);
+    }
+  }
+
+  const aiRecommendation = reportData?.recommendation?.hiringRecommendation || 'Pending';
+  const strengths = reportData?.keyDiscussionPoints?.technicalExperience || [];
+  const concerns = reportData?.areasOfConcern || [];
 
   if (submitted) {
     return (
@@ -134,338 +169,364 @@ export default function FinalDecision() {
     );
   }
 
-  if (!recommendation) {
-    return (
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <Link to="/dashboard/candidates" style={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
-          gap: '0.5rem',
-          color: '#6B7280',
-          marginBottom: '1.5rem',
-          fontSize: '0.875rem'
-        }}>
-          <ArrowLeft size={16} /> Back to Candidates
-        </Link>
-
-        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 700,
-            fontSize: '1.25rem',
-            margin: '0 auto 1rem'
-          }}>{initials}</div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-            {candidate.firstName} {candidate.lastName}
-          </h2>
-          <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{candidate.job?.title || 'No job assigned'}</p>
-          
-          <div style={{
-            padding: '1.5rem',
-            background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '0.75rem',
-            marginBottom: '1.5rem'
-          }}>
-            <AlertTriangle size={32} color="#F59E0B" style={{ marginBottom: '0.75rem' }} />
-            <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#92400E' }}>No AI Analysis Available</h3>
-            <p style={{ fontSize: '0.875rem', color: '#B45309' }}>
-              This candidate needs to complete their interview before you can make a decision.
-            </p>
-          </div>
-
-          <Link to="/dashboard/candidates" className="btn btn-secondary">
-            Back to Candidates
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ maxWidth: '900px' }}>
-      <Link to="/dashboard/candidates" style={{ 
-        display: 'inline-flex', 
-        alignItems: 'center', 
-        gap: '0.5rem',
-        color: '#6B7280',
-        marginBottom: '1.5rem',
-        fontSize: '0.875rem'
+    <div style={{ padding: '2rem 3rem' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', color: '#111827' }}>
+          Final Hiring Decision
+        </h1>
+        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+          Review the AI analysis and make your final decision for {candidate.firstName} {candidate.lastName}
+        </p>
+      </div>
+
+      {/* Candidate Summary Card */}
+      <div className="card" style={{ 
+        padding: '2rem', 
+        marginBottom: '2rem',
+        background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
+        border: '1px solid #E5E7EB'
       }}>
-        <ArrowLeft size={16} /> Back to Candidates
-      </Link>
-
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-        Final Hiring Decision
-      </h1>
-      <p style={{ color: '#6B7280', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-        Review the AI analysis and make your final decision for {candidate.firstName} {candidate.lastName}
-      </p>
-
-      {/* Candidate Summary with AI Recommendation */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
             <div style={{
-              width: '56px',
-              height: '56px',
+              width: '72px',
+              height: '72px',
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
-              fontWeight: 700
+              fontWeight: 700,
+              fontSize: '1.5rem',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
             }}>{initials}</div>
             <div>
-              <h3 style={{ fontWeight: 600, fontSize: '1.125rem' }}>{candidate.firstName} {candidate.lastName}</h3>
-              <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>{candidate.job?.title || 'No job assigned'}</p>
-              <p style={{ color: '#9CA3AF', fontSize: '0.75rem' }}>{candidate.experience || 'Experience not specified'}</p>
+              <h2 style={{ fontWeight: 700, fontSize: '1.5rem', marginBottom: '0.375rem', color: '#111827' }}>
+                {candidate.firstName} {candidate.lastName}
+              </h2>
+              <p style={{ color: '#6B7280', fontSize: '1rem', marginBottom: '0.25rem' }}>
+                {candidate.job?.title || 'Position'}
+              </p>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ 
-              fontSize: '2.5rem', 
-              fontWeight: 700, 
-              color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B'
-            }}>
-              {recommendation.overallScore}%
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <Dna size={14} color="#E91E63" />
-              <span style={{ color: '#E91E63', fontSize: '0.75rem', fontWeight: 500 }}>DNA Match</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* AI Recommendation Banner */}
-      <div style={{
-        background: recommendation.recommendation === 'Hire' 
-          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)'
-          : recommendation.recommendation === 'Hold'
-          ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)'
-          : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%)',
-        border: `1px solid ${recommendation.recommendation === 'Hire' ? 'rgba(16, 185, 129, 0.2)' : recommendation.recommendation === 'Hold' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
-        borderRadius: '0.75rem',
-        padding: '1rem 1.25rem',
-        marginBottom: '1rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Sparkles size={20} color={recommendation.recommendation === 'Hire' ? '#10B981' : recommendation.recommendation === 'Hold' ? '#F59E0B' : '#EF4444'} />
-          <div>
-            <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>AI Recommendation</p>
-            <p style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 700, 
-              color: recommendation.recommendation === 'Hire' ? '#10B981' : recommendation.recommendation === 'Hold' ? '#F59E0B' : '#EF4444'
-            }}>
-              {recommendation.recommendation}
-            </p>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>Confidence</p>
-          <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1F2937' }}>{recommendation.confidence}%</p>
-        </div>
-      </div>
-
-      {/* Candidate Comparison */}
-      {recommendation.comparisonToOtherCandidates && (
-        <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <Users size={16} color="#6366F1" />
-            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Candidate Ranking</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ textAlign: 'center' }}>
             <div style={{
-              flex: 1,
-              height: '12px',
-              background: '#F3F4F6',
-              borderRadius: '6px',
-              overflow: 'hidden',
-              position: 'relative'
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              background: `conic-gradient(#10B981 ${aiScore * 3.6}deg, #F3F4F6 0deg)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
             }}>
               <div style={{
-                width: `${recommendation.comparisonToOtherCandidates.percentile}%`,
-                height: '100%',
-                background: 'linear-gradient(90deg, #E91E63 0%, #6366F1 100%)',
-                borderRadius: '6px'
-              }} />
+                width: '100px',
+                height: '100px',
+                borderRadius: '50%',
+                background: 'white',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <p style={{ fontSize: '2rem', fontWeight: 700, color: '#10B981', marginBottom: '0.125rem' }}>
+                  {aiScore}%
+                </p>
+                <p style={{ fontSize: '0.625rem', color: '#6B7280', fontWeight: 600, letterSpacing: '0.05em' }}>
+                  AI SCORE
+                </p>
+              </div>
             </div>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#E91E63', whiteSpace: 'nowrap' }}>
-              Top {100 - recommendation.comparisonToOtherCandidates.percentile}%
-            </span>
           </div>
-          <p style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '0.5rem' }}>
-            Ranked higher than {recommendation.comparisonToOtherCandidates.percentile}% of {recommendation.comparisonToOtherCandidates.totalCandidates} candidates for this role
-          </p>
         </div>
-      )}
+      </div>
 
-      {/* Strengths & Concerns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <ThumbsUp size={16} color="#10B981" />
-            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Key Strengths</span>
+      {/* Strengths & Concerns Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+        {/* Strengths */}
+        <div className="card" style={{ 
+          padding: '1.5rem',
+          border: '2px solid #D1FAE5',
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <ThumbsUp size={20} color="white" />
+            </div>
+            <h3 style={{ fontWeight: 700, fontSize: '1.125rem', color: '#065F46' }}>Strengths</h3>
           </div>
-          {recommendation.keyStrengths.length > 0 ? (
-            <ul style={{ fontSize: '0.8125rem', color: '#065F46', paddingLeft: '1.25rem', margin: 0 }}>
-              {recommendation.keyStrengths.map((s, i) => (
-                <li key={i} style={{ marginBottom: '0.375rem' }}>{s}</li>
+          {strengths.length > 0 ? (
+            <ul style={{ fontSize: '0.875rem', color: '#047857', paddingLeft: '1.5rem', margin: 0, lineHeight: 1.7 }}>
+              {strengths.slice(0, 3).map((s: string, i: number) => (
+                <li key={i} style={{ marginBottom: '0.5rem' }}>{s}</li>
               ))}
             </ul>
           ) : (
-            <p style={{ fontSize: '0.8125rem', color: '#6B7280', fontStyle: 'italic' }}>No strengths recorded</p>
+            <p style={{ fontSize: '0.875rem', color: '#6B7280', fontStyle: 'italic' }}>No strengths recorded</p>
           )}
         </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <ThumbsDown size={16} color="#F59E0B" />
-            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Key Concerns</span>
+
+        {/* Concerns */}
+        <div className="card" style={{ 
+          padding: '1.5rem',
+          border: '2px solid #FEF3C7',
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <AlertTriangle size={20} color="white" />
+            </div>
+            <h3 style={{ fontWeight: 700, fontSize: '1.125rem', color: '#92400E' }}>Concerns</h3>
           </div>
-          {recommendation.keyConcerns.length > 0 ? (
-            <ul style={{ fontSize: '0.8125rem', color: '#92400E', paddingLeft: '1.25rem', margin: 0 }}>
-              {recommendation.keyConcerns.map((c, i) => (
-                <li key={i} style={{ marginBottom: '0.375rem' }}>{c}</li>
+          {concerns.length > 0 ? (
+            <ul style={{ fontSize: '0.875rem', color: '#B45309', paddingLeft: '1.5rem', margin: 0, lineHeight: 1.7 }}>
+              {concerns.slice(0, 3).map((c: string, i: number) => (
+                <li key={i} style={{ marginBottom: '0.5rem' }}>{c}</li>
               ))}
             </ul>
           ) : (
-            <p style={{ fontSize: '0.8125rem', color: '#065F46' }}>No significant concerns identified</p>
+            <p style={{ fontSize: '0.875rem', color: '#6B7280', fontStyle: 'italic' }}>No concerns identified</p>
           )}
         </div>
       </div>
 
-      {/* AI Explanation */}
-      <div style={{
-        background: 'rgba(233, 30, 99, 0.05)',
-        border: '1px solid rgba(233, 30, 99, 0.15)',
-        borderRadius: '0.75rem',
-        padding: '1rem',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <Dna size={16} color="#E91E63" />
-          <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1F2937' }}>AI Explanation</span>
-        </div>
-        <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.7, fontStyle: 'italic' }}>
-          "{recommendation.summary}"
-        </p>
-      </div>
-
-      {/* Decision Options */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
-        <h3 style={{ fontWeight: 600, marginBottom: '1rem', fontSize: '1rem' }}>Your Decision</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+      {/* Your Decision Section */}
+      <div className="card" style={{ padding: '2rem', marginBottom: '2rem', background: 'white' }}>
+        <h3 style={{ fontWeight: 700, marginBottom: '1.5rem', fontSize: '1.25rem', color: '#111827' }}>
+          Your Decision
+        </h3>
+        
+        {/* Decision Buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
           {[
-            { id: 'hire', label: 'Hire', icon: CheckCircle, color: '#10B981', bg: 'rgba(16, 185, 129, 0.1)', desc: 'Proceed with offer' },
-            { id: 'hold', label: 'Hold', icon: Clock, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', desc: 'Keep in pipeline' },
-            { id: 'reject', label: 'Reject', icon: XCircle, color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', desc: 'Not a fit' }
+            { id: 'hire', label: 'Hire', icon: CheckCircle, color: '#10B981', gradient: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' },
+            { id: 'hold', label: 'Hold', icon: Clock, color: '#F59E0B', gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' },
+            { id: 'reject', label: 'Reject', icon: XCircle, color: '#EF4444', gradient: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' }
           ].map((option) => (
             <button
               key={option.id}
               onClick={() => setDecision(option.id)}
               style={{
-                padding: '1.25rem',
-                border: decision === option.id ? `2px solid ${option.color}` : '2px solid #E5E7EB',
-                borderRadius: '0.75rem',
-                background: decision === option.id ? option.bg : 'white',
+                padding: '1.75rem 1rem',
+                border: decision === option.id ? `3px solid ${option.color}` : '2px solid #E5E7EB',
+                borderRadius: '1rem',
+                background: decision === option.id ? `${option.color}15` : 'white',
                 cursor: 'pointer',
                 textAlign: 'center',
-                transition: 'all 0.2s'
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+                transform: decision === option.id ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: decision === option.id 
+                  ? `0 10px 25px -5px ${option.color}40, 0 10px 10px -5px ${option.color}20`
+                  : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+              }}
+              onMouseEnter={(e) => {
+                if (decision !== option.id) {
+                  e.currentTarget.style.borderColor = option.color;
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (decision !== option.id) {
+                  e.currentTarget.style.borderColor = '#E5E7EB';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }
               }}
             >
-              <option.icon 
-                size={32} 
-                color={decision === option.id ? option.color : '#9CA3AF'} 
-                style={{ marginBottom: '0.5rem' }}
-              />
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: decision === option.id ? option.gradient : '#F3F4F6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.3s'
+              }}>
+                <option.icon 
+                  size={28} 
+                  color={decision === option.id ? 'white' : '#9CA3AF'} 
+                />
+              </div>
               <p style={{ 
-                fontWeight: 600, 
+                fontWeight: 700, 
+                fontSize: '1.125rem',
                 color: decision === option.id ? option.color : '#374151',
-                marginBottom: '0.25rem'
+                margin: 0
               }}>
                 {option.label}
               </p>
-              <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>{option.desc}</p>
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Notes */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <MessageSquare size={16} color="#6B7280" />
-          <label className="label" style={{ margin: 0, fontSize: '0.875rem' }}>Additional Notes (Optional)</label>
+        {/* Additional Notes */}
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem', 
+            marginBottom: '0.75rem',
+            paddingBottom: '0.75rem',
+            borderBottom: '1px solid #E5E7EB'
+          }}>
+            <input 
+              type="checkbox" 
+              id="notes-toggle"
+              style={{ 
+                width: '18px', 
+                height: '18px',
+                accentColor: '#E91E63',
+                cursor: 'pointer'
+              }} 
+            />
+            <label 
+              htmlFor="notes-toggle"
+              style={{ 
+                fontSize: '0.9375rem', 
+                color: '#374151', 
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Additional Notes (Optional)
+            </label>
+          </div>
+          <textarea 
+            className="input" 
+            rows={4} 
+            placeholder="Add any notes or feedback about this candidate..."
+            style={{ 
+              resize: 'vertical', 
+              fontSize: '0.875rem', 
+              width: '100%',
+              borderRadius: '0.75rem',
+              border: '2px solid #E5E7EB',
+              padding: '1rem',
+              fontFamily: 'inherit',
+              transition: 'border-color 0.2s',
+              lineHeight: 1.6
+            }}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onFocus={(e) => e.currentTarget.style.borderColor = '#E91E63'}
+            onBlur={(e) => e.currentTarget.style.borderColor = '#E5E7EB'}
+          />
         </div>
-        <textarea 
-          className="input" 
-          rows={3} 
-          placeholder="Add any notes or feedback about this candidate..."
-          style={{ resize: 'vertical', fontSize: '0.875rem' }}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
       </div>
 
-      {/* Human-in-the-loop notice */}
-      <div style={{
-        padding: '0.75rem 1rem',
-        background: '#F9FAFB',
-        border: '1px solid #E5E7EB',
-        borderRadius: '0.5rem',
-        marginBottom: '1.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem'
-      }}>
-        <AlertTriangle size={16} color="#6B7280" />
-        <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>
-          <strong>Human-in-the-loop:</strong> AI provides recommendations, but the final hiring decision is always made by you. 
-          Your decision will be recorded for audit and compliance purposes.
-        </p>
-      </div>
-
-      {/* Submit */}
-      <div style={{ display: 'flex', gap: '1rem' }}>
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <button 
           className="btn btn-primary" 
           disabled={!decision || submitting}
           onClick={handleSubmit}
-          style={{ opacity: decision && !submitting ? 1 : 0.5 }}
+          style={{ 
+            opacity: decision && !submitting ? 1 : 0.5,
+            background: decision && !submitting 
+              ? 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)'
+              : '#9CA3AF',
+            color: 'white',
+            flex: 1,
+            padding: '1rem 2rem',
+            fontSize: '1rem',
+            fontWeight: 600,
+            borderRadius: '0.75rem',
+            border: 'none',
+            cursor: decision && !submitting ? 'pointer' : 'not-allowed',
+            boxShadow: decision && !submitting 
+              ? '0 10px 15px -3px rgba(233, 30, 99, 0.3), 0 4px 6px -2px rgba(233, 30, 99, 0.2)'
+              : 'none',
+            transition: 'all 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}
+          onMouseEnter={(e) => {
+            if (decision && !submitting) {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(233, 30, 99, 0.3), 0 10px 10px -5px rgba(233, 30, 99, 0.2)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (decision && !submitting) {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(233, 30, 99, 0.3), 0 4px 6px -2px rgba(233, 30, 99, 0.2)';
+            }
+          }}
         >
           {submitting ? (
             <>
-              <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
-              Submitting...
+              <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Submitting...</span>
             </>
           ) : (
             <>
-              <CheckCircle size={18} /> Submit Decision
+              <CheckCircle size={20} />
+              <span>Submit Decision</span>
             </>
           )}
         </button>
-        <Link to={`/dashboard/candidates/${id}/report`} className="btn btn-secondary">
-          View Full Report
-        </Link>
-        <Link to="/dashboard/candidates" className="btn btn-ghost">
+        <Link 
+          to="/dashboard/reports" 
+          className="btn btn-ghost"
+          style={{
+            padding: '1rem 2rem',
+            fontSize: '1rem',
+            fontWeight: 600,
+            borderRadius: '0.75rem',
+            color: '#6B7280',
+            textDecoration: 'none',
+            border: '2px solid #E5E7EB',
+            background: 'white',
+            transition: 'all 0.2s',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#9CA3AF';
+            e.currentTarget.style.color = '#374151';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#E5E7EB';
+            e.currentTarget.style.color = '#6B7280';
+          }}
+        >
           Cancel
         </Link>
       </div>
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { 
+          from { transform: rotate(0deg); } 
+          to { transform: rotate(360deg); } 
+        }
+      `}</style>
     </div>
   );
 }

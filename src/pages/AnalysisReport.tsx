@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Dna, FileText, Clock, Video, Loader, Users } from 'lucide-react';
 import api from '../services/api';
 
@@ -43,24 +43,38 @@ interface DimensionEvaluation {
 
 export default function AnalysisReport() {
   const { id } = useParams();
+  const location = useLocation();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
+  const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Detect if we're on a report route or candidate route
+  const isReportRoute = location.pathname.includes('/reports/');
+
   useEffect(() => {
-    loadCandidate();
+    loadData();
   }, [id]);
 
-  const loadCandidate = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       if (id) {
-        const data = await api.candidates.getById(id);
-        setCandidate(data);
+        if (isReportRoute) {
+          // Fetch directly from reports API
+          const data = await api.reports.getById(id);
+          console.log('AnalysisReport - Report Data:', data);
+          setReportData(data);
+        } else {
+          // Fetch from candidates API (legacy route)
+          const data = await api.candidates.getById(id);
+          console.log('AnalysisReport - Candidate Data:', data);
+          setCandidate(data);
+        }
       }
     } catch (err: any) {
-      console.error('Failed to load candidate:', err);
-      setError(err.message || 'Failed to load candidate');
+      console.error('Failed to load data:', err);
+      setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -76,75 +90,186 @@ export default function AnalysisReport() {
     );
   }
 
-  if (error || !candidate) {
+  if (error || (!candidate && !reportData)) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
         <Users size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1F2937' }}>
-          Candidate Not Found
+          Report Not Found
         </h2>
-        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{error || 'The candidate you are looking for does not exist.'}</p>
-        <Link to="/dashboard/candidates" className="btn btn-primary">
-          Back to Candidates
+        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{error || 'The report you are looking for does not exist.'}</p>
+        <Link to="/dashboard/reports" className="btn btn-primary">
+          Back to Reports
         </Link>
       </div>
     );
   }
 
-  const recommendation = candidate.interviewResult;
-  const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
+  // Build display data from either source
+  let displayCandidate: any;
+  let interviewAnalysis: any;
+
+  if (reportData) {
+    // Using report route - construct virtual candidate from report data
+    displayCandidate = {
+      firstName: reportData.candidateInformation?.fullName?.split(' ')[0] || 'Unknown',
+      lastName: reportData.candidateInformation?.fullName?.split(' ').slice(1).join(' ') || '',
+      email: reportData.candidateInformation?.email || '',
+      job: { title: reportData.candidateInformation?.positionAppliedFor || '' },
+      interviewDate: reportData.candidateInformation?.interviewDate,
+      interviewDuration: reportData.candidateInformation?.interviewDuration
+    };
+    interviewAnalysis = reportData;
+    console.log('Using Report Data - displayCandidate:', displayCandidate);
+    console.log('Using Report Data - interviewAnalysis:', interviewAnalysis);
+  } else {
+    // Using candidate route
+    displayCandidate = candidate;
+    interviewAnalysis = (candidate as any)?.interviewAnalysis;
+    console.log('Using Candidate Data - displayCandidate:', displayCandidate);
+    console.log('Using Candidate Data - interviewAnalysis:', interviewAnalysis);
+  }
+
+  const { interviewResult } = displayCandidate as any;
+
+  // Construct recommendation object from either legacy result or new analysis
+  const recommendation = (() => {
+    if (interviewAnalysis) {
+      // Helper to parse pipe-formatted score string: "| Title | 4/10 | Description |"
+      const parsePipeScore = (str: string) => {
+        if (!str) return { score: 0, rawScore: '0/10', text: '' };
+        const parts = str.split('|').map(s => s.trim()).filter(Boolean);
+        // parts[0] = Title, parts[1] = Score (4/10), parts[2] = Description
+        const scorePart = parts[1] || '0/10';
+        const [earned, total] = scorePart.split('/').map(Number);
+        const normalizedScore = (!isNaN(earned) && !isNaN(total) && total > 0) ? (earned / total) * 100 : 0;
+        return { score: normalizedScore, rawScore: scorePart, text: parts[2] || '' };
+      };
+
+      // Helper to parse overall Score "18/50"
+      const parseOverallScore = (str: string) => {
+         if (!str) return 0;
+         const [earned, total] = str.split('/').map(Number);
+         return (!isNaN(earned) && !isNaN(total) && total > 0) ? Math.round((earned / total) * 100) : 0;
+      };
+
+      const tech = parsePipeScore(interviewAnalysis.competencyAssessment?.technicalSkills);
+      const comm = parsePipeScore(interviewAnalysis.competencyAssessment?.communication);
+      const prob = parsePipeScore(interviewAnalysis.competencyAssessment?.problemSolving);
+      const exp = parsePipeScore(interviewAnalysis.competencyAssessment?.experienceRelevance);
+      const cult = parsePipeScore(interviewAnalysis.competencyAssessment?.culturalFit);
+
+      console.log('🧬 DNA Scores Parsed:', {
+        'Skill DNA (Technical)': tech.rawScore,
+        'Experience DNA': exp.rawScore,
+        'Behavioral DNA (Cultural Fit)': cult.rawScore,
+        'Communication DNA': comm.rawScore
+      });
+
+      return {
+        overallScore: parseOverallScore(interviewAnalysis.competencyAssessment?.overallScore),
+        recommendation: interviewAnalysis.recommendation?.hiringRecommendation || 'Pending',
+        confidence: 85, // Default/Placeholder
+        summary: interviewAnalysis.executiveSummary || interviewAnalysis.overallAssessment?.summary || 'Analysis completed.',
+        keyStrengths: interviewAnalysis.keyDiscussionPoints?.technicalExperience || [],
+        keyConcerns: interviewAnalysis.areasOfConcern || interviewAnalysis.keyDiscussionPoints?.redFlags || [], 
+        dimensionEvaluations: {
+          skillDNA: { 
+            dimension: 'Skill DNA', 
+            overallScore: tech.score,
+            rawScore: tech.rawScore,
+            traits: [{ name: 'Technical Skills', score: tech.score, evidence: tech.text }]
+          }, 
+          experienceDNA: { 
+            dimension: 'Experience DNA', 
+            overallScore: exp.score,
+            rawScore: exp.rawScore,
+            traits: [{ name: 'Experience Relevance', score: exp.score, evidence: exp.text }] 
+          },
+          behavioralDNA: { 
+            dimension: 'Behavioral DNA', 
+            overallScore: cult.score, // Using Cultural Fit for Behavioral
+            rawScore: cult.rawScore,
+            traits: [{ name: 'Cultural Fit', score: cult.score, evidence: cult.text }]
+          },
+          communicationDNA: { 
+            dimension: 'Communication DNA', 
+            overallScore: comm.score,
+            rawScore: comm.rawScore,
+            traits: [{ name: 'Communication', score: comm.score, evidence: comm.text }]
+          }
+        }
+      };
+    }
+    return interviewResult;
+  })();
+  
+  console.log('Final recommendation object:', recommendation);
+  
+  const initials = `${displayCandidate.firstName?.[0] || ''}${displayCandidate.lastName?.[0] || ''}`;
 
   if (!recommendation) {
     return (
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <Link to="/dashboard/candidates" style={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
-          gap: '0.5rem',
-          color: '#6B7280',
-          marginBottom: '1.5rem',
-          fontSize: '0.875rem'
-        }}>
-          <ArrowLeft size={16} /> Back to Candidates
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
+        <Link 
+          to={isReportRoute ? "/dashboard/reports" : "/dashboard/candidates"}
+          style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            color: '#6B7280',
+            textDecoration: 'none',
+            marginBottom: '1.5rem',
+            fontSize: '0.875rem'
+          }}
+        >
+          <ArrowLeft size={16} />
+          Back to {isReportRoute ? "Reports" : "Candidates"}
         </Link>
 
-        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
           <div style={{
-            width: '64px',
-            height: '64px',
+            width: '56px',
+            height: '56px',
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            fontWeight: 700,
             fontSize: '1.25rem',
-            margin: '0 auto 1rem'
-          }}>{initials}</div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-            {candidate.firstName} {candidate.lastName}
-          </h2>
-          <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{candidate.job?.title || 'No job assigned'}</p>
-          
-          <div style={{
-            padding: '1.5rem',
-            background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '0.75rem',
-            marginBottom: '1.5rem'
+            fontWeight: 700
           }}>
-            <Clock size={32} color="#F59E0B" style={{ marginBottom: '0.75rem' }} />
-            <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#92400E' }}>Analysis Not Ready</h3>
-            <p style={{ fontSize: '0.875rem', color: '#B45309' }}>
-              This candidate has not completed their interview yet, or the AI analysis is still being processed.
+            {initials}
+          </div>
+          <div>
+            <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#111827', marginBottom: '0.25rem' }}>
+              {displayCandidate.firstName} {displayCandidate.lastName}
+            </h1>
+            <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+              {displayCandidate.job?.title || 'Position'} • {reportData?.candidateInformation?.interviewDate || displayCandidate.interviewDate || 'Date not available'}
             </p>
           </div>
-
-          <Link to="/dashboard/candidates" className="btn btn-secondary">
-            Back to Candidates
-          </Link>
         </div>
+
+        <div style={{
+          padding: '1.5rem',
+          background: 'rgba(245, 158, 11, 0.1)',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          borderRadius: '0.75rem',
+          marginBottom: '1.5rem'
+        }}>
+          <Clock size={32} color="#F59E0B" style={{ marginBottom: '0.75rem' }} />
+          <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#92400E' }}>Analysis Not Ready</h3>
+          <p style={{ fontSize: '0.875rem', color: '#B45309' }}>
+            This candidate has not completed their interview yet, or the AI analysis is still being processed.
+          </p>
+        </div>
+
+        <Link to={isReportRoute ? "/dashboard/reports" : "/dashboard/candidates"} className="btn btn-secondary">
+          Back to {isReportRoute ? "Reports" : "Candidates"}
+        </Link>
       </div>
     );
   }
@@ -175,9 +300,9 @@ export default function AnalysisReport() {
             }}>{initials}</div>
             <div>
               <h1 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1F2937' }}>
-                {candidate.firstName} {candidate.lastName}
+                {displayCandidate.firstName} {displayCandidate.lastName}
               </h1>
-              <p style={{ color: '#6B7280', fontSize: '0.75rem' }}>{candidate.job?.title || 'No job assigned'}</p>
+              <p style={{ color: '#6B7280', fontSize: '0.75rem' }}>{displayCandidate.job?.title || 'No job assigned'}</p>
             </div>
           </div>
           <Link to={`/dashboard/candidates/${id}/decision`} className="btn btn-primary btn-sm">
@@ -197,11 +322,11 @@ export default function AnalysisReport() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Clock size={14} color="#6B7280" />
-            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>{candidate.interviewDate || 'Date not recorded'}</span>
+            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>{displayCandidate.interviewDate || 'Date not recorded'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Video size={14} color="#6B7280" />
-            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>{candidate.interviewDuration || 'Duration not recorded'}</span>
+            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>{displayCandidate.interviewDuration || 'Duration not recorded'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Dna size={14} color="#E91E63" />
@@ -248,11 +373,12 @@ export default function AnalysisReport() {
           {Object.entries(dimensionEvaluations).map(([key, evaluation]) => {
             if (!evaluation) return null;
             const score = evaluation.overallScore;
+            const rawScore = (evaluation as any).rawScore || `${Math.round(score)}%`;
             const scoreColor = score >= 90 ? '#10B981' : score >= 80 ? '#E91E63' : '#F59E0B';
             
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <span style={{ width: '120px', fontSize: '0.75rem', color: '#6B7280' }}>
+                <span style={{ width: '140px', fontSize: '0.75rem', color: '#6B7280', fontWeight: 500 }}>
                   {evaluation.dimension}
                 </span>
                 <div style={{ flex: 1, height: '20px', background: '#F3F4F6', borderRadius: '10px', overflow: 'hidden' }}>
@@ -267,7 +393,7 @@ export default function AnalysisReport() {
                     paddingRight: '0.5rem',
                     transition: 'width 0.5s ease'
                   }}>
-                    <span style={{ color: 'white', fontSize: '0.625rem', fontWeight: 600 }}>{score}%</span>
+                    <span style={{ color: 'white', fontSize: '0.625rem', fontWeight: 600 }}>{rawScore}</span>
                   </div>
                 </div>
               </div>
@@ -303,18 +429,147 @@ export default function AnalysisReport() {
           </div>
         </div>
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <Link to={`/dashboard/candidates/${id}/decision`} className="btn btn-primary">
-            Make Final Decision
-          </Link>
-          <button className="btn btn-secondary">
-            <FileText size={16} /> View Full Transcript
-          </button>
-          <button className="btn btn-ghost">
-            Download Report
-          </button>
-        </div>
+        {/* Professional Profile */}
+        {interviewAnalysis?.professionalProfile && (
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Professional Profile</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8125rem' }}>
+              {interviewAnalysis.professionalProfile.currentRole && (
+                <div>
+                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Current Role</p>
+                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentRole}</p>
+                </div>
+              )}
+              {interviewAnalysis.professionalProfile.totalExperience && (
+                <div>
+                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Total Experience</p>
+                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.totalExperience}</p>
+                </div>
+              )}
+              {interviewAnalysis.professionalProfile.experienceLevel && (
+                <div>
+                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Experience Level</p>
+                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.experienceLevel}</p>
+                </div>
+              )}
+              {interviewAnalysis.professionalProfile.currentCompany && (
+                <div>
+                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Current Company</p>
+                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentCompany}</p>
+                </div>
+              )}
+            </div>
+            {interviewAnalysis.professionalProfile.technicalStack && interviewAnalysis.professionalProfile.technicalStack.length > 0 && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <p style={{ color: '#6B7280', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>Technical Stack</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {interviewAnalysis.professionalProfile.technicalStack.map((tech: string, i: number) => (
+                    <span key={i} style={{
+                      padding: '0.25rem 0.625rem',
+                      background: '#E0E7FF',
+                      color: '#4F46E5',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500
+                    }}>
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Key Discussion Points */}
+        {interviewAnalysis?.keyDiscussionPoints && (
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Key Discussion Points</h3>
+            
+            {interviewAnalysis.keyDiscussionPoints.technicalExperience && interviewAnalysis.keyDiscussionPoints.technicalExperience.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.5rem' }}>Technical Experience</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  {interviewAnalysis.keyDiscussionPoints.technicalExperience.map((item: string, i: number) => (
+                    <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {interviewAnalysis.keyDiscussionPoints.projectsDiscussed && interviewAnalysis.keyDiscussionPoints.projectsDiscussed.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.5rem' }}>Projects Discussed</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  {interviewAnalysis.keyDiscussionPoints.projectsDiscussed.map((item: string, i: number) => (
+                    <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {interviewAnalysis.keyDiscussionPoints.problemSolvingExamples && interviewAnalysis.keyDiscussionPoints.problemSolvingExamples.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.5rem' }}>Problem Solving Examples</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  {interviewAnalysis.keyDiscussionPoints.problemSolvingExamples.map((item: string, i: number) => (
+                    <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recommendation Details */}
+        {interviewAnalysis?.recommendation && (
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Recommendation Details</h3>
+            
+            {interviewAnalysis.recommendation.reasoning && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <p style={{ color: '#6B7280', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Reasoning</p>
+                <p style={{ fontSize: '0.8125rem', color: '#374151', lineHeight: 1.6 }}>{interviewAnalysis.recommendation.reasoning}</p>
+              </div>
+            )}
+
+            {interviewAnalysis.recommendation.status && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <p style={{ color: '#6B7280', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Status</p>
+                <span style={{
+                  display: 'inline-block',
+                  padding: '0.25rem 0.625rem',
+                  background: '#DBEAFE',
+                  color: '#1E40AF',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 500
+                }}>
+                  {interviewAnalysis.recommendation.status}
+                </span>
+              </div>
+            )}
+
+            {interviewAnalysis.recommendation.nextSteps && interviewAnalysis.recommendation.nextSteps.length > 0 && (
+              <div>
+                <p style={{ color: '#6B7280', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>Next Steps</p>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  {interviewAnalysis.recommendation.nextSteps.map((step: string, i: number) => (
+                    <li key={i} style={{ marginBottom: '0.375rem' }}>{step}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Executive Summary */}
+        {interviewAnalysis?.executiveSummary && (
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Executive Summary</h3>
+            <p style={{ fontSize: '0.8125rem', color: '#374151', lineHeight: 1.6 }}>{interviewAnalysis.executiveSummary}</p>
+          </div>
+        )}
       </div>
 
       {/* Right Sidebar */}
@@ -347,6 +602,22 @@ export default function AnalysisReport() {
           <p style={{ fontSize: '0.8125rem', color: '#4B5563', fontStyle: 'italic', lineHeight: 1.6 }}>
             "{recommendation.summary}"
           </p>
+        </div>
+
+        {/* Actions */}
+        <div className="card" style={{ padding: '1rem', marginBottom: '0.75rem' }}>
+          <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem' }}>Actions</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <Link to={isReportRoute ? `/dashboard/reports/${id}/decision` : `/dashboard/candidates/${id}/decision`} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              Make Decision
+            </Link>
+            <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
+              View Transcript
+            </button>
+            <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
+              Download Report
+            </button>
+          </div>
         </div>
 
         {/* Score Legend */}
