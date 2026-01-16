@@ -36,6 +36,7 @@ body {
   background: var(--gray-50);
   color: var(--gray-900);
   line-height: 1.6;
+  font-size: 16px;
 }
 
 a {
@@ -56,7 +57,7 @@ button {
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 1rem;
   transition: all 0.2s;
   border: none;
 }
@@ -121,12 +122,12 @@ button {
 
 .btn-lg {
   padding: 1rem 2rem;
-  font-size: 1rem;
+  font-size: 1.125rem;
 }
 
 .btn-sm {
   padding: 0.5rem 1rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .card {
@@ -147,7 +148,7 @@ button {
   padding: 0.75rem 1rem;
   border: 1px solid var(--gray-300);
   border-radius: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   transition: all 0.2s;
 }
 
@@ -159,7 +160,7 @@ button {
 
 .label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--gray-700);
   margin-bottom: 0.5rem;

@@ -39,25 +39,65 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Invalid decision' });
     }
 
-    // Find the report
     const result = await CandidateResult.findById(req.params.id);
     if (!result) {
       return res.status(404).json({ error: 'Report not found' });
     }
 
-    // Find matching candidate by name
-    const fullName = result.candidateInformation?.fullName?.toLowerCase();
-    if (!fullName) {
-      return res.status(400).json({ error: 'Report missing candidate name' });
-    }
-
-    const candidates = await Candidate.find({});
-    const matchedCandidate = candidates.find((c: any) => {
-      const cName = `${c.firstName} ${c.lastName}`.toLowerCase();
-      return cName.includes(fullName) || fullName.includes(cName);
+    console.log('📋 Report found:', {
+      id: result._id,
+      fullName: result.candidateInformation?.fullName,
+      email: result.candidateInformation?.email
     });
 
+    // Try to find matching candidate by email first (most reliable)
+    const email = result.candidateInformation?.email?.toLowerCase();
+    let matchedCandidate = null;
+
+    if (email) {
+      matchedCandidate = await Candidate.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+      console.log('🔍 Email match result:', matchedCandidate ? 'Found' : 'Not found');
+    }
+
+    // If email match fails, try name matching
     if (!matchedCandidate) {
+      const fullName = result.candidateInformation?.fullName?.toLowerCase();
+      if (!fullName && !email) { // Ensure at least one identifier is present
+        return res.status(400).json({ error: 'Report missing candidate name and email' });
+      }
+
+      const candidates = await Candidate.find({});
+      console.log(`🔍 Searching among ${candidates.length} candidates for: "${fullName}"`);
+
+      matchedCandidate = candidates.find((c: any) => {
+        const cName = `${c.firstName} ${c.lastName}`.toLowerCase();
+        const cEmail = c.email?.toLowerCase();
+        
+        // Try exact name match first
+        if (fullName && cName === fullName) return true;
+        
+        // Try partial name match
+        if (fullName && (cName.includes(fullName) || fullName.includes(cName))) return true;
+        
+        // Try email match as fallback if email was provided in report
+        if (email && cEmail === email) return true;
+        
+        return false;
+      });
+
+      if (matchedCandidate) {
+        console.log('✅ Name match found:', {
+          candidateName: `${matchedCandidate.firstName} ${matchedCandidate.lastName}`,
+          candidateEmail: matchedCandidate.email
+        });
+      }
+    }
+
+    if (!matchedCandidate) {
+      console.error('❌ No matching candidate found for:', {
+        reportName: result.candidateInformation?.fullName,
+        reportEmail: result.candidateInformation?.email
+      });
       return res.status(404).json({ error: 'Matching candidate not found' });
     }
 
@@ -65,13 +105,18 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
     const updatedCandidate = await Candidate.findByIdAndUpdate(
       matchedCandidate._id,
       { 
-        finalDecision,
+        finalDecision: {
+          decision: finalDecision === 'hired' ? 'Hire' : finalDecision === 'rejected' ? 'Reject' : 'Hold',
+          decidedAt: new Date(),
+          notes
+        },
         notes,
-        status: finalDecision === 'hired' ? 'hired' : finalDecision === 'rejected' ? 'rejected' : 'pending'
+        status: finalDecision === 'hired' ? 'hired' : finalDecision === 'rejected' ? 'rejected' : 'decision_made'
       },
       { new: true }
     );
 
+    console.log('✅ Decision updated successfully for:', updatedCandidate?.email);
     res.json({ success: true, candidate: updatedCandidate });
   } catch (error: any) {
     console.error('Update decision from report error:', error);

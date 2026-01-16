@@ -17,6 +17,9 @@ interface Report {
   recommendation: {
     hiringRecommendation: string;
   };
+  metadata?: {
+    reportGenerated?: string;
+  };
 }
 
 export default function Reports() {
@@ -24,6 +27,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
     loadReports();
@@ -47,7 +52,41 @@ export default function Reports() {
     const term = searchTerm.toLowerCase();
     const fullName = r.candidateInformation?.fullName?.toLowerCase() || '';
     const pos = r.candidateInformation?.positionAppliedFor?.toLowerCase() || '';
-    return fullName.includes(term) || pos.includes(term);
+    const matchesSearch = fullName.includes(term) || pos.includes(term);
+    
+    // Date filter
+    let matchesDate = true;
+    if (dateFilter) {
+      const dateStr = r.candidateInformation?.interviewDate || r.metadata?.reportGenerated;
+      if (dateStr) {
+        try {
+          let reportDate: Date;
+          if (dateStr.includes('/') && dateStr.split('/').length === 3) {
+            const parts = dateStr.split('/');
+            if (parts[0].length <= 2 && parseInt(parts[0]) <= 31) {
+              const [day, month, year] = parts;
+              reportDate = new Date(`${year}-${month}-${day}`);
+            } else {
+              reportDate = new Date(dateStr);
+            }
+          } else {
+            reportDate = new Date(dateStr);
+          }
+          const filterDate = new Date(dateFilter);
+          matchesDate = reportDate.toDateString() === filterDate.toDateString();
+        } catch {
+          matchesDate = false;
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
+    
+    // Status filter
+    const recommendation = r.recommendation?.hiringRecommendation || '';
+    const matchesStatus = !statusFilter || recommendation === statusFilter;
+    
+    return matchesSearch && matchesDate && matchesStatus;
   });
 
   if (loading) {
@@ -73,20 +112,20 @@ export default function Reports() {
       {/* Filters and Search */}
       <div style={{ 
         display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
+        gap: '1rem',
         marginBottom: '1.5rem',
         background: 'white',
         padding: '1rem',
         borderRadius: '0.75rem',
         border: '1px solid #e5e7eb',
-        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+        flexWrap: 'wrap'
       }}>
-        <div style={{ position: 'relative', width: '300px' }}>
+        <div style={{ position: 'relative', flex: '1 1 300px', minWidth: '200px' }}>
           <Search size={20} color="#9CA3AF" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            placeholder="Search reports..."
+            placeholder="Search by name or role..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -99,9 +138,65 @@ export default function Reports() {
             }}
           />
         </div>
-        <button className="btn btn-secondary">
-          <Filter size={16} /> Filter
-        </button>
+        
+        <div style={{ flex: '0 0 auto' }}>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            style={{
+              padding: '0.625rem 1rem',
+              border: '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              outline: 'none',
+              minWidth: '150px'
+            }}
+          />
+        </div>
+        
+        <div style={{ flex: '0 0 auto' }}>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              padding: '0.625rem 1rem',
+              border: '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              outline: 'none',
+              minWidth: '150px',
+              backgroundColor: 'white'
+            }}
+          >
+            <option value="">All Status</option>
+            <option value="Hire">Hire</option>
+            <option value="Hold">Hold</option>
+            <option value="MAYBE">Maybe</option>
+            <option value="Reject">Reject</option>
+          </select>
+        </div>
+        
+        {(searchTerm || dateFilter || statusFilter) && (
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setDateFilter('');
+              setStatusFilter('');
+            }}
+            style={{
+              padding: '0.625rem 1rem',
+              border: '1px solid #D1D5DB',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              backgroundColor: 'white',
+              cursor: 'pointer',
+              color: '#6B7280'
+            }}
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
       {error ? (
@@ -141,11 +236,13 @@ export default function Reports() {
             </thead>
             <tbody>
               {filteredReports.map((report) => {
-                // Parse score "18/50" -> percentage
+                // Get raw score "18/50" directly
+                const rawScore = report.competencyAssessment?.overallScore || 'N/A';
+                
+                // Parse for color coding only
                 let percentage = 0;
-                const scoreStr = report.competencyAssessment?.overallScore;
-                if (scoreStr) {
-                   const [earned, total] = scoreStr.split('/').map(Number);
+                if (rawScore !== 'N/A') {
+                   const [earned, total] = rawScore.split('/').map(Number);
                    if (!isNaN(earned) && !isNaN(total) && total > 0) {
                      percentage = Math.round((earned / total) * 100);
                    }
@@ -188,15 +285,48 @@ export default function Reports() {
                     <td style={{ padding: '1rem' }}>
                       <span style={{ 
                         fontWeight: 600, 
+                        fontSize: '0.9375rem',
                         color: percentage >= 80 ? '#059669' : percentage >= 60 ? '#D97706' : '#DC2626'
                       }}>
-                        {percentage}%
+                        {rawScore}
                       </span>
                     </td>
                     <td style={{ padding: '1rem', fontSize: '0.75rem', color: '#6B7280' }}>
-                      {report.candidateInformation?.interviewDate 
-                        ? new Date(report.candidateInformation.interviewDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                        : 'N/A'}
+                      {(() => {
+                        // Try multiple date sources
+                        const dateStr = report.candidateInformation?.interviewDate || report.metadata?.reportGenerated;
+                        if (!dateStr) return 'N/A';
+                        
+                        try {
+                          let date: Date;
+                          
+                          // Check if date is in DD/MM/YYYY format (e.g., "16/01/2026")
+                          if (dateStr.includes('/') && dateStr.split('/').length === 3) {
+                            const parts = dateStr.split('/');
+                            // Check if first part is day (DD/MM/YYYY format)
+                            if (parts[0].length <= 2 && parseInt(parts[0]) <= 31) {
+                              const [day, month, year] = parts;
+                              // Convert to YYYY-MM-DD format for proper parsing
+                              date = new Date(`${year}-${month}-${day}`);
+                            } else {
+                              date = new Date(dateStr);
+                            }
+                          } else {
+                            date = new Date(dateStr);
+                          }
+                          
+                          // Check if date is valid
+                          if (isNaN(date.getTime())) return 'N/A';
+                          
+                          return date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          });
+                        } catch (err) {
+                          return 'N/A';
+                        }
+                      })()}
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{

@@ -49,6 +49,8 @@ export default function Candidates() {
   const [jobs, setJobs] = useState<Array<{ _id: string; title: string }>>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [candidateToUploadResume, setCandidateToUploadResume] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const singleFileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,8 +144,28 @@ export default function Candidates() {
 
     const matchesSearch = fullName.includes(term) || email.includes(term);
     const matchesJob = !selectedJobId || c.job?._id === selectedJobId;
+    
+    // Date filter
+    let matchesDate = true;
+    if (dateFilter) {
+      const createdAt = (c as any).createdAt;
+      if (createdAt) {
+        try {
+          const candidateDate = new Date(createdAt);
+          const filterDate = new Date(dateFilter);
+          matchesDate = candidateDate.toDateString() === filterDate.toDateString();
+        } catch {
+          matchesDate = false;
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
+    
+    // Status filter
+    const matchesStatus = !statusFilter || c.status === statusFilter;
 
-    return matchesSearch && matchesJob;
+    return matchesSearch && matchesJob && matchesDate && matchesStatus;
   });
 
   const candidatesWithAnalysis = candidates.filter(c => c.interviewResult?.overallScore);
@@ -290,13 +312,13 @@ export default function Candidates() {
       />
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', overflowX: 'auto' }}>
+        <div style={{ flex: '0 1 auto', position: 'relative', minWidth: '200px', maxWidth: '300px' }}>
           <Search size={18} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             className="input"
-            placeholder="Search candidates by name or email..."
+            placeholder="Search..."
             style={{
               width: '100%',
               paddingLeft: '40px',
@@ -316,13 +338,15 @@ export default function Candidates() {
           value={selectedJobId || ''}
           onChange={(e) => setSelectedJobId(e.target.value || null)}
           style={{
-            minWidth: '220px',
+            minWidth: '120px',
+            maxWidth: '150px',
             fontSize: '0.9375rem',
-            padding: '0.625rem 1rem',
+            padding: '0.625rem 0.75rem',
             borderRadius: '0.5rem',
             border: '1px solid #E5E7EB',
             backgroundColor: 'white',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            flexShrink: 0
           }}
         >
           <option value="">All Jobs</option>
@@ -330,6 +354,59 @@ export default function Candidates() {
             <option key={job._id} value={job._id}>{job.title}</option>
           ))}
         </select>
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+          style={{
+            padding: '0.625rem 0.75rem',
+            border: '1px solid #E5E7EB',
+            borderRadius: '0.5rem',
+            fontSize: '0.9375rem',
+            outline: 'none',
+            minWidth: '130px',
+            flexShrink: 0
+          }}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{
+            padding: '0.625rem 0.75rem',
+            border: '1px solid #E5E7EB',
+            borderRadius: '0.5rem',
+            fontSize: '0.9375rem',
+            outline: 'none',
+            minWidth: '130px',
+            backgroundColor: 'white',
+            flexShrink: 0
+          }}
+        >
+          <option value="">All Status</option>
+          <option value="new">New</option>
+          <option value="invited">Invited</option>
+          <option value="pending_interview">Pending Interview</option>
+          <option value="interview_complete">Interview Complete</option>
+          <option value="ai_analysis_ready">AI Analysis Ready</option>
+        </select>
+        {(searchTerm || dateFilter || statusFilter) && (
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setDateFilter('');
+              setStatusFilter('');
+            }}
+            className="btn btn-ghost"
+            style={{
+              padding: '0.625rem 0.75rem',
+              fontSize: '0.875rem',
+              flexShrink: 0,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Candidates Table */}

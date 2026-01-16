@@ -297,7 +297,7 @@ export default function AnalysisReport() {
               color: 'white',
               fontWeight: 700,
               fontSize: '0.875rem'
-            }}>{initials}</div>
+            }}>{initials}            </div>
             <div>
               <h1 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1F2937' }}>
                 {displayCandidate.firstName} {displayCandidate.lastName}
@@ -305,9 +305,6 @@ export default function AnalysisReport() {
               <p style={{ color: '#6B7280', fontSize: '0.75rem' }}>{displayCandidate.job?.title || 'No job assigned'}</p>
             </div>
           </div>
-          <Link to={`/dashboard/candidates/${id}/decision`} className="btn btn-primary btn-sm">
-            Make Decision
-          </Link>
         </div>
 
         {/* Interview Details Bar */}
