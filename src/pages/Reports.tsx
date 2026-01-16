@@ -285,7 +285,7 @@ export default function Reports() {
                     <td style={{ padding: '1rem' }}>
                       <span style={{ 
                         fontWeight: 600, 
-                        fontSize: '0.9375rem',
+                        fontSize: '0.95rem',
                         color: percentage >= 80 ? '#059669' : percentage >= 60 ? '#D97706' : '#DC2626'
                       }}>
                         {rawScore}

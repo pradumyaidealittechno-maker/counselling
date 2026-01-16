@@ -335,7 +335,7 @@ export default function AnalysisReport() {
         <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <Dna size={16} color="#E91E63" />
-            <h2 style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#1F2937' }}>DNA Match Overview</h2>
+            <h2 style={{ fontWeight: 600, fontSize: '0.95rem', color: '#1F2937' }}>DNA Match Overview</h2>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
