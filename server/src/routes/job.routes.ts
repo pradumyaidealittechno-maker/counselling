@@ -7,7 +7,77 @@ import { authenticate } from '../middleware/auth.js';
 import aiService from '../services/ai.service.js';
 import n8nService from '../services/n8n.service.js';
 
+import { upload } from '../middleware/upload.js';
 const router = express.Router();
+
+// Parse Job Description from file (protected)
+router.post('/parse-jd', authenticate, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    let text = '';
+
+    if (req.file.mimetype === 'application/pdf') {
+      console.log('📄 PDF Parse: File received', req.file.originalname, req.file.size);
+
+      try {
+        // Use inline require to bypass complex ESM/CJS interop issues with this specific legacy lib
+        // @ts-ignore
+        let pdfParse = require('pdf-parse');
+
+        console.log('📄 PDF Parse: Loaded module via require. Type:', typeof pdfParse);
+        if (typeof pdfParse === 'object') {
+          console.log('📄 PDF Parse: Module keys:', Object.keys(pdfParse));
+        }
+
+        // Handle potential default export wrapping which happens in some TS/ESM environments
+        if (typeof pdfParse !== 'function' && (pdfParse as any).default) {
+          console.log('📄 PDF Parse: Detected default export wrapper, unwrapping...');
+          pdfParse = (pdfParse as any).default;
+        }
+
+        console.log('📄 PDF Parse: Final parser type:', typeof pdfParse);
+
+        // @ts-ignore
+        const data = await pdfParse(req.file.buffer);
+        console.log('📄 PDF Parse: Success, text length:', data.text ? data.text.length : 0);
+        text = data.text;
+      } catch (distErr: any) {
+        console.error('📄 PDF Parse: Library Error details:', JSON.stringify(distErr, Object.getOwnPropertyNames(distErr)));
+        throw new Error(`PDF Parsing failed: ${distErr.message}`);
+      }
+
+    } else {
+      return res.status(400).json({ error: 'Only PDF files are currently supported for auto-parsing' });
+    }
+
+    // Basic cleanup of pdf text to remove excessive whitespace if needed
+    // preserving newlines is important for structure
+    text = text ? text.trim() : '';
+
+    // Extract metadata using simple regex
+    const locationMatch = text.match(/Location:\s*([^\n\r]+)/i);
+    const experienceMatch = text.match(/Experience:\s*([^\n\r]+)/i);
+
+    const extractedData = {
+      text,
+      location: locationMatch ? locationMatch[1].trim() : undefined,
+      experience: experienceMatch ? experienceMatch[1].trim() : undefined
+    };
+
+    console.log('📄 PDF Parse: Extracted metadata:', {
+      location: extractedData.location,
+      experience: extractedData.experience
+    });
+
+    res.json(extractedData);
+  } catch (error: any) {
+    console.error('Parse JD error:', error);
+    res.status(500).json({ error: `Failed to parse file: ${error.message}` });
+  }
+});
 
 // Get all jobs (protected)
 router.get('/', authenticate, async (req, res) => {

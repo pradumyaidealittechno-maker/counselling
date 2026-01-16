@@ -242,6 +242,22 @@ export const api = {
         method: 'DELETE',
       });
     },
+
+    parseDescription: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = getAuthToken();
+      const response = await fetch(`${API_URL}/api/jobs/parse-jd`, {
+        method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: formData,
+      });
+
+      return handleResponse(response);
+    },
   },
 
   // Candidate APIs

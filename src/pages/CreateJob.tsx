@@ -25,16 +25,54 @@ export default function CreateJob() {
 
     setError(null);
     setUploadedFile(file);
-    
+
     // Extract filename and show details form
     const fileName = file.name.replace(/\.[^/.]+$/, '');
+
+    // Initialize with loading state
     setJobDetails(prev => ({
       ...prev,
       title: fileName || 'Uploaded Job',
-      description: `Job description uploaded from file: ${file.name}\n\nPlease update the job details below.`
+      description: `Parsing job description from ${file.name}...\nPlease wait.`
     }));
-    
+
     setShowDetailsForm(true);
+
+    // Parse the file content
+    try {
+      setUploading(true);
+      const response = await api.jobs.parseDescription(file);
+
+      if (response && response.text) {
+
+        // Helper to map experience string to level
+        let experienceLevel = 'mid';
+        if (response.experience) {
+          const expStr = response.experience.toLowerCase();
+          if (expStr.includes('0') || expStr.includes('1') || expStr.includes('entry')) experienceLevel = 'entry';
+          else if (expStr.includes('senior') || expStr.includes('lead') || expStr.includes('5') || expStr.includes('6') || expStr.includes('7')) experienceLevel = 'senior';
+          else if (expStr.includes('lead') || expStr.includes('principal') || expStr.includes('8') || expStr.includes('10')) experienceLevel = 'lead';
+          // Default to mid for 2-4 years which is common
+        }
+
+        setJobDetails(prev => ({
+          ...prev,
+          description: response.text,
+          location: response.location || prev.location,
+          // Only update experience if we found something relevant, otherwise keep default
+          experienceLevel: (response.experience ? experienceLevel : prev.experienceLevel) as any
+        }));
+      }
+    } catch (err: any) {
+      console.error('Failed to parse file:', err);
+      // Fallback message with actual error
+      setJobDetails(prev => ({
+        ...prev,
+        description: `Job description uploaded from file: ${file.name}\n\n(Auto-parsing failed: ${err.message || 'Unknown error'}. Please copy and paste the description here.)`
+      }));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleCreateJob = async () => {
@@ -69,7 +107,7 @@ export default function CreateJob() {
       };
 
       const job = await api.jobs.create(jobData);
-      
+
       // Navigate to job DNA page with jobId
       navigate(`/dashboard/jobs/${job._id}/job-dna`);
     } catch (err: any) {
@@ -122,8 +160,8 @@ export default function CreateJob() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem', maxWidth: '900px' }}>
             {/* Upload JD */}
-            <div 
-              className="card card-hover" 
+            <div
+              className="card card-hover"
               style={{
                 padding: '2.5rem',
                 border: '2px dashed #e5e7eb',
@@ -228,8 +266,8 @@ export default function CreateJob() {
               <span style={{ fontWeight: 600 }}>What is Job DNA?</span>
             </div>
             <p style={{ fontSize: '0.875rem', color: '#4b5563' }}>
-              Job DNA transforms your job description into structured role intelligence across 5 dimensions: 
-              Skill, Experience, Behavioral, Communication, and Cultural DNA. This powers fair, consistent 
+              Job DNA transforms your job description into structured role intelligence across 5 dimensions:
+              Skill, Experience, Behavioral, Communication, and Cultural DNA. This powers fair, consistent
               AI interviews with explainable recommendations.
             </p>
           </div>

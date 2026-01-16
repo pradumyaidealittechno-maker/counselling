@@ -91,6 +91,32 @@ export default function JobDNA() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!job?._id) return;
+    try {
+      setLoading(true);
+      // Save current state as draft
+      await api.jobs.update(job._id, {
+        status: 'draft',
+        // Ensure current DNA is saved if it was modified in local state
+        jobDNA: job.jobDNA
+      });
+      // Optional: Add toast notification here
+      navigate('/dashboard/jobs');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save draft';
+      console.error('Failed to save draft:', err);
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+  const handleEditLater = () => {
+    // Simply navigate away, changes to DNA generation are usually saved when generated
+    // or we could trigger a save here too if we want to be safe
+    navigate('/dashboard/jobs');
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
@@ -207,8 +233,8 @@ export default function JobDNA() {
         </div>
         <div className="card" style={{ padding: '1rem' }}>
           <button className="btn btn-primary btn-sm" onClick={handleApprove} style={{ width: '100%', marginBottom: '0.5rem' }}><Shield size={14} /> Approve and Train AI</button>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginBottom: '0.5rem' }}><Save size={14} /> Save Draft</button>
-          <button className="btn btn-ghost btn-sm" style={{ width: '100%' }}>Edit Later</button>
+          <button className="btn btn-secondary btn-sm" onClick={handleSaveDraft} style={{ width: '100%', marginBottom: '0.5rem' }}><Save size={14} /> Save Draft</button>
+          <button className="btn btn-ghost btn-sm" onClick={handleEditLater} style={{ width: '100%' }}>Edit Later</button>
         </div>
         <div style={{ padding: '0.75rem', background: '#F9FAFB', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
           <p style={{ fontSize: '0.625rem', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Shield size={10} />AI training blocked until Job DNA is approved</p>
@@ -219,12 +245,16 @@ export default function JobDNA() {
 }
 
 function DNASection({ title, traits, color }: { title: string; traits: DNATrait[]; color: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const displayTraits = expanded ? traits : traits.slice(0, 5);
+  const remainingCount = traits.length - 5;
+
   return (
     <div className="card" style={{ padding: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><Dna size={14} color={color} /><span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1F2937' }}>{title}</span><span style={{ fontSize: '0.75rem', color: '#6B7280' }}>({traits.length})</span></div>
       {traits.length === 0 ? <p style={{ fontSize: '0.75rem', color: '#9CA3AF', fontStyle: 'italic' }}>No traits defined</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {traits.slice(0, 5).map((trait, i) => (
+          {displayTraits.map((trait, i) => (
             <div key={trait.id || i} style={{ padding: '0.5rem', background: '#F9FAFB', borderRadius: '0.375rem', border: '1px solid #E5E7EB' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#1F2937' }}>{trait.name}</span>
@@ -233,7 +263,23 @@ function DNASection({ title, traits, color }: { title: string; traits: DNATrait[
               <p style={{ fontSize: '0.6875rem', color: '#6B7280' }}>{trait.description}</p>
             </div>
           ))}
-          {traits.length > 5 && <p style={{ fontSize: '0.75rem', color: '#6366F1', cursor: 'pointer' }}>+{traits.length - 5} more traits</p>}
+          {traits.length > 5 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              style={{
+                fontSize: '0.75rem',
+                color: '#6366F1',
+                cursor: 'pointer',
+                background: 'none',
+                border: 'none',
+                padding: '0',
+                textAlign: 'left',
+                width: 'fit-content'
+              }}
+            >
+              {expanded ? 'Show less' : `+${remainingCount} more traits`}
+            </button>
+          )}
         </div>
       )}
     </div>
