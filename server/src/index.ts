@@ -28,6 +28,7 @@ import authRoutes from './routes/auth.routes.js';
 import candidateRoutes from './routes/candidate.routes.js';
 import interviewRoutes from './routes/interview.routes.js';
 import jobRoutes from './routes/job.routes.js';
+import reportRoutes from './routes/reports.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 
 const app = express();
@@ -78,6 +79,8 @@ app.use('/api/auth', authRoutes);
 console.log('   ✅ /api/auth - Authentication routes');
 app.use('/api/candidates', candidateRoutes);
 console.log('   ✅ /api/candidates - Candidate routes');
+app.use('/api/reports', reportRoutes);
+console.log('   ✅ /api/reports - Report routes');
 app.use('/api/interviews', interviewRoutes);
 console.log('   ✅ /api/interviews - Interview routes');
 app.use('/api/jobs', jobRoutes);

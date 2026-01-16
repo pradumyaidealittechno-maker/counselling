@@ -16,6 +16,7 @@ import VideoInterview from './pages/VideoInterview';
 import CandidateInterview from './pages/CandidateInterview';
 import InterviewComplete from './pages/InterviewComplete';
 import AnalysisReport from './pages/AnalysisReport';
+import Reports from './pages/Reports';
 import FinalDecision from './pages/FinalDecision';
 import InterviewManagement from './pages/InterviewManagement';
 import Profile from './pages/Profile';
@@ -50,6 +51,9 @@ function App() {
           <Route path="jobs/interview-builder" element={<InterviewBuilder />} />
           <Route path="candidates" element={<Candidates />} />
           <Route path="candidates/invite" element={<SendInvitation />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="reports/:id" element={<AnalysisReport />} />
+          <Route path="reports/:id/decision" element={<FinalDecision />} />
           <Route path="candidates/:id/report" element={<AnalysisReport />} />
           <Route path="candidates/:id/decision" element={<FinalDecision />} />
           <Route path="interviews" element={<InterviewManagement />} />
