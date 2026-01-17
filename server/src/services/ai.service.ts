@@ -354,6 +354,8 @@ Guidelines:
     requiredSkills?: string[];
     experienceLevel?: string;
     jobDNA?: any;
+    count?: number;
+    customPrompt?: string;
   }): Promise<any[]> {
     const apiKey = this.getApiKey();
 
@@ -387,7 +389,11 @@ ${jobData.jobDNA ? `Job DNA Traits:
 - Communication DNA: ${jobData.jobDNA.communicationDNA?.map((t: any) => t.name).join(', ')}
 ` : ''}
 
-Generate 8-12 interview questions that:
+${jobData.customPrompt ? `Configuration Prompt:
+${jobData.customPrompt}
+` : ''}
+
+Generate ${jobData.count || '8'}-${(jobData.count || 8) + 2} interview questions that:
 1. Map to the Job DNA traits (if provided)
 2. Cover technical, behavioral, situational, and communication aspects
 3. Include evaluation criteria for each question

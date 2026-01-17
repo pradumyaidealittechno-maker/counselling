@@ -192,6 +192,8 @@ router.post('/:id/generate-questions', authenticate, async (req, res) => {
       requiredSkills: job.requiredSkills,
       experienceLevel: job.experienceLevel,
       jobDNA: job.jobDNA,
+      count: req.body.count,
+      customPrompt: req.body.customPrompt
     });
 
     console.log('✅ Generated questions count:', questions?.length || 0);
@@ -241,7 +243,7 @@ router.post('/:id/sync-questions', authenticate, async (req, res) => {
       return `${index + 1}. ${q.text}\n   [${q.category}] - Duration: ${Math.floor(q.estimatedDuration / 60)}m ${q.estimatedDuration % 60}s`;
     }).join('\n\n');
 
-    const success = await n8nService.syncInterviewQuestions({
+    await n8nService.syncInterviewQuestions({
       jobTitle: job.title,
       jobDescription: job.description,  // Added context
       jobDNA: job.jobDNA,               // Added context
@@ -249,14 +251,12 @@ router.post('/:id/sync-questions', authenticate, async (req, res) => {
       questionsText: questionsText      // Added formatted text
     });
 
-    if (success) {
-      res.json({ message: 'Questions synced successfully to n8n' });
-    } else {
-      res.status(500).json({ error: 'Failed to sync questions to n8n' });
-    }
+    res.json({ message: 'Questions synced successfully to n8n' });
   } catch (error: any) {
     console.error('Sync questions error:', error);
-    res.status(500).json({ error: 'Failed to sync questions' });
+    // Extract meaningful error message from axios error if available
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to sync questions';
+    res.status(500).json({ error: errorMessage, details: error.response?.data });
   }
 });
 

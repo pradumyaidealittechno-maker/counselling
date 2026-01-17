@@ -97,7 +97,7 @@ class N8nService {
     jobDNA?: any;
     questions: any[];
     questionsText?: string;
-  }): Promise<boolean> {
+  }): Promise<{ success: true }> {
     try {
       console.log('🔄 Attempting to sync questions to n8n');
       console.log('Webhook configured:', !!this.questionsWebhook);
@@ -116,7 +116,7 @@ class N8nService {
       });
 
       console.log('✅ Interview questions synced to n8n. Status:', response.status);
-      return true;
+      return { success: true };
     } catch (error: any) {
       console.error('❌ Failed to sync questions to n8n detailed error:', {
         message: error.message,
@@ -124,7 +124,7 @@ class N8nService {
         response: error.response?.data,
         status: error.response?.status
       });
-      return false;
+      throw error;
     }
   }
 

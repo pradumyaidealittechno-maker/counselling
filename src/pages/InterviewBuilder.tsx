@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Dna, Edit3, Trash2, Plus, Video, Mic, CheckCircle, GripVertical,
-  Info, ChevronDown, ChevronUp, Target, Loader, Share2
+  Info, ChevronDown, ChevronUp, Target, Loader
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -41,8 +41,11 @@ export default function InterviewBuilder() {
   const [generating, setGenerating] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [questionCount, setQuestionCount] = useState<number>(8);
+  const [customPrompt, setCustomPrompt] = useState<string>('');
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +72,10 @@ export default function InterviewBuilder() {
 
     try {
       setGenerating(true);
-      const result = await api.jobs.generateQuestions(job._id);
+      const result = await api.jobs.generateQuestions(job._id, {
+        count: questionCount,
+        customPrompt: customPrompt
+      });
       setJob(prev => prev ? { ...prev, interviewQuestions: result.questions } : null);
     } catch (err: any) {
       console.error('Failed to generate questions:', err);
@@ -95,30 +101,89 @@ export default function InterviewBuilder() {
   };
 
   const handleEditQuestion = (question: InterviewQuestion) => {
-    // TODO: Implement edit modal
-    console.log('Edit question:', question);
+    setEditingQuestionId(question.id);
   };
 
-  const handleSyncToN8n = async () => {
-    console.log('Sync to n8n clicked', job);
-    if (!job?._id) {
-      alert('Error: No job loaded');
-      return;
+  const handleSaveQuestion = async (updatedQuestion: InterviewQuestion) => {
+    if (!job?._id) return;
+    try {
+      if (updatedQuestion.id.startsWith('temp-')) {
+        // Create new
+        const { id, ...newQuestionData } = updatedQuestion;
+        const savedQuestion = await api.jobs.addQuestion(job._id, newQuestionData);
+        setJob(prev => prev ? {
+          ...prev,
+          interviewQuestions: prev.interviewQuestions?.map(q => q.id === updatedQuestion.id ? savedQuestion : q)
+        } : null);
+      } else {
+        // Update existing
+        await api.jobs.updateQuestion(job._id, updatedQuestion.id, updatedQuestion);
+        setJob(prev => prev ? {
+          ...prev,
+          interviewQuestions: prev.interviewQuestions?.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
+        } : null);
+      }
+      setEditingQuestionId(null);
+    } catch (err: any) {
+      console.error('Failed to save question:', err);
+      setError(err.message || 'Failed to save question');
     }
+  };
+
+  const handleAddQuestion = (category: string) => {
+    const tempId = `temp-${Date.now()}`;
+    const newQuestion: InterviewQuestion = {
+      id: tempId,
+      text: '',
+      category: category as any,
+      estimatedDuration: 5,
+      dnaMapping: [],
+      evaluationCriteria: { excellent: '', good: '', average: '', poor: '' }
+    };
+    setJob(prev => prev ? {
+      ...prev,
+      interviewQuestions: [...(prev.interviewQuestions || []), newQuestion]
+    } : null);
+    setEditingQuestionId(tempId);
+    setExpandedQuestion(tempId);
+  };
+
+  const handleCancelEdit = (questionId: string) => {
+    setEditingQuestionId(null);
+    if (questionId.startsWith('temp-')) {
+      setJob(prev => prev ? {
+        ...prev,
+        interviewQuestions: prev.interviewQuestions?.filter(q => q.id !== questionId)
+      } : null);
+    }
+  };
+
+  const handleFinalizeInterview = async () => {
+    if (!job?._id) return;
 
     try {
       setSyncing(true);
+      // Sync questions to n8n
       await api.jobs.syncQuestions(job._id);
-      alert('✅ Success! Questions have been synced to n8n.');
+      
+      // Navigate to candidates page
+      navigate(`/dashboard/candidates?jobId=${jobId}`);
     } catch (err: any) {
       console.error('Failed to sync to n8n:', err);
+      // Even if sync fails, we might want to let them proceed, but warning is better
       const errorMessage = err.message || 'Failed to sync to n8n';
       setError(errorMessage);
-      alert(`❌ Error: ${errorMessage}\n\nPlease check if the server is running and the webhook is configured.`);
+      
+      // Optional: Confirm with user if they want to proceed despite error
+      if (window.confirm(`Failed to sync questions to n8n: ${errorMessage}. Proceed anyway?`)) {
+        navigate(`/dashboard/candidates?jobId=${jobId}`);
+      }
     } finally {
       setSyncing(false);
     }
   };
+
+
 
   const questions = job?.interviewQuestions || [];
 
@@ -209,6 +274,37 @@ export default function InterviewBuilder() {
               : 'Generate Job DNA first to create tailored interview questions.'}
           </p>
 
+          {job.jobDNA && (
+            <div style={{ maxWidth: '400px', margin: '0 auto 1.5rem', textAlign: 'left' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                  Number of Questions
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(parseInt(e.target.value) || 8)}
+                  className="input"
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                  Custom Instructions (Optional)
+                </label>
+                <textarea
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="e.g., Focus heavily on React proficiency..."
+                  className="input"
+                  style={{ width: '100%', minHeight: '80px' }}
+                />
+              </div>
+            </div>
+          )}
+
           {error && (
             <div style={{
               background: 'rgba(239, 68, 68, 0.1)',
@@ -256,13 +352,13 @@ export default function InterviewBuilder() {
   }
 
   return (
-    <div style={{ maxWidth: '1000px' }}>
+    <div style={{ width: '100%', padding: '0 1rem' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <Dna size={20} color="#E91E63" />
           <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem' }}>Job DNA™ Powered</span>
         </div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
           Interview Question Builder
         </h1>
         <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
@@ -410,7 +506,10 @@ export default function InterviewBuilder() {
                   ({categoryQuestions.length})
                 </span>
               </h3>
-              <button className="btn btn-ghost btn-sm">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => handleAddQuestion(category)}
+              >
                 <Plus size={14} /> Add Question
               </button>
             </div>
@@ -425,6 +524,9 @@ export default function InterviewBuilder() {
                   onToggle={() => setExpandedQuestion(expandedQuestion === (q.id || `${category}-${i}`) ? null : (q.id || `${category}-${i}`))}
                   onEdit={() => handleEditQuestion(q)}
                   onDelete={() => handleDeleteQuestion(q.id)}
+                  isEditing={editingQuestionId === q.id}
+                  onSave={handleSaveQuestion}
+                  onCancel={() => handleCancelEdit(q.id)}
                 />
               ))}
             </div>
@@ -434,19 +536,23 @@ export default function InterviewBuilder() {
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+
         <button
           className="btn btn-primary"
-          onClick={() => navigate(`/dashboard/candidates?jobId=${jobId}`)}
-        >
-          <CheckCircle size={18} /> Finalize Interview
-        </button>
-        <button
-          className="btn btn-secondary"
-          onClick={handleSyncToN8n}
+          onClick={handleFinalizeInterview}
           disabled={syncing}
+          style={{ paddingLeft: '2rem', paddingRight: '2rem' }}
         >
-          {syncing ? <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Share2 size={18} />}
-          Sync to n8n
+          {syncing ? (
+            <>
+              <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
+              Finalizing...
+            </>
+          ) : (
+            <>
+              <CheckCircle size={18} /> Finalize Interview
+            </>
+          )}
         </button>
         <button className="btn btn-ghost">Save as Draft</button>
       </div>
@@ -460,7 +566,10 @@ function QuestionCard({
   isExpanded,
   onToggle,
   onEdit,
-  onDelete
+  onDelete,
+  isEditing,
+  onSave,
+  onCancel
 }: {
   question: InterviewQuestion;
   index: number;
@@ -468,8 +577,26 @@ function QuestionCard({
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  isEditing: boolean;
+  onSave: (q: InterviewQuestion) => void;
+  onCancel: () => void;
 }) {
   const primaryMapping = question.dnaMapping?.[0];
+  const [editedText, setEditedText] = useState(question.text);
+
+  useEffect(() => {
+    setEditedText(question.text);
+  }, [question.text]);
+
+  const handleSave = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSave({ ...question, text: editedText });
+  };
+
+  const handleCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCancel();
+  };
 
   return (
     <div style={{
@@ -485,7 +612,7 @@ function QuestionCard({
         gap: '0.75rem',
         padding: '1rem',
         cursor: 'pointer'
-      }} onClick={onToggle}>
+      }} onClick={!isEditing ? onToggle : undefined}>
         <GripVertical size={16} color="#9CA3AF" style={{ cursor: 'grab', marginTop: '2px' }} />
         <span style={{
           width: '24px',
@@ -502,71 +629,108 @@ function QuestionCard({
         }}>{index + 1}</span>
 
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#1F2937' }}>{question.text}</p>
-
-          {/* DNA Mapping Preview */}
-          {question.dnaMapping && question.dnaMapping.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-              <Dna size={12} color="#E91E63" />
-              <span style={{ fontSize: '0.6875rem', color: '#6B7280' }}>Evaluates:</span>
-              {question.dnaMapping.slice(0, 2).map((mapping, i) => (
-                <span key={i} style={{
-                  fontSize: '0.625rem',
-                  fontWeight: 500,
-                  color: '#374151',
-                  padding: '0.125rem 0.375rem',
-                  background: 'white',
-                  borderRadius: '0.25rem',
-                  border: '1px solid #E5E7EB'
-                }}>
-                  {mapping.trait}
-                </span>
-              ))}
-              {question.dnaMapping.length > 2 && (
-                <span style={{ fontSize: '0.625rem', color: '#9CA3AF' }}>
-                  +{question.dnaMapping.length - 2} more
-                </span>
-              )}
-              {primaryMapping && (
-                <span style={{
-                  fontSize: '0.5625rem',
-                  padding: '0.125rem 0.375rem',
-                  borderRadius: '9999px',
-                  background: primaryMapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
-                    primaryMapping.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                  color: primaryMapping.importance === 'critical' ? '#DC2626' :
-                    primaryMapping.importance === 'high' ? '#D97706' : '#6B7280',
-                  fontWeight: 500,
-                  textTransform: 'capitalize'
-                }}>
-                  {primaryMapping.importance}
-                </span>
-              )}
+          {isEditing ? (
+            <div onClick={e => e.stopPropagation()}>
+              <textarea
+                className="input"
+                style={{
+                  width: '100%',
+                  minHeight: '80px',
+                  marginBottom: '0.5rem',
+                  fontSize: '1rem',
+                  padding: '0.75rem'
+                }}
+                value={editedText}
+                onChange={(e) => setEditedText(e.target.value)}
+                placeholder="Enter question text..."
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSave}
+                >
+                  Save
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
+          ) : (
+            <>
+              <p style={{ fontSize: '1rem', lineHeight: 1.6, color: '#1F2937' }}>{question.text}</p>
+
+              {/* DNA Mapping Preview */}
+              {question.dnaMapping && question.dnaMapping.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                  <Dna size={12} color="#E91E63" />
+                  <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>Evaluates:</span>
+                  {question.dnaMapping.slice(0, 2).map((mapping, i) => (
+                    <span key={i} style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      color: '#374151',
+                      padding: '0.125rem 0.375rem',
+                      background: 'white',
+                      borderRadius: '0.25rem',
+                      border: '1px solid #E5E7EB'
+                    }}>
+                      {mapping.trait}
+                    </span>
+                  ))}
+                  {question.dnaMapping.length > 2 && (
+                    <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>
+                      +{question.dnaMapping.length - 2} more
+                    </span>
+                  )}
+                  {primaryMapping && (
+                    <span style={{
+                      fontSize: '0.65rem',
+                      padding: '0.125rem 0.375rem',
+                      borderRadius: '9999px',
+                      background: primaryMapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
+                        primaryMapping.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                      color: primaryMapping.importance === 'critical' ? '#DC2626' :
+                        primaryMapping.importance === 'high' ? '#D97706' : '#6B7280',
+                      fontWeight: 500,
+                      textTransform: 'capitalize'
+                    }}>
+                      {primaryMapping.importance}
+                    </span>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button
-            onClick={onEdit}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
-            title="Edit question"
-          >
-            <Edit3 size={14} color="#6B7280" />
-          </button>
-          <button
-            onClick={onDelete}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
-            title="Delete question"
-          >
-            <Trash2 size={14} color="#EF4444" />
-          </button>
-          {isExpanded ? <ChevronUp size={16} color="#6B7280" /> : <ChevronDown size={16} color="#6B7280" />}
-        </div>
+        {!isEditing && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+              title="Edit question"
+            >
+              <Edit3 size={14} color="#6B7280" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+              title="Delete question"
+            >
+              <Trash2 size={14} color="#EF4444" />
+            </button>
+            {isExpanded ? <ChevronUp size={16} color="#6B7280" /> : <ChevronDown size={16} color="#6B7280" />}
+          </div>
+        )}
       </div>
 
       {/* Expanded Details */}
-      {isExpanded && (
+      {isExpanded && !isEditing && (
         <div style={{
           padding: '1rem',
           borderTop: '1px solid #E5E7EB',
@@ -575,7 +739,7 @@ function QuestionCard({
           {/* DNA Mappings */}
           {question.dnaMapping && question.dnaMapping.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
-              <h4 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
                 DNA Trait Mappings
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -588,13 +752,13 @@ function QuestionCard({
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.625rem', padding: '0.125rem 0.375rem', background: 'rgba(233, 30, 99, 0.1)', color: '#E91E63', borderRadius: '0.25rem' }}>
+                        <span style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', background: 'rgba(233, 30, 99, 0.1)', color: '#E91E63', borderRadius: '0.25rem' }}>
                           {mapping.dimension}
                         </span>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#1F2937' }}>{mapping.trait}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#1F2937' }}>{mapping.trait}</span>
                       </div>
                       <span style={{
-                        fontSize: '0.5625rem',
+                        fontSize: '0.75rem',
                         padding: '0.125rem 0.375rem',
                         borderRadius: '9999px',
                         background: mapping.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' :
@@ -610,13 +774,13 @@ function QuestionCard({
 
                     {mapping.signalsToEvaluate && mapping.signalsToEvaluate.length > 0 && (
                       <div>
-                        <p style={{ fontSize: '0.625rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem' }}>
                           Signals to Evaluate:
                         </p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                           {mapping.signalsToEvaluate.map((signal, j) => (
                             <span key={j} style={{
-                              fontSize: '0.625rem',
+                              fontSize: '0.75rem',
                               padding: '0.125rem 0.5rem',
                               background: 'rgba(233, 30, 99, 0.1)',
                               color: '#BE185D',
@@ -637,7 +801,7 @@ function QuestionCard({
           {/* Evaluation Criteria */}
           {question.evaluationCriteria && (
             <div style={{ marginBottom: '1rem' }}>
-              <h4 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
                 Evaluation Criteria
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -656,10 +820,10 @@ function QuestionCard({
                       border: `1px solid ${color.border}`,
                       borderRadius: '0.375rem'
                     }}>
-                      <p style={{ fontSize: '0.625rem', fontWeight: 600, color: color.text, textTransform: 'capitalize', marginBottom: '0.25rem' }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: color.text, textTransform: 'capitalize', marginBottom: '0.25rem' }}>
                         {level}
                       </p>
-                      <p style={{ fontSize: '0.625rem', color: color.text }}>{criteria}</p>
+                      <p style={{ fontSize: '0.75rem', color: color.text }}>{criteria}</p>
                     </div>
                   );
                 })}
@@ -670,30 +834,14 @@ function QuestionCard({
           {/* Follow-up Questions */}
           {question.followUpQuestions && question.followUpQuestions.length > 0 && (
             <div>
-              <h4 style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
                 Follow-up Questions
               </h4>
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
                 {question.followUpQuestions.map((fq, i) => (
-                  <li key={i} style={{ fontSize: '0.75rem', color: '#4B5563', marginBottom: '0.25rem' }}>{fq}</li>
+                  <li key={i} style={{ fontSize: '0.875rem', color: '#4B5563', marginBottom: '0.25rem' }}>{fq}</li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {/* Estimated Duration */}
-          {question.estimatedDuration && (
-            <div style={{
-              marginTop: '0.75rem',
-              paddingTop: '0.75rem',
-              borderTop: '1px solid #E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <span style={{ fontSize: '0.625rem', color: '#6B7280' }}>
-                Estimated duration: {Math.floor(question.estimatedDuration / 60)}:{(question.estimatedDuration % 60).toString().padStart(2, '0')} min
-              </span>
             </div>
           )}
         </div>

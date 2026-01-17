@@ -225,9 +225,10 @@ export const api = {
       });
     },
 
-    generateQuestions: async (id: string) => {
+    generateQuestions: async (id: string, options?: { count?: number, customPrompt?: string }) => {
       return authFetch(`/api/jobs/${id}/generate-questions`, {
         method: 'POST',
+        body: JSON.stringify(options || {}),
       });
     },
 
