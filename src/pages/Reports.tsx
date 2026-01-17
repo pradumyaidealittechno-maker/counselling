@@ -91,6 +91,7 @@ export default function Reports() {
     if (statusFilter === 'Reject' && recommendation === 'NO') matchesStatus = true;
     if (statusFilter === 'NO' && recommendation === 'Reject') matchesStatus = true;
     if (statusFilter === 'Hold' && recommendation === 'Further Review') matchesStatus = true;
+    if (statusFilter === 'Hire' && (recommendation === 'recommended' || recommendation === 'Recommended')) matchesStatus = true;
 
     return matchesSearch && matchesDate && matchesStatus;
   }).sort((a, b) => {
@@ -205,7 +206,7 @@ export default function Reports() {
             }}
           >
             <option value="">All Status</option>
-            <option value="Hire">Hire</option>
+            <option value="Hire">Recommended</option>
             <option value="Hold">Further Review</option>
             <option value="MAYBE">Maybe</option>
             <option value="Reject">No</option>
@@ -284,10 +285,11 @@ export default function Reports() {
                 }
 
                 const recommendation = report.recommendation?.hiringRecommendation || 'Pending';
+                const isRecommended = recommendation === 'Hire' || recommendation.toLowerCase() === 'recommended';
 
                 const getBaseColor = (status: string) => {
+                  if (status === 'Hire' || status.toLowerCase() === 'recommended') return 'rgba(16, 185, 129, 0.04)'; // success
                   switch (status) {
-                    case 'Hire': return 'rgba(16, 185, 129, 0.04)'; // success
                     case 'Hold': return 'rgba(59, 130, 246, 0.04)'; // accent
                     case 'MAYBE': return 'rgba(245, 158, 11, 0.04)'; // warning
                     case 'Reject':
@@ -297,8 +299,8 @@ export default function Reports() {
                 };
 
                 const getHoverColor = (status: string) => {
+                  if (status === 'Hire' || status.toLowerCase() === 'recommended') return 'rgba(16, 185, 129, 0.08)';
                   switch (status) {
-                    case 'Hire': return 'rgba(16, 185, 129, 0.08)';
                     case 'Hold': return 'rgba(59, 130, 246, 0.08)';
                     case 'MAYBE': return 'rgba(245, 158, 11, 0.08)';
                     case 'Reject':
@@ -358,7 +360,9 @@ export default function Reports() {
                         <span style={{
                           fontWeight: 700,
                           fontSize: '1rem',
-                          color: percentage >= 80 ? '#059669' : percentage >= 60 ? '#D97706' : '#DC2626'
+                          color: isRecommended ? '#059669' :
+                            recommendation === 'Hold' ? '#2563EB' :
+                              recommendation === 'MAYBE' ? '#D97706' : '#DC2626'
                         }}>
                           {rawScore.split('/')[0]}
                         </span>
@@ -412,10 +416,10 @@ export default function Reports() {
                         borderRadius: '9999px',
                         fontSize: '0.75rem',
                         fontWeight: 500,
-                        backgroundColor: recommendation === 'Hire' ? '#ECFDF5' : recommendation === 'Hold' ? '#EFF6FF' : recommendation === 'MAYBE' ? '#FFFBEB' : '#FEF2F2',
-                        color: recommendation === 'Hire' ? '#065F46' : recommendation === 'Hold' ? '#1E40AF' : recommendation === 'MAYBE' ? '#B45309' : '#B91C1C'
+                        backgroundColor: isRecommended ? '#ECFDF5' : recommendation === 'Hold' ? '#EFF6FF' : recommendation === 'MAYBE' ? '#FFFBEB' : '#FEF2F2',
+                        color: isRecommended ? '#065F46' : recommendation === 'Hold' ? '#1E40AF' : recommendation === 'MAYBE' ? '#B45309' : '#B91C1C'
                       }}>
-                        {recommendation === 'Hold' ? 'Further Review' : recommendation === 'Reject' ? 'No' : recommendation}
+                        {recommendation === 'Hold' ? 'Further Review' : recommendation === 'Reject' ? 'No' : isRecommended ? 'Recommended' : recommendation}
                       </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
