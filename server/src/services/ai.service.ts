@@ -119,6 +119,7 @@ Provide a detailed analysis in the following JSON format:
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
+          timeout: 60000, // 60s timeout
         }
       );
 
@@ -231,6 +232,7 @@ Guidelines:
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
+          timeout: 120000, // 120s timeout
         }
       );
 
@@ -393,7 +395,7 @@ ${jobData.customPrompt ? `Configuration Prompt:
 ${jobData.customPrompt}
 ` : ''}
 
-Generate ${jobData.count || '8'}-${(jobData.count || 8) + 2} interview questions that:
+Generate EXACTLY ${jobData.count || '8'} interview questions that:
 1. Map to the Job DNA traits (if provided)
 2. Cover technical, behavioral, situational, and communication aspects
 3. Include evaluation criteria for each question
@@ -448,6 +450,7 @@ Return a JSON object with a "questions" array:
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
+          timeout: 90000, // 90s timeout for question generation
         }
       );
 

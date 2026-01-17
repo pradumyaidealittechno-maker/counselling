@@ -85,11 +85,19 @@ export default function JobDNA() {
     }
   };
 
-  const handleApprove = () => {
-    if (job?._id) {
+  const handleApprove = async () => {
+    if (!job?._id) return;
+    try {
+      setLoading(true);
+      await api.jobs.update(job._id, {
+        status: 'active'
+      });
       navigate(`/dashboard/jobs/${job._id}/ai-training`);
-    } else {
-      navigate('/dashboard/jobs/interview-builder');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to approve job';
+      console.error('Failed to approve job:', err);
+      setError(errorMessage);
+      setLoading(false);
     }
   };
 
@@ -143,7 +151,7 @@ export default function JobDNA() {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
-        <Loader size={40} color="#E91E63" />
+        <Loader size={40} color="#E91E63" className="animate-spin" />
         <p style={{ marginTop: '1.2rem', color: 'var(--gray-500)' }}>Loading Job DNA...</p>
       </div>
     );
@@ -188,7 +196,7 @@ export default function JobDNA() {
           <p style={{ color: 'var(--gray-500)', fontSize: '0.95rem', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>Analyze the job description to extract skills, experience requirements, behavioral traits, and communication patterns.</p>
           {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem', color: '#DC2626', fontSize: '0.875rem' }}>{error}</div>}
           <button className="btn btn-primary" onClick={handleGenerateDNA} disabled={generating}>
-            {generating ? <><Loader size={18} /> Generating DNA...</> : <><Dna size={18} /> Generate Job DNA</>}
+            {generating ? <><Loader size={18} className="animate-spin" /> Generating DNA...</> : <><Dna size={18} /> Generate Job DNA</>}
           </button>
         </div>
         <div className="card" style={{ padding: '1rem', marginTop: '1rem', background: 'var(--white)' }}>
