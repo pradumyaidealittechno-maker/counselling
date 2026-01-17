@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FileText, Search, Filter, Loader, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Search, Loader, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 
 interface Report {
@@ -23,6 +23,7 @@ interface Report {
 }
 
 export default function Reports() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export default function Reports() {
     const fullName = r.candidateInformation?.fullName?.toLowerCase() || '';
     const pos = r.candidateInformation?.positionAppliedFor?.toLowerCase() || '';
     const matchesSearch = fullName.includes(term) || pos.includes(term);
-    
+
     // Date filter
     let matchesDate = true;
     if (dateFilter) {
@@ -81,12 +82,41 @@ export default function Reports() {
         matchesDate = false;
       }
     }
-    
+
     // Status filter
     const recommendation = r.recommendation?.hiringRecommendation || '';
-    const matchesStatus = !statusFilter || recommendation === statusFilter;
-    
+    let matchesStatus = !statusFilter || recommendation === statusFilter;
+
+    // Handle status aliasing (backend vs frontend display)
+    if (statusFilter === 'Reject' && recommendation === 'NO') matchesStatus = true;
+    if (statusFilter === 'NO' && recommendation === 'Reject') matchesStatus = true;
+    if (statusFilter === 'Hold' && recommendation === 'Further Review') matchesStatus = true;
+
     return matchesSearch && matchesDate && matchesStatus;
+  }).sort((a, b) => {
+    // Sort purely by Interview Date (Latest First)
+    const getDate = (report: Report) => {
+      // Try multiple sources for the date
+      // @ts-ignore - createdAt might exist on the object even if not in interface
+      const dateStr = report.candidateInformation?.interviewDate || report.metadata?.reportGenerated || report.createdAt;
+      if (!dateStr) return 0;
+
+      try {
+        // Handle DD/MM/YYYY format specifically if present
+        if (dateStr.includes('/') && dateStr.split('/').length === 3) {
+          const parts = dateStr.split('/');
+          if (parts[0].length <= 2 && parseInt(parts[0]) <= 31) {
+            const [day, month, year] = parts;
+            return new Date(`${year}-${month}-${day}`).getTime();
+          }
+        }
+        return new Date(dateStr).getTime();
+      } catch {
+        return 0;
+      }
+    };
+
+    return getDate(b) - getDate(a);
   });
 
   if (loading) {
@@ -110,8 +140,8 @@ export default function Reports() {
       </div>
 
       {/* Filters and Search */}
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         gap: '1rem',
         marginBottom: '1.5rem',
         background: 'var(--white)',
@@ -140,7 +170,7 @@ export default function Reports() {
             }}
           />
         </div>
-        
+
         <div style={{ flex: '0 0 auto' }}>
           <input
             type="date"
@@ -158,7 +188,7 @@ export default function Reports() {
             }}
           />
         </div>
-        
+
         <div style={{ flex: '0 0 auto' }}>
           <select
             value={statusFilter}
@@ -176,12 +206,12 @@ export default function Reports() {
           >
             <option value="">All Status</option>
             <option value="Hire">Hire</option>
-            <option value="Hold">Hold</option>
+            <option value="Hold">Further Review</option>
             <option value="MAYBE">Maybe</option>
-            <option value="Reject">Reject</option>
+            <option value="Reject">No</option>
           </select>
         </div>
-        
+
         {(searchTerm || dateFilter || statusFilter) && (
           <button
             onClick={() => {
@@ -208,7 +238,7 @@ export default function Reports() {
         <div style={{ padding: '3rem', textAlign: 'center', background: '#FEF2F2', borderRadius: '0.75rem', border: '1px solid #FECACA' }}>
           <AlertCircle size={48} color="#EF4444" style={{ marginBottom: '1rem' }} />
           <p style={{ color: '#B91C1C', fontWeight: 500 }}>{error}</p>
-          <button 
+          <button
             onClick={loadReports}
             className="btn btn-primary"
             style={{ marginTop: '1rem' }}
@@ -243,20 +273,56 @@ export default function Reports() {
               {filteredReports.map((report) => {
                 // Get raw score "18/50" directly
                 const rawScore = report.competencyAssessment?.overallScore || 'N/A';
-                
+
                 // Parse for color coding only
                 let percentage = 0;
                 if (rawScore !== 'N/A') {
-                   const [earned, total] = rawScore.split('/').map(Number);
-                   if (!isNaN(earned) && !isNaN(total) && total > 0) {
-                     percentage = Math.round((earned / total) * 100);
-                   }
+                  const [earned, total] = rawScore.split('/').map(Number);
+                  if (!isNaN(earned) && !isNaN(total) && total > 0) {
+                    percentage = Math.round((earned / total) * 100);
+                  }
                 }
-                
+
                 const recommendation = report.recommendation?.hiringRecommendation || 'Pending';
-                
+
+                const getBaseColor = (status: string) => {
+                  switch (status) {
+                    case 'Hire': return 'rgba(16, 185, 129, 0.04)'; // success
+                    case 'Hold': return 'rgba(59, 130, 246, 0.04)'; // accent
+                    case 'MAYBE': return 'rgba(245, 158, 11, 0.04)'; // warning
+                    case 'Reject':
+                    case 'NO': return 'rgba(239, 68, 68, 0.04)'; // danger
+                    default: return 'transparent';
+                  }
+                };
+
+                const getHoverColor = (status: string) => {
+                  switch (status) {
+                    case 'Hire': return 'rgba(16, 185, 129, 0.08)';
+                    case 'Hold': return 'rgba(59, 130, 246, 0.08)';
+                    case 'MAYBE': return 'rgba(245, 158, 11, 0.08)';
+                    case 'Reject':
+                    case 'NO': return 'rgba(239, 68, 68, 0.08)';
+                    default: return 'var(--gray-50)';
+                  }
+                };
+
+                const baseColor = getBaseColor(recommendation);
+                const hoverColor = getHoverColor(recommendation);
+
                 return (
-                  <tr key={report._id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
+                  <tr
+                    key={report._id}
+                    onClick={() => navigate(`/dashboard/reports/${report._id}`)}
+                    style={{
+                      borderBottom: '1px solid var(--gray-100)',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s',
+                      backgroundColor: baseColor
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverColor}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = baseColor}
+                  >
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div style={{
@@ -288,23 +354,28 @@ export default function Reports() {
                       {report.candidateInformation?.positionAppliedFor || '—'}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      <span style={{ 
-                        fontWeight: 600, 
-                        fontSize: '0.95rem',
-                        color: percentage >= 80 ? '#059669' : percentage >= 60 ? '#D97706' : '#DC2626'
-                      }}>
-                        {rawScore}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: '1rem',
+                          color: percentage >= 80 ? '#059669' : percentage >= 60 ? '#D97706' : '#DC2626'
+                        }}>
+                          {rawScore.split('/')[0]}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: '#9CA3AF', marginLeft: '2px' }}>
+                          /{rawScore.split('/')[1] || '50'}
+                        </span>
+                      </div>
                     </td>
                     <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                       {(() => {
                         // Try multiple date sources
                         const dateStr = report.candidateInformation?.interviewDate || report.metadata?.reportGenerated;
                         if (!dateStr) return 'N/A';
-                        
+
                         try {
                           let date: Date;
-                          
+
                           // Check if date is in DD/MM/YYYY format (e.g., "16/01/2026")
                           if (dateStr.includes('/') && dateStr.split('/').length === 3) {
                             const parts = dateStr.split('/');
@@ -319,14 +390,14 @@ export default function Reports() {
                           } else {
                             date = new Date(dateStr);
                           }
-                          
+
                           // Check if date is valid
                           if (isNaN(date.getTime())) return 'N/A';
-                          
-                          return date.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric', 
-                            year: 'numeric' 
+
+                          return date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
                           });
                         } catch (err) {
                           return 'N/A';
@@ -341,27 +412,44 @@ export default function Reports() {
                         borderRadius: '9999px',
                         fontSize: '0.75rem',
                         fontWeight: 500,
-                        backgroundColor: recommendation === 'Hire' ? '#ECFDF5' : recommendation === 'Hold' ? '#FFFBEB' : recommendation === 'MAYBE' ? '#FFFBEB' : '#FEF2F2',
-                        color: recommendation === 'Hire' ? '#065F46' : recommendation === 'Hold' ? '#92400E' : recommendation === 'MAYBE' ? '#B45309' : '#991B1B'
+                        backgroundColor: recommendation === 'Hire' ? '#ECFDF5' : recommendation === 'Hold' ? '#EFF6FF' : recommendation === 'MAYBE' ? '#FFFBEB' : '#FEF2F2',
+                        color: recommendation === 'Hire' ? '#065F46' : recommendation === 'Hold' ? '#1E40AF' : recommendation === 'MAYBE' ? '#B45309' : '#B91C1C'
                       }}>
-                        {recommendation}
+                        {recommendation === 'Hold' ? 'Further Review' : recommendation === 'Reject' ? 'No' : recommendation}
                       </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <Link 
-                        to={`/dashboard/reports/${report._id}`}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/dashboard/reports/${report._id}`);
+                        }}
                         className="btn btn-sm"
                         style={{
-                          backgroundColor: '#E91E63',
-                          color: 'white',
+                          backgroundColor: 'rgba(233, 30, 99, 0.08)',
+                          color: '#E91E63',
                           border: 'none',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '0.25rem'
+                          gap: '0.375rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          fontWeight: 600,
+                          padding: '0.375rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.75rem'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.15)';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.08)';
+                          e.currentTarget.style.transform = 'translateY(0)';
                         }}
                       >
                         <FileText size={14} /> View Report
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 );
