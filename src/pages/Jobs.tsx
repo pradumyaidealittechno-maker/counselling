@@ -85,9 +85,9 @@ export default function Jobs() {
                         type="text"
                         className="input"
                         placeholder="Search jobs..."
-                        style={{ 
-                            paddingLeft: '36px', 
-                            padding: '0.5rem 0.75rem 0.5rem 36px', 
+                        style={{
+                            paddingLeft: '36px',
+                            padding: '0.5rem 0.75rem 0.5rem 36px',
                             fontSize: '0.875rem',
                             backgroundColor: 'var(--white)',
                             color: 'var(--gray-900)',
@@ -107,12 +107,12 @@ export default function Jobs() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Job Title</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Company</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Location</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Status</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Date Created</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Actions</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Job Title</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Company</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Location</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Status</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Date Created</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -133,14 +133,14 @@ export default function Jobs() {
                                         <div style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-900)' }}>{job.title}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{job.department}</div>
                                     </td>
-                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{job.company}</td>
-                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{job.location}</td>
+                                    <td style={{ padding: '0.75rem', fontSize: '0.95rem', color: 'var(--gray-500)' }}>{job.company}</td>
+                                    <td style={{ padding: '0.75rem', fontSize: '0.95rem', color: 'var(--gray-500)' }}>{job.location}</td>
                                     <td style={{ padding: '0.75rem' }}>
-                                        <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.6875rem' }}>
+                                        <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.8rem' }}>
                                             {job.status}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>
+                                    <td style={{ padding: '0.75rem', fontSize: '0.95rem', color: 'var(--gray-500)' }}>
                                         {new Date(job.createdAt).toLocaleDateString()}
                                     </td>
                                     <td style={{ padding: '0.75rem', textAlign: 'right' }}>

@@ -150,7 +150,7 @@ export default function Candidates() {
 
     const matchesSearch = fullName.includes(term) || email.includes(term);
     const matchesJob = !selectedJobId || (c.jobId as any)?._id === selectedJobId || c.job?._id === selectedJobId;
-    
+
     // Date filter
     let matchesDate = true;
     if (dateFilter) {
@@ -167,7 +167,7 @@ export default function Candidates() {
         matchesDate = false;
       }
     }
-    
+
     // Status filter
     const matchesStatus = !statusFilter || c.status === statusFilter;
 
@@ -224,21 +224,21 @@ export default function Candidates() {
         <div className="card" style={{ padding: '0.875rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <Users size={16} color="#6366F1" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>Total Candidates</span>
+            <span style={{ fontSize: '0.95rem' }}>Total Candidates</span>
           </div>
           <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6366F1' }}>{candidates.length}</p>
         </div>
         <div className="card" style={{ padding: '0.875rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <Dna size={16} color="#E91E63" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>Avg DNA Match</span>
+            <span style={{ fontSize: '0.95rem' }}>Avg DNA Match</span>
           </div>
           <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#E91E63' }}>{avgScore}%</p>
         </div>
         <div className="card" style={{ padding: '0.875rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <TrendingUp size={16} color="#10B981" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>Interviews Done</span>
+            <span style={{ fontSize: '0.95rem' }}>Interviews Done</span>
           </div>
           <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10B981' }}>
             {candidates.filter(c => c.status === 'interview_complete' || c.status === 'ai_analysis_ready').length}
@@ -247,7 +247,7 @@ export default function Candidates() {
         <div className="card" style={{ padding: '0.875rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <Mail size={16} color="#F59E0B" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>Pending</span>
+            <span style={{ fontSize: '0.95rem' }}>Pending</span>
           </div>
           <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#F59E0B' }}>
             {candidates.filter(c => ['new', 'resume_screened', 'invited', 'pending_interview'].includes(c.status)).length}
@@ -256,7 +256,7 @@ export default function Candidates() {
       </div>
 
       {/* Upload Area */}
-      <div 
+      {/* <div
         onClick={handleUploadClick}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -305,7 +305,7 @@ export default function Candidates() {
         <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
           {selectedJobId ? 'or click to browse (PDF, DOC, DOCX)' : 'Use the dropdown above to select a job'}
         </p>
-      </div>
+      </div> */}
 
       {/* Hidden file input for bulk uploads */}
       <input
@@ -429,12 +429,7 @@ export default function Candidates() {
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Candidate</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Job Role</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Experience</th>
-              <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                  <Dna size={14} />
-                  DNA Match
-                </div>
-              </th>
+
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Date Added</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Status</th>
               <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Actions</th>
@@ -443,7 +438,7 @@ export default function Candidates() {
           <tbody>
             {filteredCandidates.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-500)' }}>
+                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-500)' }}>
                   <Users size={40} color="var(--gray-300)" style={{ marginBottom: '0.75rem' }} />
                   <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>No candidates found</p>
                   <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
@@ -454,8 +449,6 @@ export default function Candidates() {
             ) : (
               filteredCandidates.map((candidate) => {
                 const statusConfig = getStatusConfig(candidate.status);
-                const score = candidate.interviewResult?.overallScore;
-                const decision = candidate.interviewResult?.recommendation;
                 const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
                 const createdDate = (candidate as any).createdAt ? new Date((candidate as any).createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 
@@ -483,32 +476,7 @@ export default function Candidates() {
                     </td>
                     <td style={{ padding: '0.75rem', fontSize: '0.95rem', color: 'var(--gray-500)' }}>{(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}</td>
                     <td style={{ padding: '0.75rem', fontSize: '0.95rem', color: 'var(--gray-500)' }}>{candidate.experience || 'N/A'}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      {score ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.125rem' }}>
-                          <span style={{
-                            fontWeight: 700,
-                            fontSize: '1.1rem',
-                            color: score >= 90 ? '#10B981' : score >= 80 ? '#E91E63' : '#F59E0B'
-                          }}>{score}%</span>
-                          {decision && (
-                            <span style={{
-                              fontSize: '0.7rem',
-                              padding: '0.125rem 0.375rem',
-                              borderRadius: '9999px',
-                              background: decision === 'Hire' ? 'rgba(16, 185, 129, 0.1)' : decision === 'Hold' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                              color: decision === 'Hire' ? '#059669' : decision === 'Hold' ? '#D97706' : '#DC2626',
-                              fontWeight: 500
-                            }}>
-                              AI: {decision}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
 
-                        <span style={{ fontSize: '0.75rem', color: 'var(--gray-300)' }}>—</span>
-                      )}
-                    </td>
                     <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: 'var(--gray-500)' }}>{createdDate}</td>
                     <td style={{ padding: '0.75rem' }}>
                       <span style={{
@@ -523,16 +491,16 @@ export default function Candidates() {
                         {statusConfig.label}
                       </span>
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    <td style={{ padding: '0.5rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
                         {(candidate.status === 'interview_complete' || candidate.status === 'ai_analysis_ready') ? (
-                          <Link 
-                            to={`/dashboard/candidates/${candidate._id}/report`} 
-                            className="btn btn-sm" 
-                            style={{ 
-                              padding: '0.25rem 0.75rem', 
-                              fontSize: '0.75rem', 
-                              backgroundColor: '#E91E63', 
+                          <Link
+                            to={`/dashboard/candidates/${candidate._id}/report`}
+                            className="btn btn-sm"
+                            style={{
+                              padding: '0.25rem 0.75rem',
+                              fontSize: '0.75rem',
+                              backgroundColor: '#E91E63',
                               color: 'white',
                               border: 'none',
                               display: 'flex',
@@ -544,7 +512,7 @@ export default function Candidates() {
                           </Link>
                         ) : candidate.status === 'pending_interview' || candidate.status === 'invited' ? (
                           <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            {(!candidate.resumeUrl && !candidate.resume?.url) && (
+                            {/* {(!candidate.resumeUrl && !candidate.resume?.url) && (
                               <button
                                 className="btn btn-sm btn-ghost"
                                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}
@@ -552,7 +520,7 @@ export default function Candidates() {
                               >
                                 <Upload size={14} /> Upload Resume
                               </button>
-                            )}
+                            )} */}
                             <button className="btn btn-sm btn-secondary" style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}>
                               <Mail size={14} /> Resend Invite
                             </button>
@@ -569,8 +537,8 @@ export default function Candidates() {
                                 <Mail size={14} /> Send Invitation
                               </Link>
                             )}
-                             
-                            {(!candidate.resumeUrl && !candidate.resume?.url) && (
+
+                            {/* {(!candidate.resumeUrl && !candidate.resume?.url) && (
                               <button
                                 className="btn btn-sm btn-ghost"
                                 style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}
@@ -578,7 +546,7 @@ export default function Candidates() {
                               >
                                 <Upload size={14} /> Upload Resume
                               </button>
-                            )}
+                            )} */}
                           </div>
                         )}
                         <div style={{ position: 'relative' }}>
@@ -607,13 +575,14 @@ export default function Candidates() {
                             display: 'none',
                             position: 'absolute',
                             right: 0,
-                            top: '100%',
+                            top: 'calc(100% + 4px)',
                             background: 'white',
                             border: '1px solid #E5E7EB',
                             borderRadius: '0.375rem',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                            zIndex: 10,
-                            minWidth: '120px'
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                            zIndex: 50,
+                            minWidth: '120px',
+                            overflow: 'hidden'
                           }}>
                             <button
                               style={{
@@ -625,7 +594,14 @@ export default function Candidates() {
                                 background: 'none',
                                 border: 'none',
                                 cursor: 'pointer',
-                                color: '#EF4444'
+                                color: '#EF4444',
+                                transition: 'background-color 0.15s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#FEE2E2';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
                               }}
                               onClick={() => handleDelete(candidate._id)}
                             >
