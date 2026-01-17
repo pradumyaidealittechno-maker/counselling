@@ -17,6 +17,7 @@ import {
   Sun
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ChatbotDialog from './ChatbotDialog';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -34,6 +35,7 @@ export default function DashboardLayout() {
   const [userInitials, setUserInitials] = useState('HM');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+  const [chatbotOpen, setChatbotOpen] = useState(false);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -191,7 +193,7 @@ export default function DashboardLayout() {
           <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
             Get AI-powered insights for your hiring decisions
           </p>
-          <button className="btn btn-primary btn-sm" style={{ width: '100%' }}>
+          <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={() => setChatbotOpen(true)}>
             Ask AI
           </button>
         </div>
@@ -331,6 +333,12 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Chatbot Dialog */}
+      <ChatbotDialog 
+        isOpen={chatbotOpen} 
+        onClose={() => setChatbotOpen(false)}
+      />
     </div>
   );
 }

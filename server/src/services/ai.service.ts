@@ -731,6 +731,77 @@ Return a JSON object with a "questions" array:
       }
     ];
   }
+
+  /**
+   * AI Chat Assistant for DNA/Hiring/Candidate questions
+   */
+  async chatAssistant(
+    message: string,
+    context?: {
+      candidateName?: string;
+      jobTitle?: string;
+      jobDNA?: any;
+      candidateScore?: number;
+      recommendation?: string;
+      conversationHistory?: Array<{role: string; content: string}>;
+    }
+  ): Promise<string> {
+    const apiKey = this.getApiKey();
+    
+    if (this.shouldUseMock()) {
+      return `This is a mock AI response. To use real AI assistant, please configure your OpenAI API key.
+      
+Question: ${message}
+
+Based on your question about ${context?.candidateName || 'the candidate'} for the ${context?.jobTitle || 'position'}, I would provide detailed insights about DNA matching, hiring recommendations, and candidate evaluation.`;
+    }
+
+    try {
+      const systemPrompt = `You are an AI hiring assistant for Intelligens, an AI-powered recruitment platform. You help HR professionals understand:
+
+1. **DNA Matching**: How candidates match against Job DNA (skills, experience, behavioral, communication, cultural traits)
+2. **Hiring Process**: Interview analysis, AI recommendations, decision-making
+3. **Candidate Evaluation**: Scores, strengths, concerns, and recommendations
+
+${context?.candidateName ? `Current Candidate: ${context.candidateName}` : ''}
+${context?.jobTitle ? `Position: ${context.jobTitle}` : ''}
+${context?.candidateScore ? `Overall Score: ${context.candidateScore}/100` : ''}
+${context?.recommendation ? `AI Recommendation: ${context.recommendation}` : ''}
+${context?.jobDNA ? `\nJob DNA Traits: ${JSON.stringify(context.jobDNA, null, 2).substring(0, 500)}...` : ''}
+
+Provide concise, actionable insights. Be professional and data-driven. If asked about specific candidates or DNA matches, use the context provided above.`;
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        ...(context?.conversationHistory || []),
+        { role: 'user', content: message }
+      ];
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4',
+          messages,
+          temperature: 0.7,
+          max_tokens: 500,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000, // 30s timeout
+        }
+      );
+
+      return response.data.choices[0].message.content;
+    } catch (error: any) {
+      console.error('AI Chat error:', error.response?.data || error.message);
+      throw new Error('Failed to get AI response. Please try again.');
+    }
+  }
 }
 
 export default new AIService();
+
+

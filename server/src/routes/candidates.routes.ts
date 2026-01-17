@@ -72,9 +72,7 @@ router.get(
       const limit = parseInt(req.query.limit as string) || 10;
       const skip = (page - 1) * limit;
 
-      const filter: Record<string, unknown> = {
-        companyId: req.user?.companyId,
-      };
+      const filter: Record<string, unknown> = {};
 
       if (req.query.jobId) {
         filter.jobId = req.query.jobId;
@@ -141,10 +139,12 @@ router.post(
 
       const { firstName, lastName, email, phone, jobId, source, tags, experience } = req.body;
 
-      // Verify job exists and belongs to company
+      console.log('📝 REQUEST BODY:', req.body);
+      console.log('📝 Experience from body:', experience);
+
+      // Verify job exists
       const job = await Job.findOne({
         _id: jobId,
-        companyId: req.user?.companyId,
       });
 
       if (!job) {
@@ -159,22 +159,31 @@ router.post(
         return;
       }
 
-      const candidate = await Candidate.create({
-        companyId: req.user?.companyId,
+      const candidateData = {
         jobId,
         firstName,
         lastName,
         email,
         phone,
         experience,
-        source: source || 'manual',
-        tags: tags || [],
-        status: 'new',
+        status: 'new' as const,
         createdBy: req.user?.id,
+      };
+
+      console.log('💾 Data being saved to DB:', candidateData);
+
+      const candidate = await Candidate.create(candidateData);
+
+      console.log('✅ Candidate created:', {
+        id: candidate._id,
+        experience: candidate.experience,
+        fullDoc: candidate.toObject()
       });
 
       // Populate job details before sending response
       await candidate.populate('jobId', 'title department');
+
+      console.log('📤 Sending response with experience:', candidate.experience);
 
       res.status(201).json(candidate);
     } catch (error) {
@@ -192,7 +201,6 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const candidateDoc = await Candidate.findOne({
       _id: req.params.id,
-      companyId: req.user?.companyId,
     })
       .populate('jobId')
       .populate('interviewId')
@@ -225,7 +233,6 @@ router.post('/:id/upload-resume', uploadResume, async (req: AuthRequest, res: Re
 
     const candidate = await Candidate.findOne({
       _id: req.params.id,
-      companyId: req.user?.companyId,
     });
 
     if (!candidate) {
@@ -284,7 +291,6 @@ router.post(
       // Verify job exists
       const job = await Job.findOne({
         _id: jobId,
-        companyId: req.user?.companyId,
       });
 
       if (!job) {
@@ -307,13 +313,12 @@ router.post(
 
           // Create candidate
           const candidate = await Candidate.create({
-            companyId: req.user?.companyId,
             jobId,
             firstName,
             lastName,
             email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@placeholder.com`,
-            source: 'bulk_upload',
             status: 'resume_screened',
+            createdBy: req.user?.id,
           });
 
           // Upload resume to S3
@@ -360,7 +365,6 @@ router.post('/:id/invite', async (req: AuthRequest, res: Response) => {
   try {
     const candidate = await Candidate.findOne({
       _id: req.params.id,
-      companyId: req.user?.companyId,
     }).populate('jobId');
 
     if (!candidate) {
