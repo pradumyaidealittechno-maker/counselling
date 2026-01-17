@@ -142,7 +142,7 @@ export default function InterviewManagement() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading interviews...</p>
+        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading interviews...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -281,7 +281,8 @@ export default function InterviewManagement() {
         marginBottom: '2rem',
         border: '2px solid rgba(16, 185, 129, 0.15)',
         boxShadow: '0 4px 20px rgba(16, 185, 129, 0.08)',
-        background: 'white'
+        boxShadow: '0 4px 20px rgba(16, 185, 129, 0.08)',
+        background: 'var(--white)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -293,7 +294,7 @@ export default function InterviewManagement() {
               animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)'
             }} />
-            <h2 style={{ fontWeight: 700, color: '#1F2937', fontSize: '1.125rem' }}>
+            <h2 style={{ fontWeight: 700, color: 'var(--gray-900)', fontSize: '1.125rem' }}>
               Live Sessions
             </h2>
           </div>
@@ -310,7 +311,7 @@ export default function InterviewManagement() {
         </div>
 
         {activeSessions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#6B7280' }}>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray-500)' }}>
             <Video size={48} color="#D1D5DB" style={{ margin: '0 auto 1rem' }} />
             <p style={{ fontSize: '0.875rem' }}>No active interviews at the moment</p>
           </div>
@@ -335,10 +336,10 @@ export default function InterviewManagement() {
                     animation: 'pulse 2s infinite'
                   }} />
                   <div>
-                    <p style={{ fontWeight: 600, color: '#1F2937', fontSize: '0.875rem' }}>
+                    <p style={{ fontWeight: 600, color: 'var(--gray-900)', fontSize: '0.875rem' }}>
                       {session.candidateName}
                     </p>
-                    <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                       Started: {new Date(session.startedAt).toLocaleTimeString()}
                     </p>
                   </div>
@@ -349,7 +350,7 @@ export default function InterviewManagement() {
                       <Clock size={14} style={{ display: 'inline', marginRight: '0.25rem' }} />
                       {getElapsedTime(String(session.startedAt))}
                     </p>
-                    <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>In Progress</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>In Progress</p>
                   </div>
                   <button
                     className="btn btn-sm"
@@ -385,10 +386,10 @@ export default function InterviewManagement() {
         padding: '1.75rem',
         border: '2px solid rgba(99, 102, 241, 0.15)',
         boxShadow: '0 4px 20px rgba(99, 102, 241, 0.08)',
-        background: 'white'
+        background: 'var(--white)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ fontWeight: 700, color: '#1F2937', fontSize: '1.125rem' }}>
+          <h2 style={{ fontWeight: 700, color: 'var(--gray-900)', fontSize: '1.125rem' }}>
             📋 Recent Interviews
           </h2>
           <div style={{ position: 'relative' }}>
@@ -399,19 +400,21 @@ export default function InterviewManagement() {
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
                 padding: '0.625rem 1rem',
-                border: '2px solid #e5e7eb',
+                border: '2px solid var(--gray-200)',
                 borderRadius: '0.75rem',
                 fontSize: '0.875rem',
                 width: '240px',
                 transition: 'all 0.2s',
-                outline: 'none'
+                outline: 'none',
+                background: 'var(--white)',
+                color: 'var(--gray-900)'
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = '#6366F1';
                 e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.borderColor = 'var(--gray-200)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
             />
@@ -419,7 +422,7 @@ export default function InterviewManagement() {
         </div>
 
         {filteredRecentInterviews.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#6B7280' }}>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray-500)' }}>
             <CheckCircle size={48} color="#D1D5DB" style={{ margin: '0 auto 1rem' }} />
             <p style={{ fontSize: '0.875rem' }}>
               {searchTerm ? 'No interviews found matching your search' : 'No completed interviews yet'}
@@ -430,17 +433,17 @@ export default function InterviewManagement() {
             {filteredRecentInterviews.slice(0, 10).map((interview) => (
               <div key={interview._id} style={{
                 padding: '1rem',
-                background: '#F9FAFB',
+                background: 'var(--gray-50)',
                 borderRadius: '0.75rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
                 <div>
-                  <p style={{ fontWeight: 600, color: '#1F2937', fontSize: '0.875rem' }}>
+                  <p style={{ fontWeight: 600, color: 'var(--gray-900)', fontSize: '0.875rem' }}>
                     {interview.candidateName}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                     {new Date(interview.startedAt).toLocaleDateString()} at {new Date(interview.startedAt).toLocaleTimeString()}
                   </p>
                 </div>

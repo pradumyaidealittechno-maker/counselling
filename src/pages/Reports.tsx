@@ -101,10 +101,10 @@ export default function Reports() {
   return (
     <div>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1F2937', marginBottom: '0.5rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
           Analysis Reports
         </h1>
-        <p style={{ color: '#6B7280' }}>
+        <p style={{ color: 'var(--gray-500)' }}>
           View detailed AI analysis for completed interviews.
         </p>
       </div>
@@ -114,15 +114,15 @@ export default function Reports() {
         display: 'flex', 
         gap: '1rem',
         marginBottom: '1.5rem',
-        background: 'white',
+        background: 'var(--white)',
         padding: '1rem',
         borderRadius: '0.75rem',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--gray-200)',
         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
         flexWrap: 'wrap'
       }}>
         <div style={{ position: 'relative', flex: '1 1 300px', minWidth: '200px' }}>
-          <Search size={20} color="#9CA3AF" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
+          <Search size={20} color="var(--gray-400)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             placeholder="Search by name or role..."
@@ -131,10 +131,12 @@ export default function Reports() {
             style={{
               width: '100%',
               padding: '0.625rem 1rem 0.625rem 2.5rem',
-              border: '1px solid #D1D5DB',
+              border: '1px solid var(--gray-300)',
               borderRadius: '0.5rem',
               fontSize: '0.875rem',
-              outline: 'none'
+              outline: 'none',
+              background: 'var(--white)',
+              color: 'var(--gray-900)'
             }}
           />
         </div>
@@ -146,11 +148,13 @@ export default function Reports() {
             onChange={(e) => setDateFilter(e.target.value)}
             style={{
               padding: '0.625rem 1rem',
-              border: '1px solid #D1D5DB',
+              border: '1px solid var(--gray-300)',
               borderRadius: '0.5rem',
               fontSize: '0.875rem',
               outline: 'none',
-              minWidth: '150px'
+              minWidth: '150px',
+              background: 'var(--white)',
+              color: 'var(--gray-900)'
             }}
           />
         </div>
@@ -161,12 +165,13 @@ export default function Reports() {
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{
               padding: '0.625rem 1rem',
-              border: '1px solid #D1D5DB',
+              border: '1px solid var(--gray-300)',
               borderRadius: '0.5rem',
               fontSize: '0.875rem',
               outline: 'none',
               minWidth: '150px',
-              backgroundColor: 'white'
+              backgroundColor: 'var(--white)',
+              color: 'var(--gray-900)'
             }}
           >
             <option value="">All Status</option>
@@ -186,12 +191,12 @@ export default function Reports() {
             }}
             style={{
               padding: '0.625rem 1rem',
-              border: '1px solid #D1D5DB',
+              border: '1px solid var(--gray-300)',
               borderRadius: '0.5rem',
               fontSize: '0.875rem',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--white)',
               cursor: 'pointer',
-              color: '#6B7280'
+              color: 'var(--gray-500)'
             }}
           >
             Clear Filters
@@ -214,10 +219,10 @@ export default function Reports() {
       ) : filteredReports.length === 0 ? (
         <div style={{ padding: '4rem', textAlign: 'center', background: 'white', borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
           <FileText size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
             No reports found
           </h3>
-          <p style={{ color: '#6B7280' }}>
+          <p style={{ color: 'var(--gray-500)' }}>
             {searchTerm ? `No results for "${searchTerm}"` : "Completed evaluations will appear here."}
           </p>
         </div>
@@ -225,13 +230,13 @@ export default function Reports() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Candidate</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Role</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Score</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Interview Date</th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Recommendation</th>
-                <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Action</th>
+              <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Candidate</th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Role</th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Score</th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Interview Date</th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Recommendation</th>
+                <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -251,7 +256,7 @@ export default function Reports() {
                 const recommendation = report.recommendation?.hiringRecommendation || 'Pending';
                 
                 return (
-                  <tr key={report._id} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <tr key={report._id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div style={{
@@ -270,16 +275,16 @@ export default function Reports() {
                           {report.candidateInformation?.fullName?.[0] || '?'}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 500, color: '#111827' }}>
+                          <div style={{ fontWeight: 500, color: 'var(--gray-900)' }}>
                             {report.candidateInformation?.fullName || 'Unknown'}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                             {report.candidateInformation?.email || 'No email'}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '1rem', color: '#6B7280' }}>
+                    <td style={{ padding: '1rem', color: 'var(--gray-500)' }}>
                       {report.candidateInformation?.positionAppliedFor || '—'}
                     </td>
                     <td style={{ padding: '1rem' }}>
@@ -291,7 +296,7 @@ export default function Reports() {
                         {rawScore}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', fontSize: '0.75rem', color: '#6B7280' }}>
+                    <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                       {(() => {
                         // Try multiple date sources
                         const dateStr = report.candidateInformation?.interviewDate || report.metadata?.reportGenerated;

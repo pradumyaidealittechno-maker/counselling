@@ -25,6 +25,22 @@
   --white: #ffffff;
 }
 
+.dark {
+  --gray-50: #111827;
+  --gray-100: #1F2937;
+  --gray-200: #374151;
+  --gray-300: #4B5563;
+  --gray-400: #6B7280;
+  --gray-500: #9CA3AF;
+  --gray-600: #D1D5DB;
+  --gray-700: #E5E7EB;
+  --gray-800: #F3F4F6;
+  --gray-900: #F9FAFB;
+  --white: #1F2937;
+  --dark: #F3F4F6;
+  --dark-light: #E5E7EB; 
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -131,7 +147,7 @@ button {
 }
 
 .card {
-  background: white;
+  background: var(--white);
   border-radius: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 1.5rem;

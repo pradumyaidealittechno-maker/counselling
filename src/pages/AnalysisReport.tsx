@@ -84,7 +84,7 @@ export default function AnalysisReport() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading analysis report...</p>
+        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading analysis report...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -94,10 +94,10 @@ export default function AnalysisReport() {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
         <Users size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1F2937' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-900)' }}>
           Report Not Found
         </h2>
-        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{error || 'The report you are looking for does not exist.'}</p>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>{error || 'The report you are looking for does not exist.'}</p>
         <Link to="/dashboard/reports" className="btn btn-primary">
           Back to Reports
         </Link>
@@ -228,7 +228,7 @@ export default function AnalysisReport() {
             display: 'inline-flex', 
             alignItems: 'center', 
             gap: '0.5rem',
-            color: '#6B7280',
+            color: 'var(--gray-500)',
             textDecoration: 'none',
             marginBottom: '1.5rem',
             fontSize: '0.875rem'
@@ -255,10 +255,10 @@ export default function AnalysisReport() {
             {initials}
           </div>
           <div>
-            <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#111827', marginBottom: '0.25rem' }}>
+            <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
               {displayCandidate.firstName} {displayCandidate.lastName}
             </h1>
-            <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+            <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
               {displayCandidate.job?.title || 'Position'} • {reportData?.candidateInformation?.interviewDate || displayCandidate.interviewDate || 'Date not available'}
             </p>
           </div>
@@ -294,7 +294,7 @@ export default function AnalysisReport() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Link to="/dashboard/candidates" style={{ color: '#6B7280', display: 'flex' }}>
+            <Link to="/dashboard/candidates" style={{ color: 'var(--gray-500)', display: 'flex' }}>
               <ArrowLeft size={18} />
             </Link>
             <div style={{
@@ -310,10 +310,10 @@ export default function AnalysisReport() {
               fontSize: '0.875rem'
             }}>{initials}            </div>
             <div>
-              <h1 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1F2937' }}>
+              <h1 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--gray-900)' }}>
                 {displayCandidate.firstName} {displayCandidate.lastName}
               </h1>
-              <p style={{ color: '#6B7280', fontSize: '0.75rem' }}>{displayCandidate.job?.title || 'No job assigned'}</p>
+              <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem' }}>{displayCandidate.job?.title || 'No job assigned'}</p>
             </div>
           </div>
         </div>
@@ -324,17 +324,19 @@ export default function AnalysisReport() {
           alignItems: 'center',
           gap: '1.5rem',
           padding: '0.75rem 1rem',
-          background: '#F9FAFB',
+          background: 'var(--white)',
           borderRadius: '0.5rem',
-          marginBottom: '1rem'
+          marginBottom: '1rem',
+          border: '1px solid var(--gray-200)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Clock size={14} color="#6B7280" />
-            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>{displayCandidate.interviewDate || 'Date not recorded'}</span>
+            <Clock size={14} color="var(--gray-400)" />
+            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{displayCandidate.interviewDate || 'Date not recorded'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Video size={14} color="#6B7280" />
-            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>{displayCandidate.interviewDuration || 'Duration not recorded'}</span>
+            <Video size={14} color="var(--gray-400)" />
+            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{displayCandidate.interviewDuration || 'Duration not recorded'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Dna size={14} color="#E91E63" />
@@ -343,10 +345,10 @@ export default function AnalysisReport() {
         </div>
 
         {/* DNA Score Overview */}
-        <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+        <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <Dna size={16} color="#E91E63" />
-            <h2 style={{ fontWeight: 600, fontSize: '0.95rem', color: '#1F2937' }}>DNA Match Overview</h2>
+            <h2 style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--gray-900)' }}>DNA Match Overview</h2>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
@@ -354,7 +356,7 @@ export default function AnalysisReport() {
               width: '120px',
               height: '120px',
               borderRadius: '50%',
-              background: `conic-gradient(${recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B'} ${recommendation.overallScore * 3.6}deg, #F3F4F6 0deg)`,
+              background: `conic-gradient(${recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B'} ${recommendation.overallScore * 3.6}deg, var(--gray-100) 0deg)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -363,7 +365,7 @@ export default function AnalysisReport() {
                 width: '100px',
                 height: '100px',
                 borderRadius: '50%',
-                background: 'white',
+                background: 'var(--white)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -372,7 +374,7 @@ export default function AnalysisReport() {
                 <span style={{ fontSize: '2rem', fontWeight: 700, color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B' }}>
                   {Number(recommendation.overallScore / 10).toFixed(1)}
                 </span>
-                <span style={{ fontSize: '0.625rem', color: '#6B7280' }}>Overall Match</span>
+                <span style={{ fontSize: '0.625rem', color: 'var(--gray-500)' }}>Overall Match</span>
               </div>
             </div>
           </div>
@@ -386,10 +388,10 @@ export default function AnalysisReport() {
             
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <span style={{ width: '140px', fontSize: '0.75rem', color: '#6B7280', fontWeight: 500 }}>
+                <span style={{ width: '140px', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 500 }}>
                   {evaluation.dimension}
                 </span>
-                <div style={{ flex: 1, height: '20px', background: '#F3F4F6', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: '20px', background: 'var(--gray-100)', borderRadius: '10px', overflow: 'hidden' }}>
                   <div style={{
                     width: `${score}%`,
                     height: '100%',
@@ -411,7 +413,7 @@ export default function AnalysisReport() {
 
         {/* Key Strengths & Concerns */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div className="card" style={{ padding: '1rem' }}>
+          <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
             <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#10B981' }}>Key Strengths</h3>
             {recommendation.keyStrengths.length > 0 ? (
               <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#065F46' }}>
@@ -420,10 +422,10 @@ export default function AnalysisReport() {
                 ))}
               </ul>
             ) : (
-              <p style={{ fontSize: '0.8125rem', color: '#6B7280', fontStyle: 'italic' }}>No strengths recorded</p>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No strengths recorded</p>
             )}
           </div>
-          <div className="card" style={{ padding: '1rem' }}>
+          <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
             <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#F59E0B' }}>Key Concerns</h3>
             {recommendation.keyConcerns.length > 0 ? (
               <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#92400E' }}>
@@ -439,37 +441,37 @@ export default function AnalysisReport() {
 
         {/* Professional Profile */}
         {interviewAnalysis?.professionalProfile && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Professional Profile</h3>
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Professional Profile</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8125rem' }}>
               {interviewAnalysis.professionalProfile.currentRole && (
                 <div>
-                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Current Role</p>
-                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentRole}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Current Role</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentRole}</p>
                 </div>
               )}
               {interviewAnalysis.professionalProfile.totalExperience && (
                 <div>
-                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Total Experience</p>
-                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.totalExperience}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Total Experience</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.totalExperience}</p>
                 </div>
               )}
               {interviewAnalysis.professionalProfile.experienceLevel && (
                 <div>
-                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Experience Level</p>
-                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.experienceLevel}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Experience Level</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.experienceLevel}</p>
                 </div>
               )}
               {interviewAnalysis.professionalProfile.currentCompany && (
                 <div>
-                  <p style={{ color: '#6B7280', marginBottom: '0.25rem' }}>Current Company</p>
-                  <p style={{ color: '#111827', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentCompany}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Current Company</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentCompany}</p>
                 </div>
               )}
             </div>
             {interviewAnalysis.professionalProfile.technicalStack && interviewAnalysis.professionalProfile.technicalStack.length > 0 && (
               <div style={{ marginTop: '0.75rem' }}>
-                <p style={{ color: '#6B7280', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>Technical Stack</p>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>Technical Stack</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {interviewAnalysis.professionalProfile.technicalStack.map((tech: string, i: number) => (
                     <span key={i} style={{
@@ -491,13 +493,13 @@ export default function AnalysisReport() {
 
         {/* Key Discussion Points */}
         {interviewAnalysis?.keyDiscussionPoints && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Key Discussion Points</h3>
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Key Discussion Points</h3>
             
             {interviewAnalysis.keyDiscussionPoints.technicalExperience && interviewAnalysis.keyDiscussionPoints.technicalExperience.length > 0 && (
               <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.5rem' }}>Technical Experience</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>Technical Experience</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
                   {interviewAnalysis.keyDiscussionPoints.technicalExperience.map((item: string, i: number) => (
                     <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
                   ))}
@@ -507,8 +509,8 @@ export default function AnalysisReport() {
 
             {interviewAnalysis.keyDiscussionPoints.projectsDiscussed && interviewAnalysis.keyDiscussionPoints.projectsDiscussed.length > 0 && (
               <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.5rem' }}>Projects Discussed</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>Projects Discussed</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
                   {interviewAnalysis.keyDiscussionPoints.projectsDiscussed.map((item: string, i: number) => (
                     <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
                   ))}
@@ -518,8 +520,8 @@ export default function AnalysisReport() {
 
             {interviewAnalysis.keyDiscussionPoints.problemSolvingExamples && interviewAnalysis.keyDiscussionPoints.problemSolvingExamples.length > 0 && (
               <div>
-                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.5rem' }}>Problem Solving Examples</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>Problem Solving Examples</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
                   {interviewAnalysis.keyDiscussionPoints.problemSolvingExamples.map((item: string, i: number) => (
                     <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
                   ))}
@@ -531,19 +533,19 @@ export default function AnalysisReport() {
 
         {/* Recommendation Details */}
         {interviewAnalysis?.recommendation && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Recommendation Details</h3>
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Recommendation Details</h3>
             
             {interviewAnalysis.recommendation.reasoning && (
               <div style={{ marginBottom: '0.75rem' }}>
-                <p style={{ color: '#6B7280', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Reasoning</p>
-                <p style={{ fontSize: '0.8125rem', color: '#374151', lineHeight: 1.6 }}>{interviewAnalysis.recommendation.reasoning}</p>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Reasoning</p>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>{interviewAnalysis.recommendation.reasoning}</p>
               </div>
             )}
 
             {interviewAnalysis.recommendation.status && (
               <div style={{ marginBottom: '0.75rem' }}>
-                <p style={{ color: '#6B7280', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Status</p>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Status</p>
                 <span style={{
                   display: 'inline-block',
                   padding: '0.25rem 0.625rem',
@@ -560,8 +562,8 @@ export default function AnalysisReport() {
 
             {interviewAnalysis.recommendation.nextSteps && interviewAnalysis.recommendation.nextSteps.length > 0 && (
               <div>
-                <p style={{ color: '#6B7280', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>Next Steps</p>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>Next Steps</p>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
                   {interviewAnalysis.recommendation.nextSteps.map((step: string, i: number) => (
                     <li key={i} style={{ marginBottom: '0.375rem' }}>{step}</li>
                   ))}
@@ -573,9 +575,9 @@ export default function AnalysisReport() {
 
         {/* Executive Summary */}
         {interviewAnalysis?.executiveSummary && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#1F2937' }}>Executive Summary</h3>
-            <p style={{ fontSize: '0.8125rem', color: '#374151', lineHeight: 1.6 }}>{interviewAnalysis.executiveSummary}</p>
+          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Executive Summary</h3>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>{interviewAnalysis.executiveSummary}</p>
           </div>
         )}
       </div>
@@ -583,8 +585,8 @@ export default function AnalysisReport() {
       {/* Right Sidebar */}
       <div>
         {/* AI Recommendation Panel */}
-        <div className="card" style={{ padding: '1rem', marginBottom: '0.75rem' }}>
-          <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem' }}>AI Recommendation</h3>
+        <div className="card" style={{ padding: '1rem', marginBottom: '0.75rem', background: 'var(--white)' }}>
+          <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>AI Recommendation</h3>
           <div style={{
             padding: '1rem',
             background: recommendation.recommendation === 'Hire' 
@@ -603,18 +605,18 @@ export default function AnalysisReport() {
             }}>
               {recommendation.recommendation}
             </p>
-            <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
               {recommendation.confidence}% confidence
             </p>
           </div>
-          <p style={{ fontSize: '0.8125rem', color: '#4B5563', fontStyle: 'italic', lineHeight: 1.6 }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--gray-600)', fontStyle: 'italic', lineHeight: 1.6 }}>
             "{recommendation.summary}"
           </p>
         </div>
 
         {/* Actions */}
-        <div className="card" style={{ padding: '1rem', marginBottom: '0.75rem' }}>
-          <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem' }}>Actions</h3>
+        <div className="card" style={{ padding: '1rem', marginBottom: '0.75rem', background: 'var(--white)' }}>
+          <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Actions</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <Link to={isReportRoute ? `/dashboard/reports/${id}/decision` : `/dashboard/candidates/${id}/decision`} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
               Make Decision
@@ -631,24 +633,24 @@ export default function AnalysisReport() {
         {/* Score Legend */}
         <div style={{ 
           padding: '0.75rem',
-          background: '#F9FAFB',
+          background: 'var(--gray-50)',
           borderRadius: '0.5rem',
-          border: '1px solid #E5E7EB',
+          border: '1px solid var(--gray-200)',
           marginBottom: '0.75rem'
         }}>
-          <p style={{ fontSize: '0.625rem', color: '#6B7280', marginBottom: '0.5rem', fontWeight: 600 }}>Score Legend</p>
+          <p style={{ fontSize: '0.625rem', color: 'var(--gray-500)', marginBottom: '0.5rem', fontWeight: 600 }}>Score Legend</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.625rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: '#10B981' }} />
-              <span style={{ color: '#6B7280' }}>90%+ Excellent Match</span>
+              <span style={{ color: 'var(--gray-500)' }}>90%+ Excellent Match</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: '#E91E63' }} />
-              <span style={{ color: '#6B7280' }}>80-89% Good Match</span>
+              <span style={{ color: 'var(--gray-500)' }}>80-89% Good Match</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: '#F59E0B' }} />
-              <span style={{ color: '#6B7280' }}>&lt;80% Needs Review</span>
+              <span style={{ color: 'var(--gray-500)' }}>&lt;80% Needs Review</span>
             </div>
           </div>
         </div>

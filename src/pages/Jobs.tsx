@@ -59,7 +59,7 @@ export default function Jobs() {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
                 <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-                <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading jobs...</p>
+                <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading jobs...</p>
                 <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
             </div>
         );
@@ -69,8 +69,8 @@ export default function Jobs() {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Jobs</h1>
-                    <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>Manage your open positions and job descriptions</p>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--gray-900)' }}>Jobs</h1>
+                    <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>Manage your open positions and job descriptions</p>
                 </div>
                 <Link to="/dashboard/jobs/create" className="btn btn-primary btn-sm">
                     <Plus size={16} /> Create Job
@@ -85,7 +85,14 @@ export default function Jobs() {
                         type="text"
                         className="input"
                         placeholder="Search jobs..."
-                        style={{ paddingLeft: '36px', padding: '0.5rem 0.75rem 0.5rem 36px', fontSize: '0.875rem' }}
+                        style={{ 
+                            paddingLeft: '36px', 
+                            padding: '0.5rem 0.75rem 0.5rem 36px', 
+                            fontSize: '0.875rem',
+                            backgroundColor: 'var(--white)',
+                            color: 'var(--gray-900)',
+                            border: '1px solid var(--gray-200)'
+                        }}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -99,20 +106,20 @@ export default function Jobs() {
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Job Title</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Company</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Location</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Status</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Date Created</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, fontSize: '0.75rem', color: '#6B7280' }}>Actions</th>
+                        <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Job Title</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Company</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Location</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Status</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Date Created</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, fontSize: '0.75rem', color: 'var(--gray-500)' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredJobs.length === 0 ? (
                             <tr>
-                                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#6B7280' }}>
-                                    <Briefcase size={40} color="#D1D5DB" style={{ marginBottom: '0.75rem' }} />
+                                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-500)' }}>
+                                    <Briefcase size={40} color="var(--gray-300)" style={{ marginBottom: '0.75rem' }} />
                                     <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>No jobs found</p>
                                     <Link to="/dashboard/jobs/create" className="btn btn-primary btn-sm">
                                         <Plus size={14} /> Create First Job
@@ -121,19 +128,19 @@ export default function Jobs() {
                             </tr>
                         ) : (
                             filteredJobs.map((job) => (
-                                <tr key={job._id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                                <tr key={job._id} style={{ borderBottom: '1px solid var(--gray-200)' }}>
                                     <td style={{ padding: '0.75rem' }}>
-                                        <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{job.title}</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>{job.department}</div>
+                                        <div style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-900)' }}>{job.title}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{job.department}</div>
                                     </td>
-                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>{job.company}</td>
-                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>{job.location}</td>
+                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{job.company}</td>
+                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>{job.location}</td>
                                     <td style={{ padding: '0.75rem' }}>
                                         <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.6875rem' }}>
                                             {job.status}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem' }}>
+                                    <td style={{ padding: '0.75rem', fontSize: '0.8125rem', color: 'var(--gray-500)' }}>
                                         {new Date(job.createdAt).toLocaleDateString()}
                                     </td>
                                     <td style={{ padding: '0.75rem', textAlign: 'right' }}>

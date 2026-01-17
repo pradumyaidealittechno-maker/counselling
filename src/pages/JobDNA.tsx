@@ -144,7 +144,7 @@ export default function JobDNA() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading Job DNA...</p>
+        <p style={{ marginTop: '1.2rem', color: 'var(--gray-500)' }}>Loading Job DNA...</p>
       </div>
     );
   }
@@ -155,8 +155,8 @@ export default function JobDNA() {
         <div style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
           <Dna size={40} color="#E91E63" />
         </div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.75rem', color: '#1F2937' }}>No Job Selected</h2>
-        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>Create a new job or select an existing one to view and manage its Job DNA</p>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--gray-900)' }}>No Job Selected</h2>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>Create a new job or select an existing one to view and manage its Job DNA</p>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
           <button className="btn btn-primary" onClick={() => navigate('/dashboard/jobs/create')}><Plus size={18} /> Create New Job</button>
           <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>View Dashboard</button>
@@ -177,23 +177,23 @@ export default function JobDNA() {
             <Dna size={20} color="#E91E63" />
             <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.75rem' }}>Job DNA</span>
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1F2937', marginBottom: '0.25rem' }}>{job.title}</h1>
-          <p style={{ fontSize: '0.875rem', color: '#6B7280' }}>{job.department || 'No department'} - Created {new Date(job.createdAt).toLocaleDateString()}</p>
+          <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>{job.title}</h1>
+          <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>{job.department || 'No department'} - Created {new Date(job.createdAt).toLocaleDateString()}</p>
         </div>
-        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '2rem', textAlign: 'center', background: 'var(--white)' }}>
           <div style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
             <Dna size={40} color="#E91E63" />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.75rem' }}>Generate Job DNA</h2>
-          <p style={{ color: '#6B7280', fontSize: '0.95rem', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>Analyze the job description to extract skills, experience requirements, behavioral traits, and communication patterns.</p>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Generate Job DNA</h2>
+          <p style={{ color: 'var(--gray-500)', fontSize: '0.95rem', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>Analyze the job description to extract skills, experience requirements, behavioral traits, and communication patterns.</p>
           {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem', color: '#DC2626', fontSize: '0.875rem' }}>{error}</div>}
           <button className="btn btn-primary" onClick={handleGenerateDNA} disabled={generating}>
             {generating ? <><Loader size={18} /> Generating DNA...</> : <><Dna size={18} /> Generate Job DNA</>}
           </button>
         </div>
-        <div className="card" style={{ padding: '1rem', marginTop: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><FileText size={16} color="#6366F1" /><span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Job Description</span></div>
-          <p style={{ fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{job.description || 'No description provided'}</p>
+        <div className="card" style={{ padding: '1rem', marginTop: '1rem', background: 'var(--white)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><FileText size={16} color="#6366F1" /><span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-900)' }}>Job Description</span></div>
+          <p style={{ fontSize: '0.875rem', color: 'var(--gray-700)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{job.description || 'No description provided'}</p>
         </div>
       </div>
     );
@@ -209,8 +209,8 @@ export default function JobDNA() {
               <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.75rem' }}>Job DNA</span>
               <span style={{ padding: '0.125rem 0.5rem', borderRadius: '9999px', fontSize: '0.625rem', fontWeight: 500, background: job.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: job.status === 'active' ? '#059669' : '#D97706' }}>{job.status}</span>
             </div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1F2937', marginBottom: '0.25rem' }}>{job.title}</h1>
-            <p style={{ fontSize: '0.95rem', color: '#6B7280' }}>{job.department || 'No department'} - Last updated {new Date(job.updatedAt).toLocaleDateString()}</p>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>{job.title}</h1>
+            <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{job.department || 'No department'} - Last updated {new Date(job.updatedAt).toLocaleDateString()}</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
             <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -221,8 +221,8 @@ export default function JobDNA() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '0.5rem', marginBottom: '1rem' }}>
           <FileText size={16} color="#6366F1" />
-          <div style={{ flex: 1 }}><p style={{ fontSize: '0.95rem', fontWeight: 500, color: '#1F2937' }}>AI-Generated Job DNA</p></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={12} color="#6B7280" /><span style={{ fontSize: '0.625rem', color: '#6B7280' }}>Created {new Date(job.createdAt).toLocaleDateString()}</span></div>
+          <div style={{ flex: 1 }}><p style={{ fontSize: '0.95rem', fontWeight: 500, color: 'var(--gray-900)' }}>AI-Generated Job DNA</p></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={12} color="var(--gray-400)" /><span style={{ fontSize: '0.625rem', color: 'var(--gray-500)' }}>Created {new Date(job.createdAt).toLocaleDateString()}</span></div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
           <DNASection title="Skill DNA" dimension="skillDNA" traits={jobDNA.skillDNA} color="#6366F1" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
@@ -231,36 +231,36 @@ export default function JobDNA() {
           <DNASection title="Communication DNA" dimension="communicationDNA" traits={jobDNA.communicationDNA} color="#3B82F6" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
         </div>
         <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#F9FAFB', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Dna size={16} color="#E91E63" /><span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Cultural DNA</span><span style={{ fontSize: '0.75rem', color: '#6B7280' }}>(Optional)</span></div>
-            <button type="button" onClick={() => setCulturalDNAEnabled(!culturalDNAEnabled)} style={{ width: '44px', height: '24px', background: culturalDNAEnabled ? '#E91E63' : '#E5E7EB', borderRadius: '12px', position: 'relative', transition: 'background 0.2s', border: 'none', cursor: 'pointer' }}>
-              <div style={{ width: '20px', height: '20px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: culturalDNAEnabled ? '22px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'var(--gray-50)', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Dna size={16} color="#E91E63" /><span style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-900)' }}>Cultural DNA</span><span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>(Optional)</span></div>
+            <button type="button" onClick={() => setCulturalDNAEnabled(!culturalDNAEnabled)} style={{ width: '44px', height: '24px', background: culturalDNAEnabled ? '#E91E63' : 'var(--gray-200)', borderRadius: '12px', position: 'relative', transition: 'background 0.2s', border: 'none', cursor: 'pointer' }}>
+              <div style={{ width: '20px', height: '20px', background: 'var(--white)', borderRadius: '50%', position: 'absolute', top: '2px', left: culturalDNAEnabled ? '22px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
             </button>
           </div>
           {culturalDNAEnabled && jobDNA.culturalDNA.length > 0 && <div style={{ marginTop: '0.75rem' }}><DNASection title="Cultural DNA" dimension="culturalDNA" traits={jobDNA.culturalDNA} color="#E91E63" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} /></div>}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <div className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem' }}>DNA Quality</h3>
+        <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
+          <h3 style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>DNA Quality</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
             <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ color: 'white', fontWeight: 700, fontSize: '1.25rem' }}>{totalTraits}</span></div>
-            <div><p style={{ fontWeight: 600, color: '#1F2937' }}>Total Traits</p><p style={{ fontSize: '0.75rem', color: '#6B7280' }}>Across all dimensions</p></div>
+            <div><p style={{ fontWeight: 600, color: 'var(--gray-900)', fontSize: '1rem' }}>Total Traits</p><p style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>Across all dimensions</p></div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.625rem', padding: '0.125rem 0.375rem', background: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', borderRadius: '9999px' }}>Skills: {jobDNA.skillDNA.length}</span>
-            <span style={{ fontSize: '0.625rem', padding: '0.125rem 0.375rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', borderRadius: '9999px' }}>Experience: {jobDNA.experienceDNA.length}</span>
-            <span style={{ fontSize: '0.625rem', padding: '0.125rem 0.375rem', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', borderRadius: '9999px' }}>Behavioral: {jobDNA.behavioralDNA.length}</span>
-            <span style={{ fontSize: '0.625rem', padding: '0.125rem 0.375rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3B82F6', borderRadius: '9999px' }}>Communication: {jobDNA.communicationDNA.length}</span>
+            <span style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', background: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', borderRadius: '9999px' }}>Skills: {jobDNA.skillDNA.length}</span>
+            <span style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', borderRadius: '9999px' }}>Experience: {jobDNA.experienceDNA.length}</span>
+            <span style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', borderRadius: '9999px' }}>Behavioral: {jobDNA.behavioralDNA.length}</span>
+            <span style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3B82F6', borderRadius: '9999px' }}>Communication: {jobDNA.communicationDNA.length}</span>
           </div>
         </div>
-        <div className="card" style={{ padding: '1rem' }}>
-          <button className="btn btn-primary btn-sm" onClick={handleApprove} style={{ width: '100%', marginBottom: '0.5rem' }}><Shield size={14} /> Approve and Train AI</button>
-          <button className="btn btn-secondary btn-sm" onClick={handleSaveDraft} style={{ width: '100%', marginBottom: '0.5rem' }}><Save size={14} /> Save Draft</button>
-          <button className="btn btn-ghost btn-sm" onClick={handleEditLater} style={{ width: '100%' }}>Edit Later</button>
+        <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
+          <button className="btn btn-primary" onClick={handleApprove} style={{ width: '100%', marginBottom: '0.5rem' }}><Shield size={16} /> Approve and Train AI</button>
+          <button className="btn btn-secondary" onClick={handleSaveDraft} style={{ width: '100%', marginBottom: '0.5rem' }}><Save size={16} /> Save Draft</button>
+          <button className="btn btn-ghost" onClick={handleEditLater} style={{ width: '100%' }}>Edit Later</button>
         </div>
-        <div style={{ padding: '0.75rem', background: '#F9FAFB', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
-          <p style={{ fontSize: '0.625rem', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Shield size={10} />AI training blocked until Job DNA is approved</p>
+        <div style={{ padding: '0.75rem', background: 'var(--gray-50)', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Shield size={12} />AI training blocked until Job DNA is approved</p>
         </div>
       </div>
     </div>
@@ -287,13 +287,13 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
   };
 
   return (
-    <div className="card" style={{ padding: '1rem' }}>
+    <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
         <Dna size={16} color={color} />
-        <span style={{ fontWeight: 600, fontSize: '1rem', color: '#1F2937' }}>{title}</span>
-        <span style={{ fontSize: '0.875rem', color: '#6B7280' }}>({traits.length})</span>
+        <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--gray-900)' }}>{title}</span>
+        <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>({traits.length})</span>
       </div>
-      {traits.length === 0 ? <p style={{ fontSize: '0.875rem', color: '#9CA3AF', fontStyle: 'italic' }}>No traits defined</p> : (
+      {traits.length === 0 ? <p style={{ fontSize: '0.875rem', color: 'var(--gray-400)', fontStyle: 'italic' }}>No traits defined</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {displayTraits.map((trait, i) => {
             const currentTrait = getTrait(trait);
@@ -304,9 +304,9 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                 key={trait.id || i} 
                 style={{ 
                   padding: '0.75rem', 
-                  background: isEditing ? '#FEF3C7' : '#F9FAFB', 
+                  background: isEditing ? 'rgba(245, 158, 11, 0.05)' : 'var(--gray-50)', 
                   borderRadius: '0.5rem', 
-                  border: isEditing ? '2px solid #F59E0B' : '1px solid #E5E7EB',
+                  border: isEditing ? '2px solid #F59E0B' : '1px solid var(--gray-200)',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -323,9 +323,9 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                       style={{
                         fontSize: '0.95rem',
                         fontWeight: 500,
-                        color: '#1F2937',
-                        background: 'white',
-                        border: '1px solid #D1D5DB',
+                        color: 'var(--gray-900)',
+                        background: 'var(--white)',
+                        border: '1px solid var(--gray-300)',
                         borderRadius: '0.25rem',
                         padding: '0.25rem 0.5rem',
                         flex: 1,
@@ -333,14 +333,14 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                       }}
                     />
                   ) : (
-                    <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#1F2937' }}>{currentTrait.name}</span>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--gray-900)' }}>{currentTrait.name}</span>
                   )}
                   <select
                     value={currentTrait.importance}
                     onChange={(e) => onUpdate(dimension, trait.id, 'importance', e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     style={{
-                      fontSize: '0.6875rem',
+                      fontSize: '0.85rem',
                       padding: '0.25rem 0.5rem',
                       borderRadius: '9999px',
                       background: currentTrait.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' : currentTrait.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
@@ -364,9 +364,9 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                     onBlur={() => setEditingTrait(null)}
                     style={{
                       fontSize: '0.8125rem',
-                      color: '#6B7280',
-                      background: 'white',
-                      border: '1px solid #D1D5DB',
+                      color: 'var(--gray-500)',
+                      background: 'var(--white)',
+                      border: '1px solid var(--gray-300)',
                       borderRadius: '0.25rem',
                       padding: '0.5rem',
                       width: '100%',
@@ -375,7 +375,7 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                     }}
                   />
                 ) : (
-                  <p style={{ fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5 }}>{currentTrait.description}</p>
+                  <p style={{ fontSize: '1.1rem', color: 'var(--gray-500)', lineHeight: 1.5 }}>{currentTrait.description}</p>
                 )}
               </div>
             );

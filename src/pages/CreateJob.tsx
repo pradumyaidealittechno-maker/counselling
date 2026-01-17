@@ -127,8 +127,8 @@ export default function CreateJob() {
       {!showDetailsForm ? (
         <>
           <div style={{ marginBottom: '2rem' }}>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>Create New Job</h1>
-            <p style={{ color: '#6b7280' }}>Choose how you want to create your job posting and generate Job DNA</p>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--gray-900)' }}>Create New Job</h1>
+            <p style={{ color: 'var(--gray-500)' }}>Choose how you want to create your job posting and generate Job DNA</p>
           </div>
 
           {error && (
@@ -164,7 +164,7 @@ export default function CreateJob() {
               className="card card-hover"
               style={{
                 padding: '2.5rem',
-                border: '2px dashed #e5e7eb',
+                border: '2px dashed var(--gray-200)',
                 textAlign: 'center',
                 cursor: uploading ? 'wait' : 'pointer',
                 opacity: uploading ? 0.7 : 1
@@ -187,10 +187,10 @@ export default function CreateJob() {
                   <Upload size={36} color="#6366f1" />
                 )}
               </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-900)' }}>
                 Upload Job Description
               </h3>
-              <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>
                 Upload a PDF or DOC file to generate Job DNA
               </p>
               <div style={{
@@ -212,7 +212,7 @@ export default function CreateJob() {
             {/* LinkedIn Import */}
             <Link to="/dashboard/jobs/linkedin-import" className="card card-hover" style={{
               padding: '2.5rem',
-              border: '2px solid #e5e7eb',
+              border: '2px solid var(--gray-200)',
               textAlign: 'center',
               cursor: 'pointer',
               display: 'block'
@@ -229,10 +229,10 @@ export default function CreateJob() {
               }}>
                 <Linkedin size={36} color="#0a66c2" />
               </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-900)' }}>
                 Import from LinkedIn
               </h3>
-              <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>
                 Import job details and auto-generate Job DNA
               </p>
               <div style={{
@@ -263,9 +263,9 @@ export default function CreateJob() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
               <Dna size={20} color="#6366f1" />
-              <span style={{ fontWeight: 600 }}>What is Job DNA?</span>
+              <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>What is Job DNA?</span>
             </div>
-            <p style={{ fontSize: '0.875rem', color: '#4b5563' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--gray-700)' }}>
               Job DNA transforms your job description into structured role intelligence across 5 dimensions:
               Skill, Experience, Behavioral, Communication, and Cultural DNA. This powers fair, consistent
               AI interviews with explainable recommendations.
@@ -275,8 +275,8 @@ export default function CreateJob() {
       ) : (
         <div style={{ maxWidth: '700px' }}>
           <div style={{ marginBottom: '2rem' }}>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>Job Details</h1>
-            <p style={{ color: '#6b7280' }}>Complete the job details to generate Job DNA</p>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--gray-900)' }}>Job Details</h1>
+            <p style={{ color: 'var(--gray-500)' }}>Complete the job details to generate Job DNA</p>
           </div>
 
           {error && (
@@ -297,15 +297,16 @@ export default function CreateJob() {
             </div>
           )}
 
-          <div className="card" style={{ padding: '2rem' }}>
+          <div className="card" style={{ padding: '2rem', background: 'var(--white)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
                   Job Title <span style={{ color: '#EF4444' }}>*</span>
                 </label>
                 <input
                   type="text"
                   className="input"
+                  style={{ background: 'var(--white)', color: 'var(--gray-900)', borderColor: 'var(--gray-300)' }}
                   value={jobDetails.title}
                   onChange={(e) => setJobDetails(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g., Senior Full Stack Developer"
@@ -314,12 +315,13 @@ export default function CreateJob() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
                     Department <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input
                     type="text"
                     className="input"
+                    style={{ background: 'var(--white)', color: 'var(--gray-900)', borderColor: 'var(--gray-300)' }}
                     value={jobDetails.department}
                     onChange={(e) => setJobDetails(prev => ({ ...prev, department: e.target.value }))}
                     placeholder="e.g., Engineering"
@@ -327,12 +329,13 @@ export default function CreateJob() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
                     Location <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input
                     type="text"
                     className="input"
+                    style={{ background: 'var(--white)', color: 'var(--gray-900)', borderColor: 'var(--gray-300)' }}
                     value={jobDetails.location}
                     onChange={(e) => setJobDetails(prev => ({ ...prev, location: e.target.value }))}
                     placeholder="e.g., Remote, New York"
@@ -342,11 +345,12 @@ export default function CreateJob() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
                     Employment Type
                   </label>
                   <select
                     className="input"
+                    style={{ background: 'var(--white)', color: 'var(--gray-900)', borderColor: 'var(--gray-300)' }}
                     value={jobDetails.employmentType}
                     onChange={(e) => setJobDetails(prev => ({ ...prev, employmentType: e.target.value as any }))}
                   >
@@ -358,11 +362,12 @@ export default function CreateJob() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
                     Experience Level
                   </label>
                   <select
                     className="input"
+                    style={{ background: 'var(--white)', color: 'var(--gray-900)', borderColor: 'var(--gray-300)' }}
                     value={jobDetails.experienceLevel}
                     onChange={(e) => setJobDetails(prev => ({ ...prev, experienceLevel: e.target.value as any }))}
                   >
@@ -375,16 +380,16 @@ export default function CreateJob() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
                   Job Description <span style={{ color: '#EF4444' }}>*</span>
                 </label>
                 <textarea
                   className="input"
+                  style={{ background: 'var(--white)', color: 'var(--gray-900)', borderColor: 'var(--gray-300)', resize: 'vertical' }}
                   value={jobDetails.description}
                   onChange={(e) => setJobDetails(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Enter the full job description..."
                   rows={8}
-                  style={{ resize: 'vertical' }}
                 />
               </div>
 
