@@ -155,6 +155,7 @@ router.post('/submit-result', async (req, res) => {
 
     // Update candidate with transcript
     candidate.transcript = transcript || [];
+    candidate.status = 'interview_complete';
     candidate.interviewStatus = 'completed';
     candidate.interviewCompletedAt = new Date();
     await candidate.save();
@@ -299,6 +300,7 @@ router.post('/end-session', async (req, res) => {
     }
 
     // Update candidate status
+    candidate.status = 'interview_complete';
     candidate.interviewStatus = 'completed';
     candidate.interviewCompletedAt = new Date();
     

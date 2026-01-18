@@ -4,6 +4,7 @@ import {
   CheckCircle, Clock, XCircle, ThumbsUp, AlertTriangle, Loader
 } from 'lucide-react';
 import api from '../services/api';
+import { showToast } from '../utils/toast';
 
 interface Candidate {
   _id: string;
@@ -93,7 +94,7 @@ export default function FinalDecision() {
       setTimeout(() => navigate('/dashboard/reports'), 2000);
     } catch (err: any) {
       console.error('Failed to submit decision:', err);
-      alert(err.message || 'Failed to submit decision');
+      showToast.error(err.message || 'Failed to submit decision');
       setSubmitting(false);
     }
   };
@@ -134,7 +135,7 @@ export default function FinalDecision() {
     }
   }
 
-  const aiRecommendation = reportData?.recommendation?.hiringRecommendation || 'Pending';
+  // const aiRecommendation = reportData?.recommendation?.hiringRecommendation || 'Pending';
   const strengths = reportData?.keyDiscussionPoints?.technicalExperience || [];
   const concerns = reportData?.areasOfConcern || [];
 

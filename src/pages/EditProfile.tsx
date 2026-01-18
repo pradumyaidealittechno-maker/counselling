@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Save, X } from 'lucide-react';
+import { showToast } from '../utils/toast';
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -53,14 +54,14 @@ export default function EditProfile() {
       });
 
       if (response.ok) {
-        alert('✅ Profile updated successfully!');
+        showToast.success('Profile updated successfully!');
         navigate('/dashboard/profile');
       } else {
-        alert('❌ Failed to update profile');
+        showToast.error('Failed to update profile');
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
-      alert('❌ Failed to update profile');
+      showToast.error('Failed to update profile');
     } finally {
       setLoading(false);
     }

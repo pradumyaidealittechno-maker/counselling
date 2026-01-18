@@ -103,9 +103,9 @@ export default function Dashboard() {
         <Link to="/dashboard/candidates" className="btn btn-secondary btn-sm">
           <Upload size={16} /> Upload Resumes
         </Link>
-        <button className="btn btn-ghost btn-sm">
+        <Link to="/dashboard/reports" className="btn btn-ghost btn-sm">
           <FileText size={16} /> View Reports
-        </button>
+        </Link>
       </div>
 
       {/* Stats Grid */}
@@ -299,7 +299,7 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-        <Link to="/dashboard/candidates" className="btn btn-sm" style={{ background: 'white', color: '#E91E63' }}>
+        <Link to="/dashboard/reports" className="btn btn-sm" style={{ background: 'white', color: '#E91E63' }}>
           Review Now
         </Link>
       </div>

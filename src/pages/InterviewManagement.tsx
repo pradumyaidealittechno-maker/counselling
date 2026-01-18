@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Video, Clock, Users, CheckCircle, Play, Square, Loader } from 'lucide-react';
 import api from '../services/api';
+import { confirmToast, showToast } from '../utils/toast';
 
 interface InterviewSession {
   _id: string;
@@ -95,7 +96,8 @@ export default function InterviewManagement() {
   );
 
   const handleEndInterview = async (candidateId: string, candidateName: string) => {
-    if (!confirm(`Are you sure you want to end the interview for ${candidateName}?`)) {
+    const confirmed = await confirmToast(`Are you sure you want to end the interview for ${candidateName}?`);
+    if (!confirmed) {
       return;
     }
 
@@ -111,14 +113,14 @@ export default function InterviewManagement() {
       });
 
       if (response.ok) {
-        alert(`Interview ended for ${candidateName}`);
+        showToast.success(`Interview ended for ${candidateName}`);
         await loadActiveSessions();
       } else {
-        alert('Failed to end interview');
+        showToast.error('Failed to end interview');
       }
     } catch (error) {
       console.error('Error ending interview:', error);
-      alert('Failed to end interview');
+      showToast.error('Failed to end interview');
     } finally {
       setEndingInterview(null);
     }

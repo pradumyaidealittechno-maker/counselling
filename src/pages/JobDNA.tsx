@@ -179,7 +179,7 @@ export default function JobDNA() {
 
   if (!hasDNA) {
     return (
-      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+      <div style={{ width: '100%' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <Dna size={20} color="#E91E63" />
@@ -199,9 +199,9 @@ export default function JobDNA() {
             {generating ? <><Loader size={18} className="animate-spin" /> Generating DNA...</> : <><Dna size={18} /> Generate Job DNA</>}
           </button>
         </div>
-        <div className="card" style={{ padding: '1rem', marginTop: '1rem', background: 'var(--white)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><FileText size={16} color="#6366F1" /><span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-900)' }}>Job Description</span></div>
-          <p style={{ fontSize: '0.875rem', color: 'var(--gray-700)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{job.description || 'No description provided'}</p>
+        <div className="card" style={{ padding: '1.5rem', marginTop: '1rem', background: 'var(--white)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}><FileText size={18} color="#6366F1" /><span style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--gray-900)' }}>Job Description</span></div>
+          <p style={{ fontSize: '1.05rem', color: 'var(--gray-700)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{job.description || 'No description provided'}</p>
         </div>
       </div>
     );
@@ -341,7 +341,7 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                       }}
                     />
                   ) : (
-                    <span style={{ fontSize: '1.0rem', fontWeight: 500, color: 'var(--gray-900)' }}>{currentTrait.name}</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--gray-900)' }}>{currentTrait.name}</span>
                   )}
                   <select
                     value={currentTrait.importance}
@@ -383,7 +383,7 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                     }}
                   />
                 ) : (
-                  <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)', lineHeight: 1.5 }}>{currentTrait.description}</p>
+                  <p style={{ fontSize: '1rem', color: 'var(--gray-500)', lineHeight: 1.6 }}>{currentTrait.description}</p>
                 )}
               </div>
             );

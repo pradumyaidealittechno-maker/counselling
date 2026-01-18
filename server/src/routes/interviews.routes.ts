@@ -597,6 +597,10 @@ router.post('/end-session', async (req: Request, res: Response) => {
       return;
     }
 
+    // Update candidate status
+    candidate.status = 'interview_complete';
+    await candidate.save();
+
     // Update interview
     const interview = await Interview.findOne({ candidateId: id, status: 'in_progress' });
     if (interview) {

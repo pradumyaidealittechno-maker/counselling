@@ -10,7 +10,7 @@ export interface ICandidate extends Document {
   resumeS3Key?: string;
   linkedInUrl?: string;
   jobId: mongoose.Types.ObjectId;
-  status: 'new' | 'resume_screened' | 'pending_interview' | 'interview_completed' | 'decision_made' | 'hired' | 'rejected';
+  status: 'new' | 'resume_screened' | 'pending_interview' | 'interview_complete' | 'decision_made' | 'hired' | 'rejected';
   resume?: {
     url: string;
     fileName: string;
@@ -97,7 +97,7 @@ const candidateSchema = new Schema<ICandidate>(
     },
     status: {
       type: String,
-      enum: ['new', 'resume_screened', 'pending_interview', 'interview_completed', 'decision_made', 'hired', 'rejected'],
+      enum: ['new', 'resume_screened', 'pending_interview', 'interview_complete', 'decision_made', 'hired', 'rejected'],
       default: 'new',
     },
     interviewId: {

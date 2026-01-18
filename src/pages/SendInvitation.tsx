@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, User, Send, CheckCircle, Clock, Video, Dna, Loader, Copy } from 'lucide-react';
 import api from '../services/api';
+import { showToast } from '../utils/toast';
 
 export default function SendInvitation() {
   const navigate = useNavigate();
@@ -108,11 +109,11 @@ Good luck!
         const data = await response.json();
         setInterviewCode(data.code);
       } else {
-        alert('Failed to generate interview code');
+        showToast.error('Failed to generate interview code');
       }
     } catch (error) {
       console.error('Failed to generate code:', error);
-      alert('Failed to generate interview code');
+      showToast.error('Failed to generate interview code');
     } finally {
       setGenerating(false);
     }
@@ -120,7 +121,7 @@ Good luck!
 
   const handleSendInvitation = async () => {
     if (!selectedCandidate || !interviewCode) {
-      alert('Please select a candidate and generate a code');
+      showToast.error('Please select a candidate and generate a code');
       return;
     }
 
@@ -149,11 +150,11 @@ Good luck!
         setTimeout(() => navigate('/dashboard/candidates'), 2000);
       } else {
         const error = await response.json();
-        alert(`Failed to send invitation: ${error.error || 'Unknown error'}`);
+        showToast.error(`Failed to send invitation: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to send invitation:', error);
-      alert('Failed to send invitation. Please try again.');
+      showToast.error('Failed to send invitation. Please try again.');
     } finally {
       setSending(false);
     }
@@ -161,7 +162,7 @@ Good luck!
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Link copied to clipboard!');
+    showToast.success('Link copied to clipboard!');
   };
 
   /* Unused variable interviewLink removed */

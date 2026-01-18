@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Upload, Search, Mail, MoreVertical, FileText, Dna, TrendingUp, Users, Plus, Loader } from 'lucide-react';
 import api from '../services/api';
 import AddCandidateDialog from '../components/AddCandidateDialog';
+import { confirmToast, showToast } from '../utils/toast';
 
 interface Candidate {
   _id: string;
@@ -56,6 +57,8 @@ export default function Candidates() {
   const [candidateToUploadResume, setCandidateToUploadResume] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const singleFileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,7 +108,7 @@ export default function Candidates() {
 
   const handleUploadClick = () => {
     if (!selectedJobId) {
-      alert('⚠️ Please select a job first!\n\nUse the dropdown above to select a job before uploading resumes.');
+      showToast.error('⚠️ Please select a job first!\n\nUse the dropdown above to select a job before uploading resumes.');
       return;
     }
     fileInputRef.current?.click();
@@ -129,7 +132,7 @@ export default function Candidates() {
       }
     } catch (err) {
       console.error('Failed to upload resume:', err);
-      alert('Failed to upload resume. Please try again.');
+      showToast.error('Failed to upload resume. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -141,13 +144,15 @@ export default function Candidates() {
   };
 
   const handleDelete = async (candidateId: string) => {
-    if (window.confirm('Are you sure you want to delete this candidate? This action cannot be undone.')) {
+    const confirmed = await confirmToast('Are you sure you want to delete this candidate? This action cannot be undone.');
+    if (confirmed) {
       try {
         await api.candidates.delete(candidateId);
+        showToast.success('Candidate deleted successfully');
         await loadCandidates();
       } catch (err) {
         console.error('Failed to delete candidate:', err);
-        alert('Failed to delete candidate. Please try again.');
+        showToast.error('Failed to delete candidate. Please try again.');
       }
     }
   };
@@ -182,6 +187,18 @@ export default function Candidates() {
 
     return matchesSearch && matchesJob && matchesDate && matchesStatus;
   });
+
+  // Pagination logic
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedJobId, dateFilter, statusFilter]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCandidates = filteredCandidates.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   const candidatesWithAnalysis = candidates.filter(c => c.interviewResult?.overallScore);
   const avgScore = candidatesWithAnalysis.length > 0
@@ -271,7 +288,7 @@ export default function Candidates() {
         onDrop={(e) => {
           e.preventDefault();
           if (!selectedJobId) {
-            alert('Please select a job before uploading resumes.');
+            showToast.error('Please select a job before uploading resumes.');
             return;
           }
           const files = e.dataTransfer.files;
@@ -435,19 +452,18 @@ export default function Candidates() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
-              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Candidate</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Job Role</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Experience</th>
-
-              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Date Added</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Status</th>
-              <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-500)' }}>Actions</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)', width: '25%' }}>Candidate</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Job Role</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Experience</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Date Added</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Status</th>
+              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredCandidates.length === 0 ? (
+            {currentCandidates.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-500)' }}>
+                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-50)' }}>
                   <Users size={40} color="var(--gray-300)" style={{ marginBottom: '0.75rem' }} />
                   <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>No candidates found</p>
                   <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
@@ -456,15 +472,15 @@ export default function Candidates() {
                 </td>
               </tr>
             ) : (
-              filteredCandidates.map((candidate) => {
+              currentCandidates.map((candidate) => {
                 const statusConfig = getStatusConfig(candidate.status);
                 const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
                 const createdDate = (candidate as any).createdAt ? new Date((candidate as any).createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 
                 return (
                   <tr key={candidate._id} style={{ borderBottom: '1px solid var(--gray-200)' }}>
-                    <td style={{ padding: '0.75rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <td style={{ padding: '0.6rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div style={{
                           width: '36px',
                           height: '36px',
@@ -478,33 +494,33 @@ export default function Candidates() {
                           fontSize: '0.85rem'
                         }}>{initials}</div>
                         <div>
-                          <p style={{ fontWeight: 500, fontSize: '0.95rem', color: 'var(--gray-900)' }}>{candidate.firstName} {candidate.lastName}</p>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>{candidate.email}</p>
+                          <p style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--gray-900)', marginBottom: '0.125rem' }}>{candidate.firstName} {candidate.lastName}</p>
+                          <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{candidate.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.95rem', color: 'var(--gray-500)' }}>{(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.95rem', color: 'var(--gray-500)' }}>{candidate.experience || 'N/A'}</td>
-
-                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: 'var(--gray-500)' }}>{createdDate}</td>
-                    <td style={{ padding: '0.75rem' }}>
+                    <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}</td>
+                    <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{candidate.experience || 'N/A'}</td>
+                    <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{createdDate}</td>
+                    <td style={{ padding: '0.6rem 1rem' }}>
                       <span style={{
                         padding: '0.25rem 0.625rem',
                         borderRadius: '9999px',
-                        fontSize: '0.8rem',
+                        fontSize: '0.9rem',
                         fontWeight: 500,
                         background: statusConfig.bg,
                         color: statusConfig.text,
-                        border: `1px solid ${statusConfig.border}`
+                        border: `1px solid ${statusConfig.border}`,
+                        whiteSpace: 'nowrap'
                       }}>
                         {statusConfig.label}
                       </span>
                     </td>
-                    <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
                         {(candidate.status === 'interview_complete' || candidate.status === 'ai_analysis_ready') ? (
                           <Link
-                            to={`/dashboard/candidates/${candidate._id}/report`}
+                            to={`/dashboard/reports/${candidate._id}`}
                             className="btn btn-sm"
                             style={{
                               padding: '0.25rem 0.75rem',
@@ -521,22 +537,12 @@ export default function Candidates() {
                           </Link>
                         ) : candidate.status === 'pending_interview' || candidate.status === 'invited' ? (
                           <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            {/* {(!candidate.resumeUrl && !candidate.resume?.url) && (
-                              <button
-                                className="btn btn-sm btn-ghost"
-                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}
-                                onClick={() => triggerSingleUpload(candidate._id)}
-                              >
-                                <Upload size={14} /> Upload Resume
-                              </button>
-                            )} */}
                             <button className="btn btn-sm btn-secondary" style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}>
                               <Mail size={14} /> Resend Invite
                             </button>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            {/* Show Send Invitation button for candidates with status 'new' */}
                             {candidate.status === 'new' && (
                               <Link
                                 to={`/dashboard/candidates/invite?candidateId=${candidate._id}`}
@@ -546,16 +552,6 @@ export default function Candidates() {
                                 <Mail size={14} /> Send Invitation
                               </Link>
                             )}
-
-                            {/* {(!candidate.resumeUrl && !candidate.resume?.url) && (
-                              <button
-                                className="btn btn-sm btn-ghost"
-                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}
-                                onClick={() => triggerSingleUpload(candidate._id)}
-                              >
-                                <Upload size={14} /> Upload Resume
-                              </button>
-                            )} */}
                           </div>
                         )}
                         <div style={{ position: 'relative' }}>
@@ -569,7 +565,6 @@ export default function Candidates() {
                               }
                             }}
                             onBlur={(e) => {
-                              // Simple delay to allow clicking the menu item
                               setTimeout(() => {
                                 const menu = e.currentTarget.nextElementSibling;
                                 if (menu) {
@@ -626,6 +621,57 @@ export default function Candidates() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination UI */}
+        {totalPages > 1 && (
+          <div style={{ 
+            padding: '1rem', 
+            borderTop: '1px solid var(--gray-200)', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            background: 'var(--gray-50)'
+          }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+              Showing <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{indexOfFirstItem + 1}</span> to <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{Math.min(indexOfLastItem, filteredCandidates.length)}</span> of <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{filteredCandidates.length}</span> candidates
+            </div>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <button 
+                className="btn btn-ghost btn-sm"
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{ padding: '0.4rem 0.75rem' }}
+              >
+                Previous
+              </button>
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  className={`btn btn-sm ${currentPage === i + 1 ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => paginate(i + 1)}
+                  style={{ 
+                    minWidth: '32px', 
+                    height: '32px', 
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button 
+                className="btn btn-ghost btn-sm"
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{ padding: '0.4rem 0.75rem' }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* DNA Consistency Notice */}

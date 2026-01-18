@@ -5,7 +5,6 @@ import {
   Users,
   FileText,
   Settings,
-  Bell,
   Search,
   ChevronDown,
   Sparkles,
@@ -25,7 +24,7 @@ const navigation = [
   { name: 'Candidates', href: '/dashboard/candidates', icon: Users },
   { name: 'Interviews', href: '/dashboard/interviews', icon: Video },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-  { name: 'Settings', href: '/dashboard', icon: Settings },
+  { name: 'Settings', href: '/dashboard/profile', icon: Settings },
 ];
 
 export default function DashboardLayout() {
@@ -103,7 +102,7 @@ export default function DashboardLayout() {
 
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* Sidebar */}
       <aside style={{
         width: '260px',
@@ -112,7 +111,8 @@ export default function DashboardLayout() {
         padding: '1.5rem',
         display: 'flex',
         flexDirection: 'column',
-        borderRight: '1px solid var(--gray-200)'
+        borderRight: '1px solid var(--gray-200)',
+        flexShrink: 0
       }}>
         {/* Logo */}
         <Link to="/dashboard" style={{
@@ -254,7 +254,8 @@ export default function DashboardLayout() {
               {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
             </button>
 
-            {/* Notifications */}
+            {/* Notifications - Commented out as requested */}
+            {/* 
             <button style={{
               position: 'relative',
               background: 'none',
@@ -279,6 +280,7 @@ export default function DashboardLayout() {
                 fontWeight: 600
               }}>3</span>
             </button>
+            */}
 
             {/* User Menu */}
             <div style={{ position: 'relative' }}>

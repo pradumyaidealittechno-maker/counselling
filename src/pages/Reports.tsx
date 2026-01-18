@@ -30,10 +30,16 @@ export default function Reports() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadReports();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFilter, statusFilter]);
 
   const loadReports = async () => {
     try {
@@ -119,6 +125,13 @@ export default function Reports() {
 
     return getDate(b) - getDate(a);
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
+  const currentReports = filteredReports.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   if (loading) {
     return (
@@ -271,7 +284,7 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {filteredReports.map((report) => {
+              {currentReports.map((report) => {
                 // Get raw score "18/50" directly
                 const rawScore = report.competencyAssessment?.overallScore || 'N/A';
 
@@ -446,6 +459,72 @@ export default function Reports() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {!loading && filteredReports.length > itemsPerPage && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: '1.5rem',
+          padding: '1rem',
+          background: 'var(--white)',
+          borderRadius: '0.75rem',
+          border: '1px solid var(--gray-200)',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+            Showing <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{((currentPage - 1) * itemsPerPage) + 1}</span> to <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{Math.min(currentPage * itemsPerPage, filteredReports.length)}</span> of <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{filteredReports.length}</span> results
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="btn btn-sm btn-ghost"
+              style={{ padding: '0.5rem 0.75rem', height: 'auto', opacity: currentPage === 1 ? 0.5 : 1 }}
+            >
+              Previous
+            </button>
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+              {[...Array(totalPages)].map((_, i) => {
+                const pageNum = i + 1;
+                // Only show current page, 1, total, and pages around current
+                if (pageNum === 1 || pageNum === totalPages || (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`btn btn-sm ${currentPage === pageNum ? 'btn-primary' : 'btn-ghost'}`}
+                      style={{ 
+                        width: '32px', 
+                        height: '32px', 
+                        padding: 0, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        fontSize: '0.875rem' 
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
+                  return <span key={pageNum} style={{ color: 'var(--gray-400)' }}>...</span>;
+                }
+                return null;
+              })}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="btn btn-sm btn-ghost"
+              style={{ padding: '0.5rem 0.75rem', height: 'auto', opacity: currentPage === totalPages ? 0.5 : 1 }}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

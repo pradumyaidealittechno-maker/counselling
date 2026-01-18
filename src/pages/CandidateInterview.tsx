@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Camera, Mic, MicOff, Video, VideoOff, AlertCircle } from 'lucide-react';
 import api from '../services/api';
+// import { showToast } from '../utils/toast'; // Removed unused import
 
 declare global {
   interface Window {

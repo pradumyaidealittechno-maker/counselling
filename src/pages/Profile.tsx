@@ -100,8 +100,8 @@ export default function Profile() {
               <Mail size={20} color="#6366F1" />
             </div>
             <div>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Email</p>
-              <p style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 500 }}>{userData.email}</p>
+              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Email</p>
+              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.email}</p>
             </div>
           </div>
 
@@ -118,8 +118,8 @@ export default function Profile() {
               <Building size={20} color="#E91E63" />
             </div>
             <div>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Company</p>
-              <p style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 500 }}>{userData.company}</p>
+              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Company</p>
+              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.company}</p>
             </div>
           </div>
 
@@ -136,8 +136,8 @@ export default function Profile() {
               <Briefcase size={20} color="#10B981" />
             </div>
             <div>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Role</p>
-              <p style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 500 }}>{userData.role}</p>
+              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Role</p>
+              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.role}</p>
             </div>
           </div>
 
@@ -154,8 +154,8 @@ export default function Profile() {
               <Calendar size={20} color="#F97316" />
             </div>
             <div>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Member Since</p>
-              <p style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 500 }}>
+              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Member Since</p>
+              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>
                 {new Date(userData.createdAt).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long', 

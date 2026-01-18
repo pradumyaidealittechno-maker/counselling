@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mic, MicOff, Video, VideoOff, Sparkles, Play, Square, Dna } from 'lucide-react';
+import { showToast } from '../utils/toast';
 
 // Retell SDK will be loaded via CDN in index.html
 declare global {
@@ -96,12 +97,12 @@ export default function VideoInterview() {
         sessionStorage.setItem('job_title', data.job_title);
         sessionStorage.setItem('company_name', data.company_name);
       } else {
-        alert('Invalid interview code: ' + (data.message || 'Please check your code'));
+        showToast.error('Invalid interview code: ' + (data.message || 'Please check your code'));
         window.location.href = '/';
       }
     } catch (error) {
       console.error('Code validation error:', error);
-      alert('Failed to validate code. Please try again.');
+      showToast.error('Failed to validate code. Please try again.');
     }
   };
 
@@ -180,7 +181,7 @@ export default function VideoInterview() {
       return true;
     } catch (error) {
       console.error('❌ Camera access denied:', error);
-      alert('⚠️ Camera Access Required\n\nYou MUST grant camera permissions to proceed with the interview.');
+      showToast.error('⚠️ Camera Access Required\n\nYou MUST grant camera permissions to proceed with the interview.');
       throw error;
     }
   };
@@ -344,7 +345,7 @@ export default function VideoInterview() {
       console.log('✅ Interview started successfully');
     } catch (error) {
       console.error('Failed to start interview:', error);
-      alert('Failed to start interview. Please try again.');
+      showToast.error('Failed to start interview. Please try again.');
       stopWebcam();
     }
   };
@@ -373,7 +374,7 @@ export default function VideoInterview() {
   
   const enableSystemAudioFallback = async () => {
     try {
-      alert("Please select 'This Tab' and enable 'Share tab audio' in the sharing dialog to record the AI's voice.");
+      showToast.success("Please select 'This Tab' and enable 'Share tab audio' in the sharing dialog to record the AI's voice.");
       
       // @ts-ignore - getDisplayMedia options
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -389,7 +390,7 @@ export default function VideoInterview() {
       const audioTrack = displayStream.getAudioTracks()[0];
       
       if (!audioTrack) {
-        alert("No audio shared. Please try again and ensure 'Share Audio' is checked.");
+        showToast.error("No audio shared. Please try again and ensure 'Share Audio' is checked.");
         displayStream.getTracks().forEach(t => t.stop());
         return;
       }
@@ -407,7 +408,7 @@ export default function VideoInterview() {
       }
       
       // Disable the button or show success
-      alert("System audio enabled! The AI voice will now be recorded.");
+      showToast.success("System audio enabled! The AI voice will now be recorded.");
       
     } catch (err) {
       console.error('Failed to get system audio:', err);

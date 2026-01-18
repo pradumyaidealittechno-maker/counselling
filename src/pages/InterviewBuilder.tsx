@@ -5,6 +5,7 @@ import {
   Info, ChevronDown, ChevronUp, Target, Loader
 } from 'lucide-react';
 import api from '../services/api';
+import { confirmToast } from '../utils/toast';
 
 interface InterviewQuestion {
   id: string;
@@ -175,7 +176,8 @@ export default function InterviewBuilder() {
       setError(errorMessage);
       
       // Optional: Confirm with user if they want to proceed despite error
-      if (window.confirm(`Failed to sync questions to n8n: ${errorMessage}. Proceed anyway?`)) {
+      const confirmed = await confirmToast(`Failed to sync questions to n8n: ${errorMessage}. Proceed anyway?`);
+      if (confirmed) {
         navigate(`/dashboard/candidates?jobId=${jobId}`);
       }
     } finally {
