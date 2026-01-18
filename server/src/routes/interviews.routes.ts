@@ -258,15 +258,18 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
     // Send to n8n for processing
     try {
       await n8nService.sendInterviewResult({
-        interviewId: interview._id.toString(),
         candidateId: candidate._id.toString(),
         candidateName: `${candidate.firstName} ${candidate.lastName}`,
-        jobId: job._id.toString(),
-        jobTitle: job.title,
+        candidateEmail: (interview.candidateId as any).email || '',
+        interviewData: {
+          interviewId: interview._id.toString(),
+          jobId: job._id.toString(),
+          jobTitle: job.title,
+          jobDNA: job.jobDNA,
+        },
         transcript: interview.transcript,
         duration: interview.duration || 0,
         recordingUrl: interview.fullRecordingUrl,
-        jobDNA: job.jobDNA,
       });
     } catch (n8nError) {
       console.warn('N8N webhook failed (non-critical):', n8nError);
@@ -458,7 +461,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 
     // Verify company access
     const candidate = await Candidate.findById(interview.candidateId);
-    if (candidate?.companyId.toString() !== req.user?.companyId.toString()) {
+    if (candidate?.companyId.toString() !== req.user?.companyId?.toString()) {
       res.status(403).json({ error: 'Access denied' });
       return;
     }

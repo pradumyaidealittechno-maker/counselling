@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ChatbotDialog from './ChatbotDialog';
+import api from '../services/api';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -54,37 +55,13 @@ export default function DashboardLayout() {
     const fetchUserData = async () => {
       try {
         console.log('🔍 Fetching user data for header...');
-        const token = localStorage.getItem('auth_token'); // Fixed: use 'auth_token' not 'token'
+        const userData = await api.auth.getMe();
         
-        if (!token) {
-          console.log('❌ No token found in localStorage');
-          return;
-        }
-
-        console.log('✅ Token found, calling API...');
-        const response = await fetch('http://localhost:3001/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        console.log('📡 API Response status:', response.status);
-        
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('✅ User data received:', userData);
-          
-          if (userData.firstName && userData.lastName) {
-            const fullName = `${userData.firstName} ${userData.lastName}`;
-            console.log('👤 Setting user name to:', fullName);
-            setUserName(fullName);
-            setUserInitials(`${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase());
-          } else {
-            console.log('⚠️ firstName or lastName missing in userData');
-          }
-        } else {
-          const errorText = await response.text();
-          console.log('❌ API call failed:', response.status, errorText);
+        if (userData && userData.firstName && userData.lastName) {
+          const fullName = `${userData.firstName} ${userData.lastName}`;
+          console.log('👤 Setting user name to:', fullName);
+          setUserName(fullName);
+          setUserInitials(`${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase());
         }
       } catch (error) {
         console.error('❌ Failed to fetch user data:', error);

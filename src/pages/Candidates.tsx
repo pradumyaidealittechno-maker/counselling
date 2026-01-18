@@ -54,14 +54,13 @@ export default function Candidates() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Array<{ _id: string; title: string }>>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [candidateToUploadResume, setCandidateToUploadResume] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const singleFileInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jobSelectorRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     // Check if jobId is in URL params
@@ -106,41 +105,84 @@ export default function Candidates() {
     }
   };
 
-  const handleUploadClick = () => {
+  const handleUploadAreaClick = () => {
     if (!selectedJobId) {
-      showToast.error('⚠️ Please select a job first!\n\nUse the dropdown above to select a job before uploading resumes.');
+      // Auto-focus the job selector when user clicks upload without selecting job
+      jobSelectorRef.current?.focus();
+      jobSelectorRef.current?.click(); // Try to open the dropdown
       return;
     }
     fileInputRef.current?.click();
   };
 
-  const handleSingleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0 || !candidateToUploadResume) return;
+    if (!files || files.length === 0 || !selectedJobId) return;
+
+    setLoading(true);
+    const file = files[0];
 
     try {
-      setLoading(true); // Use global loading since we removed uploading state
-      const file = files[0];
-      await api.candidates.uploadResumeForCandidate(candidateToUploadResume, file);
+      // Step 1: Parse resume to extract candidate data (doesn't save file)
+      const formData = new FormData();
+      formData.append('resume', file);
 
-      // Reload candidates
+      const parseResponse = await fetch('http://localhost:3001/api/candidates/parse-resume', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: formData
+      });
+
+      if (!parseResponse.ok) {
+        const error = await parseResponse.json();
+        throw new Error(error.error || 'Failed to parse resume');
+      }
+
+      const parseResult = await parseResponse.json();
+      const candidateData = parseResult.data;
+
+      console.log('✅ Extracted candidate data:', candidateData);
+
+      // Step 2: Create candidate with extracted data + selected job
+      const createResponse = await fetch('http://localhost:3001/api/candidates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          firstName: candidateData.firstName || 'Unknown',
+          lastName: candidateData.lastName || 'Candidate',
+          email: candidateData.email || '',
+          phone: candidateData.phone || '',
+          experience: candidateData.experience || '',
+          linkedIn: candidateData.linkedIn || '',
+          jobId: selectedJobId,
+        })
+      });
+
+      if (!createResponse.ok) {
+        const error = await createResponse.json();
+        throw new Error(error.error || 'Failed to create candidate');
+      }
+
+      showToast.success(`✅ Candidate created: ${candidateData.firstName} ${candidateData.lastName}`);
+      
+      // Reload candidates list
       await loadCandidates();
 
-      setCandidateToUploadResume(null);
-      if (singleFileInputRef.current) {
-        singleFileInputRef.current.value = '';
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
-    } catch (err) {
-      console.error('Failed to upload resume:', err);
-      showToast.error('Failed to upload resume. Please try again.');
+    } catch (err: any) {
+      console.error('Failed to process resume:', err);
+      showToast.error(err.message || 'Failed to process resume. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const triggerSingleUpload = (candidateId: string) => {
-    setCandidateToUploadResume(candidateId);
-    singleFileInputRef.current?.click();
   };
 
   const handleDelete = async (candidateId: string) => {
@@ -233,15 +275,6 @@ export default function Candidates() {
           <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
             <Mail size={16} /> Send Invitation
           </Link>
-
-
-          <input
-            type="file"
-            ref={singleFileInputRef}
-            onChange={handleSingleFileUpload}
-            accept=".pdf,.doc,.docx"
-            style={{ display: 'none' }}
-          />
         </div>
       </div>
 
@@ -282,26 +315,8 @@ export default function Candidates() {
       </div>
 
       {/* Upload Area */}
-      {/* <div
-        onClick={handleUploadClick}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          if (!selectedJobId) {
-            showToast.error('Please select a job before uploading resumes.');
-            return;
-          }
-          const files = e.dataTransfer.files;
-          if (files && files.length > 0) {
-            // Manually create a change event for the file input
-            const dt = new DataTransfer();
-            Array.from(files).forEach(file => dt.items.add(file));
-            if (fileInputRef.current) {
-              fileInputRef.current.files = dt.files;
-              handleSingleFileUpload({ target: fileInputRef.current } as any);
-            }
-          }
-        }}
+      <div
+        onClick={handleUploadAreaClick}
         style={{
           border: '2px dashed var(--gray-200)',
           borderRadius: '0.75rem',
@@ -309,15 +324,12 @@ export default function Candidates() {
           textAlign: 'center',
           marginBottom: '1rem',
           background: 'var(--gray-50)',
-          cursor: selectedJobId ? 'pointer' : 'not-allowed',
-          opacity: selectedJobId ? 1 : 0.6,
+          cursor: selectedJobId ? 'pointer' : 'pointer', // Always clickable
           transition: 'all 0.2s',
         }}
         onMouseEnter={(e) => {
-          if (selectedJobId) {
-            e.currentTarget.style.borderColor = '#E91E63';
-            e.currentTarget.style.background = 'rgba(233, 30, 99, 0.02)';
-          }
+          e.currentTarget.style.borderColor = '#E91E63';
+          e.currentTarget.style.background = 'rgba(233, 30, 99, 0.02)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.borderColor = 'var(--gray-200)';
@@ -326,20 +338,20 @@ export default function Candidates() {
       >
         <Upload size={24} color="#9CA3AF" style={{ marginBottom: '0.5rem' }} />
         <p style={{ fontWeight: 500, marginBottom: '0.125rem', fontSize: '0.875rem', color: 'var(--gray-900)' }}>
-          {selectedJobId ? 'Drag and drop resumes here' : 'Select a job first'}
+          {selectedJobId ? 'Click to upload resume' : 'Click to select job & upload resume'}
         </p>
         <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-          {selectedJobId ? 'or click to browse (PDF, DOC, DOCX)' : 'Use the dropdown above to select a job'}
+          {selectedJobId ? 'PDF, DOC, DOCX supported' : 'Select a job first, then upload'}
         </p>
-      </div> */}
+      </div>
+
 
       {/* Hidden file input for bulk uploads */}
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleSingleFileUpload}
+        onChange={handleResumeUpload}
         accept=".pdf,.doc,.docx"
-        multiple
         style={{ display: 'none' }}
       />
 
@@ -368,6 +380,7 @@ export default function Candidates() {
           />
         </div>
         <select
+          ref={jobSelectorRef}
           className="input"
           value={selectedJobId || ''}
           onChange={(e) => setSelectedJobId(e.target.value || null)}

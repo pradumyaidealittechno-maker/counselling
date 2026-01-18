@@ -546,4 +546,97 @@ router.get('/:id/evaluation', async (req: AuthRequest, res: Response) => {
   }
 });
 
+/**
+ * POST /api/candidates/parse-resume
+ * Parse resume and extract candidate information (does NOT save the file)
+ */
+router.post('/parse-resume', uploadResume, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+
+    console.log('📄 Parsing resume:', req.file.originalname);
+    console.log('📋 File type:', req.file.mimetype);
+    console.log('📏 File size:', req.file.size, 'bytes');
+
+    // Dynamic imports for parsing libraries
+    let resumeText = '';
+
+    // Extract text based on file type
+    if (req.file.mimetype === 'application/pdf') {
+      console.log('🔍 Extracting text from PDF...');
+      try {
+        // Import pdf-parse dynamically - handle both default and named exports
+        const pdfParseModule = await import('pdf-parse');
+        const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+        const pdfData = await pdfParse(req.file.buffer);
+        resumeText = pdfData.text;
+        console.log('✅ PDF text extracted, length:', resumeText.length);
+      } catch (pdfError: any) {
+        console.error('❌ PDF extraction error:', pdfError);
+        res.status(500).json({ error: `PDF extraction failed: ${pdfError.message}` });
+        return;
+      }
+    } else if (req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      console.log('🔍 Extracting text from DOCX...');
+      try {
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+        resumeText = result.value;
+        console.log('✅ DOCX text extracted, length:', resumeText.length);
+      } catch (docxError: any) {
+        console.warn('⚠️ DOCX extraction failed, using basic method');
+        resumeText = req.file.buffer.toString('utf-8');
+      }
+    } else if (req.file.mimetype === 'application/msword') {
+      console.log('🔍 Extracting text from DOC (basic)...');
+      resumeText = req.file.buffer.toString('utf-8');
+    } else {
+      res.status(400).json({ error: 'Unsupported file type. Please upload PDF, DOC, or DOCX' });
+      return;
+    }
+
+    if (!resumeText || resumeText.trim().length < 50) {
+      console.error('❌ Extracted text too short:', resumeText.length);
+      res.status(400).json({
+        error: 'Could not extract sufficient text from resume. Please ensure the file is not empty or corrupted.'
+      });
+      return;
+    }
+
+    console.log('📝 Extracted text preview:', resumeText.substring(0, 200) + '...');
+
+    // Parse resume using AI
+    console.log('🤖 Sending to AI for parsing...');
+    const { default: aiService } = await import('../services/ai.service.js');
+    
+    let candidateData;
+    try {
+      candidateData = await aiService.parseResume(resumeText);
+      console.log('✅ Parsed candidate data:', candidateData);
+    } catch (aiError: any) {
+      console.error('❌ AI parsing failed:', aiError.message);
+      res.status(500).json({
+        error: 'AI parsing failed',
+        details: aiError.message || 'Could not extract candidate information'
+      });
+      return;
+    }
+
+    // Return parsed data (DO NOT save file)
+    res.json({
+      success: true,
+      data: candidateData,
+    });
+  } catch (error: any) {
+    console.error('❌ Parse resume error:', error);
+    res.status(500).json({
+      error: 'Failed to parse resume',
+      details: error.message
+    });
+  }
+});
+
 export default router;

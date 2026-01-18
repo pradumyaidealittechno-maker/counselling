@@ -10,7 +10,7 @@ import aiService from '../services/ai.service.js';
 import n8nService from '../services/n8n.service.js';
 
 import { upload } from '../middleware/upload.js';
-import pdfParse from 'pdf-parse';
+import * as pdfParseModule from 'pdf-parse';
 const router = express.Router();
 
 // Parse Job Description from file (protected)
@@ -25,6 +25,8 @@ router.post('/parse-jd', authenticate, upload.single('file'), async (req, res) =
     if (req.file.mimetype === 'application/pdf') {
       console.log('📄 Parsing PDF:', req.file.originalname);
       try {
+        // Handle pdf-parse module - it can be either default or named export
+        const pdfParse = (pdfParseModule as any).default || pdfParseModule;
         const data = await pdfParse(req.file.buffer);
         console.log('✅ PDF Parsed, length:', (data.text || '').length);
         text = data.text;

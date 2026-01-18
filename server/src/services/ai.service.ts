@@ -820,6 +820,80 @@ For valid hiring/recruitment questions: Provide concise, actionable insights. Be
       throw new Error('Failed to get AI response. Please try again.');
     }
   }
+
+  /**
+   * Parse resume text and extract candidate information
+   */
+  async parseResume(resumeText: string): Promise<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    experience?: string;
+    linkedIn?: string;
+  }> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      throw new Error('OpenAI API key not configured. Cannot parse resume.');
+    }
+
+    try {
+      const prompt = `Extract candidate information from the following resume text.
+
+Resume Text:
+${resumeText}
+
+Return a JSON object with the following fields:
+{
+  "firstName": "First name of the candidate",
+  "lastName": "Last name of the candidate",
+  "email": "Email address",
+  "phone": "Phone number (optional)",
+  "experience": "Years of experience as a string (e.g., '5 years', '2-3 years', 'Fresher')",
+  "linkedIn": "LinkedIn profile URL (optional)"
+}
+
+Important:
+- Extract only the information that is clearly present in the resume
+- For missing fields, use empty string ""
+- For experience, try to calculate total years from work history or use what's stated
+- Return valid JSON only`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert resume parser. Extract structured candidate information from resume text.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000,
+        }
+      );
+
+      const parsed = JSON.parse(response.data.choices[0].message.content);
+      console.log('✅ Parsed candidate data:', parsed);
+      return parsed;
+    } catch (error: any) {
+      console.error('❌ Failed to parse resume:', error.response?.data || error.message);
+      throw new Error('Failed to parse resume with AI');
+    }
+  }
 }
 
 export default new AIService();

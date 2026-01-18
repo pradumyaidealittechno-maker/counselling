@@ -160,9 +160,9 @@ Good luck!
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    showToast.success('Link copied to clipboard!');
+    showToast.success(`✅ ${label} copied to clipboard!`);
   };
 
   /* Unused variable interviewLink removed */
@@ -315,7 +315,7 @@ Good luck!
                       {interviewCode && (
                         <button
                           className="btn btn-ghost btn-sm"
-                          onClick={() => copyToClipboard(interviewCode)}
+                          onClick={() => copyToClipboard(interviewCode, 'Interview Code')}
                           style={{ padding: '0.25rem 0.5rem' }}
                         >
                           <Copy size={14} />
@@ -367,6 +367,122 @@ Good luck!
                     HTML tags supported. Ensure Interview Code and Link are included.
                   </div>
                 </div>
+
+                {/* Visual Preview with Copy Buttons */}
+                {interviewCode && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: '0.75rem',
+                    color: 'white'
+                  }}>
+                    <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', fontWeight: 600, opacity: 0.9 }}>
+                      Interview Details
+                    </h4>
+                    
+                    {/* Interview Code */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.15)',
+                      borderRadius: '0.5rem',
+                      padding: '0.75rem',
+                      marginBottom: '0.75rem',
+                      backdropFilter: 'blur(10px)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.7rem', opacity: 0.8 }}>Interview Code</p>
+                          <p style={{
+                            margin: 0,
+                            fontSize: '1.25rem',
+                            fontWeight: 'bold',
+                            fontFamily: 'monospace',
+                            letterSpacing: '2px',
+                            color: '#FFD700'
+                          }}>
+                            {interviewCode}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(interviewCode, 'Interview Code')}
+                          style={{
+                            background: 'rgba(255,255,255,0.2)',
+                            border: '1px solid rgba(255,255,255,0.3)',
+                            borderRadius: '0.375rem',
+                            padding: '0.5rem 0.75rem',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                          }}
+                        >
+                          <Copy size={14} />
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Interview Link */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.15)',
+                      borderRadius: '0.5rem',
+                      padding: '0.75rem',
+                      backdropFilter: 'blur(10px)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1, marginRight: '0.75rem' }}>
+                          <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.7rem', opacity: 0.8 }}>Interview Link</p>
+                          <p style={{
+                            margin: 0,
+                            fontSize: '0.8rem',
+                            fontFamily: 'monospace',
+                            color: '#a7f3d0',
+                            wordBreak: 'break-all'
+                          }}>
+                            {`${BASE_URL}/interview?code=${interviewCode}`}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(`${BASE_URL}/interview?code=${interviewCode}`, 'Interview Link')}
+                          style={{
+                            background: 'rgba(255,255,255,0.2)',
+                            border: '1px solid rgba(255,255,255,0.3)',
+                            borderRadius: '0.375rem',
+                            padding: '0.5rem 0.75rem',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            transition: 'all 0.2s',
+                            flexShrink: 0
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                          }}
+                        >
+                          <Copy size={14} />
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
