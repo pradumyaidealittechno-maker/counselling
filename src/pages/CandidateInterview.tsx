@@ -43,6 +43,8 @@ export default function CandidateInterview() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mixerContextRef = useRef<AudioContext | null>(null);
   const agentGainRef = useRef<GainNode | null>(null);
+  const agentTrackRef = useRef<MediaStreamTrack | null>(null);
+  const agentAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   // Validate code on mount
   useEffect(() => {
@@ -153,6 +155,11 @@ export default function CandidateInterview() {
       agentGain.connect(mixerDestination);
       agentGainRef.current = agentGain;
 
+      // Try to connect if track is already available
+      if (agentTrackRef.current) {
+        connectAgentToMixer();
+      }
+
       // Create recording stream
       const recordingStream = new MediaStream([
         ...mediaStreamRef.current.getVideoTracks(),
@@ -190,6 +197,49 @@ export default function CandidateInterview() {
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
+    }
+  };
+
+  const connectAgentToMixer = () => {
+    if (!agentTrackRef.current) {
+      console.log('No agent track available to connect');
+      return;
+    }
+    
+    if (!mixerContextRef.current || !agentGainRef.current) {
+      console.log('Mixer not ready, will connect later');
+      return;
+    }
+    
+    try {
+      console.log('🔌 Connecting agent audio track to mixer...');
+      const agentStream = new MediaStream([agentTrackRef.current]);
+      const agentSource = mixerContextRef.current.createMediaStreamSource(agentStream);
+      agentSource.connect(agentGainRef.current);
+      agentAudioSourceRef.current = agentSource;
+      console.log('✅ Agent audio successfully connected to recording mixer');
+    } catch (e) {
+      console.error('❌ Error connecting agent track to mixer:', e);
+    }
+  };
+
+  const findAndConnectAgentTrack = (client: any) => {
+    if (!client || !client.room) {
+      console.log('Client or room not ready for agent track search');
+      return;
+    }
+    
+    console.log('🔍 Searching for agent audio track...');
+    
+    for (const participant of client.room.remoteParticipants.values()) {
+      for (const publication of participant.audioTrackPublications.values()) {
+        if (publication.track) {
+          console.log('✅ Agent track found and subscribed!');
+          agentTrackRef.current = (publication.track as any).mediaStreamTrack;
+          connectAgentToMixer();
+          return;
+        }
+      }
     }
   };
 
@@ -233,7 +283,20 @@ export default function CandidateInterview() {
         timerRef.current = setInterval(() => {
           setDuration((prev) => prev + 1);
         }, 1000);
+        
+        // Try to find agent track
+        findAndConnectAgentTrack(client);
       });
+
+      if (client.room) {
+        client.room.on('trackSubscribed', (track: any, publication: any) => {
+          if (publication.trackName === 'agent_audio') {
+            console.log('Agent track subscribed via room event');
+            agentTrackRef.current = track.mediaStreamTrack;
+            connectAgentToMixer();
+          }
+        });
+      }
 
       client.on('call_ended', () => {
         setInterviewStatus('completed');

@@ -34,6 +34,14 @@ export default function VideoInterview() {
   const recordedChunksRef = useRef<Blob[]>([]);
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number>(0);
+  
+  // Audio Mixing Refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const agentAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const agentTrackRef = useRef<MediaStreamTrack | null>(null);
+  const agentGainRef = useRef<GainNode | null>(null);
 
   // Timer effect
   useEffect(() => {
@@ -59,6 +67,15 @@ export default function VideoInterview() {
       validateInterviewCode();
     }
   }, [code]);
+  
+  // Clean up audio context on unmount
+  useEffect(() => {
+    return () => {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
 
   const validateInterviewCode = async () => {
     try {
@@ -96,22 +113,56 @@ export default function VideoInterview() {
 
   const startWebcam = async () => {
     try {
+      // 1. Get User Media (Mic & Cam)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: true
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
       });
 
       webcamStreamRef.current = stream;
       if (webcamVideoRef.current) {
         webcamVideoRef.current.srcObject = stream;
-        // Explicitly play the video stream
         webcamVideoRef.current.play().catch(err => {
           console.error('Error playing video:', err);
         });
       }
 
-      // Start recording
-      const mediaRecorder = new MediaRecorder(stream, {
+      // 2. Setup Audio Mixing context
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      const destination = audioContext.createMediaStreamDestination();
+      
+      audioContextRef.current = audioContext;
+      audioDestinationRef.current = destination;
+
+      // 3. Add Mic to Mixer
+      const micSource = audioContext.createMediaStreamSource(stream);
+      micSource.connect(destination);
+      micSourceRef.current = micSource;
+
+      // 4. Setup Agent Audio Gain (will connect later when track is available)
+      const agentGain = audioContext.createGain();
+      agentGain.gain.value = 1.0;
+      agentGain.connect(destination);
+      agentGainRef.current = agentGain;
+
+      // 5. Try to connect if track is already available
+      if (agentTrackRef.current) {
+        connectAgentToMixer();
+      }
+
+      // 6. Create mixed stream for recording (Video from webcam + Mixed Audio)
+      const mixedStream = new MediaStream([
+        ...stream.getVideoTracks(),
+        ...destination.stream.getAudioTracks()
+      ]);
+
+      // 5. Start recording with mixed stream
+      const mediaRecorder = new MediaRecorder(mixedStream, {
         mimeType: 'video/webm;codecs=vp9',
         videoBitsPerSecond: 2500000
       });
@@ -125,7 +176,7 @@ export default function VideoInterview() {
       mediaRecorder.start(1000); // Collect data every second
       mediaRecorderRef.current = mediaRecorder;
 
-      console.log('✅ Webcam and recording started');
+      console.log('✅ Webcam and recording started (with mixed audio)');
       return true;
     } catch (error) {
       console.error('❌ Camera access denied:', error);
@@ -134,10 +185,39 @@ export default function VideoInterview() {
     }
   };
 
+  const connectAgentToMixer = () => {
+    if (!agentTrackRef.current) {
+      console.log('No agent track available to connect');
+      return;
+    }
+    
+    if (!audioContextRef.current || !agentGainRef.current) {
+      console.log('Mixer not ready, will connect later');
+      return;
+    }
+    
+    try {
+      console.log('🔌 Connecting agent audio track to mixer...');
+      const agentStream = new MediaStream([agentTrackRef.current]);
+      const agentSource = audioContextRef.current.createMediaStreamSource(agentStream);
+      agentSource.connect(agentGainRef.current);
+      agentAudioSourceRef.current = agentSource;
+      console.log('✅ Agent audio successfully connected to recording mixer');
+    } catch (e) {
+      console.error('❌ Error connecting agent track to mixer:', e);
+    }
+  };
+
   const stopWebcam = () => {
     if (webcamStreamRef.current) {
       webcamStreamRef.current.getTracks().forEach(track => track.stop());
       webcamStreamRef.current = null;
+    }
+    
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
     }
   };
 
@@ -220,6 +300,11 @@ export default function VideoInterview() {
       });
 
       // Handle conversation events
+      retellClient.on('call_ready', () => {
+        console.log('Retell call ready - looking for agent track');
+        findAndConnectAgentTrack(retellClient);
+      });
+
       retellClient.on('conversationStarted', () => {
         console.log('Retell conversation started');
         setAiSpeaking(true);
@@ -239,18 +324,93 @@ export default function VideoInterview() {
         handleEnd();
       });
 
+      if (retellClient.room) {
+        retellClient.room.on('trackSubscribed', (track: any, publication: any) => {
+          if (publication.trackName === 'agent_audio') {
+            console.log('Agent track subscribed via room event');
+            agentTrackRef.current = track.mediaStreamTrack;
+            connectAgentToMixer();
+          }
+        });
+      }
+
       // Start the call
       await retellClient.startCall({ accessToken: token });
 
       setStarted(true);
       setIsRecording(true);
       startTimeRef.current = Date.now();
-
+      
       console.log('✅ Interview started successfully');
     } catch (error) {
       console.error('Failed to start interview:', error);
       alert('Failed to start interview. Please try again.');
       stopWebcam();
+    }
+  };
+  
+  const findAndConnectAgentTrack = (client: any) => {
+    if (!client || !client.room) {
+      console.log('Client or room not ready for agent track search');
+      return;
+    }
+    
+    console.log('🔍 Searching for agent audio track...');
+    
+    // Search all remote participants
+    for (const participant of client.room.remoteParticipants.values()) {
+      for (const publication of participant.audioTrackPublications.values()) {
+        if (publication.track) {
+          console.log('✅ Agent track found and subscribed!');
+          agentTrackRef.current = (publication.track as any).mediaStreamTrack;
+          connectAgentToMixer();
+          return;
+        }
+      }
+    }
+  };
+
+  
+  const enableSystemAudioFallback = async () => {
+    try {
+      alert("Please select 'This Tab' and enable 'Share tab audio' in the sharing dialog to record the AI's voice.");
+      
+      // @ts-ignore - getDisplayMedia options
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true, // Required to get the tab picker  
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      } as any);
+      
+      // We only want the audio
+      const audioTrack = displayStream.getAudioTracks()[0];
+      
+      if (!audioTrack) {
+        alert("No audio shared. Please try again and ensure 'Share Audio' is checked.");
+        displayStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+      
+      console.log('🖥️ System audio track obtained from screen share');
+      
+      // Stop the video track immediately as we don't need it
+      displayStream.getVideoTracks().forEach(t => t.stop());
+      
+      if (audioContextRef.current && audioDestinationRef.current) {
+        const systemSource = audioContextRef.current.createMediaStreamSource(new MediaStream([audioTrack]));
+        systemSource.connect(audioDestinationRef.current);
+        // Note: Do NOT connect to destination here as it will cause feedback loop if it captures speakers
+        // But since we are capturing TAB audio, it's already playing.
+      }
+      
+      // Disable the button or show success
+      alert("System audio enabled! The AI voice will now be recorded.");
+      
+    } catch (err) {
+      console.error('Failed to get system audio:', err);
     }
   };
 
@@ -670,6 +830,7 @@ export default function VideoInterview() {
               justifyContent: 'center',
               transition: 'all 0.2s'
             }}
+            title={micEnabled ? "Mute Microphone" : "Unmute Microphone"}
           >
             {micEnabled ? <Mic size={20} color="#4b5563" /> : <MicOff size={20} color="white" />}
           </button>
@@ -687,8 +848,27 @@ export default function VideoInterview() {
               justifyContent: 'center',
               transition: 'all 0.2s'
             }}
+            title={videoEnabled ? "Turn Off Camera" : "Turn On Camera"}
           >
             {videoEnabled ? <Video size={20} color="#4b5563" /> : <VideoOff size={20} color="white" />}
+          </button>
+        </div>
+        
+        {/* System Audio Fallback */}
+        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          <button
+            onClick={enableSystemAudioFallback}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#E91E63',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            No AI sound in recording? Click here
           </button>
         </div>
 

@@ -21,14 +21,18 @@ export default function ChatbotDialog({ isOpen, onClose, context }: ChatbotDialo
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Hi! 👋 I'm your AI hiring assistant. I can help you with:
+      content: `Hi! 👋 I'm your AI hiring assistant specialized in recruitment and candidate evaluation.
 
+I can help you with:
 • Understanding DNA match scores
 • Explaining hiring recommendations  
 • Comparing candidates
 • Interview analysis insights
+• Recruitment best practices
 
-What would you like to know?`
+⚠️ **Note:** I only answer questions related to hiring and recruitment. For other topics, please use appropriate resources.
+
+What would you like to know about your hiring process?`
     }
   ]);
   const [input, setInput] = useState('');

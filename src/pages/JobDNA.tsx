@@ -217,7 +217,7 @@ export default function JobDNA() {
               <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.75rem' }}>Job DNA</span>
               <span style={{ padding: '0.125rem 0.5rem', borderRadius: '9999px', fontSize: '0.625rem', fontWeight: 500, background: job.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: job.status === 'active' ? '#059669' : '#D97706' }}>{job.status}</span>
             </div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>{job.title}</h1>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>{job.title}</h1>
             <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{job.department || 'No department'} - Last updated {new Date(job.updatedAt).toLocaleDateString()}</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
@@ -252,7 +252,7 @@ export default function JobDNA() {
         <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
           <h3 style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>DNA Quality</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ color: 'white', fontWeight: 700, fontSize: '1.25rem' }}>{totalTraits}</span></div>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ color: 'white', fontWeight: 700, fontSize: '1.0rem' }}>{totalTraits}</span></div>
             <div><p style={{ fontWeight: 600, color: 'var(--gray-900)', fontSize: '1rem' }}>Total Traits</p><p style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>Across all dimensions</p></div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -341,7 +341,7 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                       }}
                     />
                   ) : (
-                    <span style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--gray-900)' }}>{currentTrait.name}</span>
+                    <span style={{ fontSize: '1.0rem', fontWeight: 500, color: 'var(--gray-900)' }}>{currentTrait.name}</span>
                   )}
                   <select
                     value={currentTrait.importance}
@@ -383,7 +383,7 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                     }}
                   />
                 ) : (
-                  <p style={{ fontSize: '1.1rem', color: 'var(--gray-500)', lineHeight: 1.5 }}>{currentTrait.description}</p>
+                  <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)', lineHeight: 1.5 }}>{currentTrait.description}</p>
                 )}
               </div>
             );

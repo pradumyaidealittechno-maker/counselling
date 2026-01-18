@@ -275,15 +275,6 @@ export default function Reports() {
                 // Get raw score "18/50" directly
                 const rawScore = report.competencyAssessment?.overallScore || 'N/A';
 
-                // Parse for color coding only
-                let percentage = 0;
-                if (rawScore !== 'N/A') {
-                  const [earned, total] = rawScore.split('/').map(Number);
-                  if (!isNaN(earned) && !isNaN(total) && total > 0) {
-                    percentage = Math.round((earned / total) * 100);
-                  }
-                }
-
                 const recommendation = report.recommendation?.hiringRecommendation || 'Pending';
                 const isRecommended = recommendation === 'Hire' || recommendation.toLowerCase() === 'recommended';
 
@@ -356,20 +347,15 @@ export default function Reports() {
                       {report.candidateInformation?.positionAppliedFor || '—'}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                        <span style={{
-                          fontWeight: 700,
-                          fontSize: '1rem',
-                          color: isRecommended ? '#059669' :
-                            recommendation === 'Hold' ? '#2563EB' :
-                              recommendation === 'MAYBE' ? '#D97706' : '#DC2626'
-                        }}>
-                          {rawScore.split('/')[0]}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: '#9CA3AF', marginLeft: '2px' }}>
-                          /{rawScore.split('/')[1] || '50'}
-                        </span>
-                      </div>
+                      <span style={{
+                        fontWeight: 700,
+                        fontSize: '1rem',
+                        color: isRecommended ? '#059669' :
+                          recommendation === 'Hold' ? '#2563EB' :
+                            recommendation === 'MAYBE' ? '#D97706' : '#DC2626'
+                      }}>
+                        {rawScore.split('/')[0]}
+                      </span>
                     </td>
                     <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                       {(() => {

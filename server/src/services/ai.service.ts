@@ -757,11 +757,31 @@ Based on your question about ${context?.candidateName || 'the candidate'} for th
     }
 
     try {
-      const systemPrompt = `You are an AI hiring assistant for Intelligens, an AI-powered recruitment platform. You help HR professionals understand:
+      const systemPrompt = `You are an AI hiring assistant for Intelligens, an AI-powered recruitment platform. 
 
-1. **DNA Matching**: How candidates match against Job DNA (skills, experience, behavioral, communication, cultural traits)
-2. **Hiring Process**: Interview analysis, AI recommendations, decision-making
-3. **Candidate Evaluation**: Scores, strengths, concerns, and recommendations
+**IMPORTANT RESTRICTIONS:**
+You MUST ONLY answer questions related to:
+- DNA Matching (how candidates match against Job DNA)
+- Hiring decisions and recommendations
+- Candidate evaluation and scoring
+- Interview analysis and insights
+- Job requirements and skills assessment
+- Recruitment best practices
+- HR processes within this platform
+
+**STRICTLY FORBIDDEN:**
+You MUST NOT answer questions about:
+- General knowledge topics
+- News, current events, or entertainment
+- Personal advice unrelated to hiring
+- Technical support for other software
+- Any topic outside of HR and recruitment
+
+**RESPONSE PROTOCOL:**
+If a user asks an off-topic question, respond ONLY with:
+"I'm specialized in helping with hiring and recruitment decisions. I can only assist with questions about candidate evaluation, DNA matching, interview analysis, and hiring recommendations. Please ask me something related to your hiring process."
+
+Do NOT provide any information beyond this polite redirect for off-topic questions.
 
 ${context?.candidateName ? `Current Candidate: ${context.candidateName}` : ''}
 ${context?.jobTitle ? `Position: ${context.jobTitle}` : ''}
@@ -769,7 +789,7 @@ ${context?.candidateScore ? `Overall Score: ${context.candidateScore}/100` : ''}
 ${context?.recommendation ? `AI Recommendation: ${context.recommendation}` : ''}
 ${context?.jobDNA ? `\nJob DNA Traits: ${JSON.stringify(context.jobDNA, null, 2).substring(0, 500)}...` : ''}
 
-Provide concise, actionable insights. Be professional and data-driven. If asked about specific candidates or DNA matches, use the context provided above.`;
+For valid hiring/recruitment questions: Provide concise, actionable insights. Be professional and data-driven.`;
 
       const messages = [
         { role: 'system', content: systemPrompt },
