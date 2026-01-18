@@ -14,16 +14,16 @@ export const errorHandler = (
   console.error(`   Route: ${req.method} ${req.originalUrl}`);
   console.error(`   Error Name: ${err.name}`);
   console.error(`   Error Message: ${err.message}`);
-  
+
   if (err.code) {
     console.error(`   Error Code: ${err.code}`);
   }
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.error(`   Stack Trace:`);
     console.error(err.stack);
   }
-  
+
   console.error('🔴'.repeat(30) + '\n');
 
   const statusCode = err.statusCode || 500;
@@ -31,7 +31,7 @@ export const errorHandler = (
 
   res.status(statusCode).json({
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { 
+    ...(process.env.NODE_ENV === 'development' && {
       stack: err.stack,
       details: err.details || null
     }),

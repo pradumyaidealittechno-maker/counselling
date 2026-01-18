@@ -17,6 +17,7 @@ export interface ICandidate extends Document {
     uploadedAt: Date;
   };
   interviewId?: mongoose.Types.ObjectId;
+  evaluationId?: mongoose.Types.ObjectId;
   interviewCode?: string;
   interviewCodeExpiry?: Date;
   interviewStatus: 'pending' | 'invited' | 'in_progress' | 'completed' | 'expired';
@@ -104,6 +105,10 @@ const candidateSchema = new Schema<ICandidate>(
       type: Schema.Types.ObjectId,
       ref: 'Interview',
     },
+    evaluationId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Evaluation',
+    },
     interviewCode: {
       type: String,
       uppercase: true,
@@ -168,6 +173,6 @@ const candidateSchema = new Schema<ICandidate>(
 );
 
 candidateSchema.index({ email: 1, jobId: 1 });
-candidateSchema.index({ interviewCode: 1 }, { unique: true });
+candidateSchema.index({ interviewCode: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model<ICandidate>('Candidate', candidateSchema);

@@ -25,12 +25,12 @@ import mongoose from 'mongoose';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import authRoutes from './routes/auth.routes.js';
-import candidateRoutes from './routes/candidate.routes.js';
-import interviewRoutes from './routes/interview.routes.js';
+import candidateRoutes from './routes/candidates.routes.js';
 import jobRoutes from './routes/job.routes.js';
 import reportRoutes from './routes/reports.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import aiRoutes from './routes/ai.routes.js';
+import interviewRoutes from './routes/interviews.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -82,14 +82,15 @@ app.use('/api/candidates', candidateRoutes);
 console.log('   ✅ /api/candidates - Candidate routes');
 app.use('/api/reports', reportRoutes);
 console.log('   ✅ /api/reports - Report routes');
-app.use('/api/interviews', interviewRoutes);
-console.log('   ✅ /api/interviews - Interview routes');
+
 app.use('/api/jobs', jobRoutes);
 console.log('   ✅ /api/jobs - Job routes');
 app.use('/api/upload', uploadRoutes);
 console.log('   ✅ /api/upload - Upload routes');
 app.use('/api/ai', aiRoutes);
 console.log('   ✅ /api/ai - AI Assistant routes');
+app.use('/api/interviews', interviewRoutes);
+console.log('   ✅ /api/interviews - Interview routes');
 console.log('─'.repeat(60) + '\n');
 
 // Error handling
@@ -99,13 +100,13 @@ app.use(errorHandler);
 const connectDB = async () => {
   console.log('🔌 CONNECTING TO DATABASE:');
   console.log('─'.repeat(60));
-  
+
   try {
     const uri = process.env.MONGODB_URI as string;
     console.log(`   URI: ${uri?.replace(/:[^:@]+@/, ':***@')}`);
-    
+
     await mongoose.connect(uri);
-    
+
     console.log('   ✅ MongoDB connected successfully');
     console.log(`   Database: ${mongoose.connection.name}`);
     console.log(`   Host: ${mongoose.connection.host}`);
@@ -125,7 +126,7 @@ const connectDB = async () => {
 // Start server
 const startServer = async () => {
   await connectDB();
-  
+
   app.listen(PORT, () => {
     console.log('═'.repeat(60));
     console.log('🎉 SERVER STARTED SUCCESSFULLY!');

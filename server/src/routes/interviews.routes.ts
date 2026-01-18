@@ -1,660 +1,378 @@
-import { Router, Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { Router, Response, Request } from 'express';
 import { Interview } from '../models/Interview.js';
-import { Candidate } from '../models/Candidate.js';
-import { Job } from '../models/Job.js';
-import { Evaluation } from '../models/Evaluation.js';
-import { Company } from '../models/Company.js';
+import Candidate from '../models/Candidate.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
-import { uploadRecording } from '../middleware/upload.js';
-import { s3Service, n8nService, aiService } from '../services/index.js';
+import { config } from '../config/index.js';
+import retellService from '../services/retell.service.js';
+import aiService from '../services/ai.service.js';
+import { uploadToS3 } from '../config/s3.js';
+import { upload } from '../middleware/upload.js';
 
 const router = Router();
 
 /**
- * POST /api/interviews/validate-code
- * Validate interview code (public endpoint for candidates)
- */
-router.post(
-  '/validate-code',
-  [body('code').trim().notEmpty()],
-  async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({ valid: false, errors: errors.array() });
-        return;
-      }
-
-      const { code } = req.body;
-
-      const interview = await Interview.findOne({
-        'invitation.code': code.toUpperCase(),
-      }).populate('candidateId');
-
-      if (!interview) {
-        res.json({ valid: false, message: 'Invalid code' });
-        return;
-      }
-
-      // Check if expired
-      if (new Date() > interview.invitation.expiresAt) {
-        interview.status = 'expired';
-        await interview.save();
-        res.json({ valid: false, message: 'Interview code has expired' });
-        return;
-      }
-
-      // Check if already used/completed
-      if (interview.invitation.isUsed || interview.status === 'completed') {
-        res.json({ valid: false, message: 'Interview has already been completed' });
-        return;
-      }
-
-      // Check if cancelled
-      if (interview.status === 'cancelled') {
-        res.json({ valid: false, message: 'Interview has been cancelled' });
-        return;
-      }
-
-      const candidate = interview.candidateId as unknown as { firstName: string; lastName: string; _id: string };
-
-      res.json({
-        valid: true,
-        candidate_name: `${candidate.firstName} ${candidate.lastName}`,
-        uid: candidate._id.toString(),
-        interviewId: interview._id.toString(),
-      });
-    } catch (error) {
-      console.error('Validate code error:', error);
-      res.status(500).json({ valid: false, error: 'Validation failed' });
-    }
-  }
-);
-
-/**
- * POST /api/interviews/:id/start
- * Start interview session (called when candidate begins)
- */
-router.post('/start/:code', async (req: Request, res: Response) => {
-  try {
-    const interview = await Interview.findOne({
-      'invitation.code': req.params.code.toUpperCase(),
-    });
-
-    if (!interview) {
-      res.status(404).json({ error: 'Interview not found' });
-      return;
-    }
-
-    if (interview.invitation.isUsed) {
-      res.status(400).json({ error: 'Interview has already been started' });
-      return;
-    }
-
-    if (interview.status === 'completed') {
-      res.status(400).json({ error: 'Interview has already been completed' });
-      return;
-    }
-
-    // Mark as started
-    interview.invitation.isUsed = true;
-    interview.status = 'in_progress';
-    interview.startedAt = new Date();
-    interview.browserInfo = req.body.browserInfo || {};
-    interview.ipAddress = req.ip || req.socket.remoteAddress;
-
-    await interview.save();
-
-    // Update candidate status
-    await Candidate.findByIdAndUpdate(interview.candidateId, {
-      status: 'interview_in_progress',
-    });
-
-    res.json({
-      message: 'Interview started',
-      interviewId: interview._id,
-      startedAt: interview.startedAt,
-    });
-  } catch (error) {
-    console.error('Start interview error:', error);
-    res.status(500).json({ error: 'Failed to start interview' });
-  }
-});
-
-/**
- * POST /api/interviews/:id/transcript
- * Add transcript entry
- */
-router.post(
-  '/:id/transcript',
-  [
-    body('speaker').isIn(['ai', 'candidate']),
-    body('text').trim().notEmpty(),
-    body('timestamp').isNumeric(),
-  ],
-  async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
-      }
-
-      const interview = await Interview.findById(req.params.id);
-
-      if (!interview) {
-        res.status(404).json({ error: 'Interview not found' });
-        return;
-      }
-
-      const { speaker, text, timestamp, questionId } = req.body;
-
-      interview.transcript.push({
-        speaker,
-        text,
-        timestamp,
-        questionId,
-      });
-
-      await interview.save();
-
-      res.json({ message: 'Transcript entry added' });
-    } catch (error) {
-      console.error('Add transcript error:', error);
-      res.status(500).json({ error: 'Failed to add transcript' });
-    }
-  }
-);
-
-/**
- * POST /api/interviews/:id/recording
- * Upload interview recording
- */
-router.post('/:id/recording', uploadRecording, async (req: Request, res: Response) => {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: 'No recording uploaded' });
-      return;
-    }
-
-    const interview = await Interview.findById(req.params.id);
-
-    if (!interview) {
-      res.status(404).json({ error: 'Interview not found' });
-      return;
-    }
-
-    // Upload to S3
-    const uploadResult = await s3Service.uploadRecording(
-      req.file.buffer,
-      interview.candidateId.toString(),
-      req.file.originalname
-    );
-
-    // Update interview with recording URL
-    interview.fullRecordingUrl = uploadResult.url;
-    interview.recordings.push({
-      videoUrl: uploadResult.url,
-      duration: parseInt(req.body.duration) || 0,
-      uploadedAt: new Date(),
-    });
-
-    await interview.save();
-
-    res.json({
-      message: 'Recording uploaded successfully',
-      url: uploadResult.url,
-    });
-  } catch (error) {
-    console.error('Upload recording error:', error);
-    res.status(500).json({ error: 'Failed to upload recording' });
-  }
-});
-
-/**
- * POST /api/interviews/:id/complete
- * Complete interview and trigger AI analysis
- */
-router.post('/:id/complete', async (req: Request, res: Response) => {
-  try {
-    const interview = await Interview.findById(req.params.id)
-      .populate('candidateId')
-      .populate('jobId');
-
-    if (!interview) {
-      res.status(404).json({ error: 'Interview not found' });
-      return;
-    }
-
-    if (interview.status === 'completed') {
-      res.status(400).json({ error: 'Interview already completed' });
-      return;
-    }
-
-    // Mark as completed
-    interview.status = 'completed';
-    interview.completedAt = new Date();
-    interview.duration = interview.startedAt
-      ? Math.floor((interview.completedAt.getTime() - interview.startedAt.getTime()) / 1000)
-      : 0;
-
-    // Store Retell data if provided
-    if (req.body.retellData) {
-      interview.retellData = req.body.retellData;
-      interview.retellCallId = req.body.retellCallId;
-    }
-
-    await interview.save();
-
-    // Update candidate status
-    await Candidate.findByIdAndUpdate(interview.candidateId, {
-      status: 'interview_complete',
-    });
-
-    const candidate = interview.candidateId as unknown as { firstName: string; lastName: string; _id: string };
-    const job = interview.jobId as unknown as { title: string; jobDNA: Record<string, unknown>; _id: string };
-
-    // Send to n8n for processing
-    try {
-      await n8nService.sendInterviewResult({
-        interviewId: interview._id.toString(),
-        candidateId: candidate._id.toString(),
-        candidateName: `${candidate.firstName} ${candidate.lastName}`,
-        jobId: job._id.toString(),
-        jobTitle: job.title,
-        transcript: interview.transcript,
-        duration: interview.duration || 0,
-        recordingUrl: interview.fullRecordingUrl,
-        jobDNA: job.jobDNA,
-      });
-    } catch (n8nError) {
-      console.warn('N8N webhook failed (non-critical):', n8nError);
-    }
-
-    res.json({
-      message: 'Interview completed successfully',
-      interview: {
-        id: interview._id,
-        duration: interview.duration,
-        completedAt: interview.completedAt,
-      },
-    });
-  } catch (error) {
-    console.error('Complete interview error:', error);
-    res.status(500).json({ error: 'Failed to complete interview' });
-  }
-});
-
-/**
- * POST /api/interviews/:id/analyze
- * Trigger AI analysis for completed interview (internal use)
- */
-router.post('/:id/analyze', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const interview = await Interview.findById(req.params.id)
-      .populate('candidateId')
-      .populate('jobId');
-
-    if (!interview) {
-      res.status(404).json({ error: 'Interview not found' });
-      return;
-    }
-
-    if (interview.status !== 'completed') {
-      res.status(400).json({ error: 'Interview must be completed before analysis' });
-      return;
-    }
-
-    const candidate = interview.candidateId as unknown as { firstName: string; lastName: string; _id: string };
-    const job = interview.jobId as unknown as { title: string; jobDNA: Record<string, unknown>; _id: string };
-
-    const startTime = Date.now();
-
-    // Run AI analysis
-    const analysisResult = await aiService.analyzeInterview(
-      interview.transcript,
-      job.jobDNA,
-      job.title,
-      `${candidate.firstName} ${candidate.lastName}`
-    );
-
-    const processingTime = Date.now() - startTime;
-
-    // Calculate comparison to other candidates
-    const otherEvaluations = await Evaluation.find({
-      jobId: job._id,
-      _id: { $ne: interview._id },
-    });
-
-    const totalCandidates = otherEvaluations.length + 1;
-    const betterThan = otherEvaluations.filter(
-      e => e.recommendation.overallScore < analysisResult.recommendation.overallScore
-    ).length;
-    const percentile = Math.round((betterThan / totalCandidates) * 100);
-
-    // Create evaluation
-    const evaluation = await Evaluation.create({
-      candidateId: candidate._id,
-      jobId: job._id,
-      interviewId: interview._id,
-      recommendation: analysisResult.recommendation,
-      dimensionEvaluations: analysisResult.dimensionEvaluations,
-      summary: analysisResult.summary,
-      keyStrengths: analysisResult.keyStrengths,
-      keyConcerns: analysisResult.keyConcerns,
-      comparisonToOtherCandidates: {
-        percentile,
-        totalCandidates,
-      },
-      rawAIResponse: analysisResult,
-      aiModel: 'gpt-4',
-      processingTime,
-    });
-
-    // Update candidate
-    await Candidate.findByIdAndUpdate(candidate._id, {
-      status: 'ai_analysis_ready',
-      evaluationId: evaluation._id,
-    });
-
-    res.json({
-      message: 'Analysis completed',
-      evaluation,
-    });
-  } catch (error) {
-    console.error('Analyze interview error:', error);
-    res.status(500).json({ error: 'Failed to analyze interview' });
-  }
-});
-
-/**
- * POST /api/interviews/result
- * Receive interview result from external source (Retell webhook)
- */
-router.post('/result', async (req: Request, res: Response) => {
-  try {
-    const { 
-      call_id, 
-      transcript, 
-      call_analysis,
-      recording_url,
-      duration_ms,
-      candidate_uid 
-    } = req.body;
-
-    console.log('Received interview result:', { call_id, candidate_uid });
-
-    // Find interview by Retell call ID or candidate
-    let interview = await Interview.findOne({ retellCallId: call_id });
-    
-    if (!interview && candidate_uid) {
-      interview = await Interview.findOne({ 
-        candidateId: candidate_uid,
-        status: 'in_progress'
-      });
-    }
-
-    if (!interview) {
-      console.warn('Interview not found for result:', { call_id, candidate_uid });
-      res.status(404).json({ error: 'Interview not found' });
-      return;
-    }
-
-    // Update interview with Retell data
-    interview.retellCallId = call_id;
-    interview.retellData = {
-      call_analysis,
-      raw_response: req.body,
-    };
-
-    if (recording_url) {
-      interview.fullRecordingUrl = recording_url;
-    }
-
-    if (transcript && Array.isArray(transcript)) {
-      interview.transcript = transcript.map((t: { role: string; content: string }, index: number) => ({
-        speaker: t.role === 'agent' ? 'ai' : 'candidate',
-        text: t.content,
-        timestamp: index * 10, // Approximate timestamp
-      }));
-    }
-
-    interview.status = 'completed';
-    interview.completedAt = new Date();
-    interview.duration = duration_ms ? Math.floor(duration_ms / 1000) : 0;
-
-    await interview.save();
-
-    // Update candidate status
-    await Candidate.findByIdAndUpdate(interview.candidateId, {
-      status: 'interview_complete',
-    });
-
-    res.json({ 
-      message: 'Interview result received',
-      interviewId: interview._id 
-    });
-  } catch (error) {
-    console.error('Receive result error:', error);
-    res.status(500).json({ error: 'Failed to process interview result' });
-  }
-});
-
-/**
- * GET /api/interviews/:id
- * Get interview details (authenticated)
- */
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const interview = await Interview.findById(req.params.id)
-      .populate('candidateId')
-      .populate('jobId');
-
-    if (!interview) {
-      res.status(404).json({ error: 'Interview not found' });
-      return;
-    }
-
-    // Verify company access
-    const candidate = await Candidate.findById(interview.candidateId);
-    if (candidate?.companyId.toString() !== req.user?.companyId.toString()) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
-    }
-
-    res.json(interview);
-  } catch (error) {
-    console.error('Get interview error:', error);
-    res.status(500).json({ error: 'Failed to get interview' });
-  }
-});
-
-/**
  * POST /api/interviews/generate-code
- * Generate unique interview code for candidate (admin only)
+ * Generate or retrieve an interview code for a candidate
  */
 router.post('/generate-code', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const { candidateId, expiresInHours = 168 } = req.body; // Default 7 days
+    try {
+        const { candidateId, expiresInHours } = req.body;
 
-    if (!candidateId) {
-      res.status(400).json({ error: 'Candidate ID is required' });
-      return;
+        if (!candidateId) {
+            res.status(400).json({ error: 'Candidate ID is required' });
+            return;
+        }
+
+        const candidate = await Candidate.findById(candidateId).populate({
+            path: 'jobId',
+            populate: { path: 'createdBy' }
+        });
+
+        if (!candidate) {
+            res.status(404).json({ error: 'Candidate not found' });
+            return;
+        }
+
+        const job = candidate.jobId as any;
+        const jobCreator = job?.createdBy as any;
+        const companyId = req.user?.companyId || jobCreator?.companyId;
+
+        if (!companyId) {
+            res.status(400).json({ error: 'Could not determine company for this interview' });
+            return;
+        }
+
+        // Check if an active interview already exists
+        let interview = await Interview.findOne({
+            candidateId,
+            status: { $in: ['pending', 'in_progress'] }
+        });
+
+        if (interview) {
+            // Update expiry if requested
+            if (expiresInHours) {
+                const expiresAt = new Date();
+                expiresAt.setHours(expiresAt.getHours() + expiresInHours);
+                interview.invitation.expiresAt = expiresAt;
+                await interview.save();
+            }
+
+            res.json({
+                code: interview.invitation.code,
+                expiresAt: interview.invitation.expiresAt
+            });
+            return;
+        }
+
+        // Create new interview
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + (expiresInHours || config.interview.codeExpiryHours || 168));
+
+        interview = await Interview.create({
+            candidateId,
+            jobId: job._id,
+            companyId,
+            invitation: {
+                sentAt: new Date(),
+                sentBy: req.user?.id || 'system',
+                expiresAt,
+                remindersSent: 0,
+                isUsed: false,
+            },
+            status: 'pending',
+        });
+
+        // Update candidate with interview reference
+        candidate.interviewId = interview._id as any;
+        await candidate.save();
+
+        res.json({
+            code: interview.invitation.code,
+            expiresAt: interview.invitation.expiresAt
+        });
+    } catch (error: any) {
+        console.error('Generate code error:', error);
+        res.status(500).json({ error: 'Failed to generate interview code' });
     }
+});
 
-    const candidate = await Candidate.findById(candidateId);
-    if (!candidate) {
-      res.status(404).json({ error: 'Candidate not found' });
-      return;
+/**
+ * POST /api/interviews/validate-code
+ * Public endpoint to validate an interview code
+ */
+router.post('/validate-code', async (req, res) => {
+    try {
+        const { code } = req.body;
+
+        if (!code) {
+            res.status(400).json({ error: 'Interview code is required' });
+            return;
+        }
+
+        const interview = await Interview.findOne({
+            'invitation.code': code.toUpperCase(),
+            status: { $ne: 'cancelled' }
+        }).populate('candidateId jobId');
+
+        if (!interview) {
+            res.status(404).json({ error: 'Invalid interview code' });
+            return;
+        }
+
+        // Check expiry
+        if (new Date() > interview.invitation.expiresAt) {
+            interview.status = 'expired';
+            await interview.save();
+            res.status(400).json({ error: 'Interview code has expired' });
+            return;
+        }
+
+        if (interview.invitation.isUsed && interview.status === 'completed') {
+            res.status(400).json({ error: 'Interview has already been completed' });
+            return;
+        }
+
+        const candidate = interview.candidateId as any;
+        const job = interview.jobId as any;
+        const company = (job?.createdBy as any)?.companyId as any;
+
+        res.json({
+            valid: true,
+            candidate_name: candidate ? `${candidate.firstName} ${candidate.lastName}` : 'Candidate',
+            uid: candidate?._id,
+            job_title: job?.title || 'Position',
+            company_name: company?.name || 'Our Company',
+            status: interview.status
+        });
+    } catch (error: any) {
+        console.error('Validate code error:', error);
+        res.status(500).json({ error: 'Failed to validate interview code' });
     }
-
-    // Generate unique code
-    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
-
-    // Create or update interview
-    let interview = await Interview.findOne({ candidateId: candidate._id, status: { $ne: 'completed' } });
-    
-    if (!interview) {
-      interview = await Interview.create({
-        candidateId: candidate._id,
-        jobId: candidate.jobId,
-        companyId: candidate.companyId,
-        invitation: {
-          code,
-          expiresAt,
-          isUsed: false,
-        },
-        status: 'pending',
-      });
-    } else {
-      interview.invitation.code = code;
-      interview.invitation.expiresAt = expiresAt;
-      interview.invitation.isUsed = false;
-      await interview.save();
-    }
-
-    console.log(`✅ Interview code generated for ${candidate.firstName} ${candidate.lastName}: ${code}`);
-
-    res.json({
-      code,
-      expiresAt,
-      candidateId: candidate._id,
-      candidateName: `${candidate.firstName} ${candidate.lastName}`,
-    });
-  } catch (error: any) {
-    console.error('Generate code error:', error);
-    res.status(500).json({ error: 'Failed to generate interview code' });
-  }
 });
 
 /**
  * POST /api/interviews/start-session
- * Track when interview session starts
+ * Public endpoint to notify backend that an interview has started
  */
 router.post('/start-session', async (req: Request, res: Response) => {
-  try {
-    const { candidateId, browserInfo } = req.body;
+    try {
+        const { candidateId, browserInfo } = req.body;
 
-    if (!candidateId) {
-      res.status(400).json({ error: 'Candidate ID is required' });
-      return;
+        if (!candidateId) {
+            res.status(400).json({ error: 'Candidate ID is required' });
+            return;
+        }
+
+        console.log('🚀 Starting interview session for candidate:', candidateId);
+
+        const interview = await Interview.findOneAndUpdate(
+            { candidateId, status: 'pending' },
+            {
+                status: 'in_progress',
+                startedAt: new Date(),
+                browserInfo
+            },
+            { new: true, sort: { createdAt: -1 } }
+        );
+
+        if (!interview) {
+            // Might already be in progress, that's okay
+            const existing = await Interview.findOne({ candidateId, status: 'in_progress' }).sort({ createdAt: -1 });
+            if (existing) {
+                res.json({ success: true, interviewId: existing._id });
+                return;
+            }
+            res.status(404).json({ error: 'No pending interview found for this candidate' });
+            return;
+        }
+
+        res.json({ success: true, interviewId: interview._id });
+    } catch (error: any) {
+        console.error('Start session error:', error);
+        res.status(500).json({ error: 'Failed to start interview session' });
     }
-
-    const candidate = await Candidate.findById(candidateId);
-    if (!candidate) {
-      res.status(404).json({ error: 'Candidate not found' });
-      return;
-    }
-
-    // Update candidate status
-    await Candidate.findByIdAndUpdate(candidateId, {
-      status: 'interview_in_progress',
-    });
-
-    // Update interview
-    await Interview.findOneAndUpdate(
-      { candidateId, status: { $in: ['pending', 'in_progress'] } },
-      {
-        status: 'in_progress',
-        startedAt: new Date(),
-        browserInfo: browserInfo || {},
-      }
-    );
-
-    console.log(`🎥 Interview STARTED: ${candidate.firstName} ${candidate.lastName} (${candidateId})`);
-
-    res.json({
-      success: true,
-      sessionId: candidate._id,
-      candidateName: `${candidate.firstName} ${candidate.lastName}`,
-      startedAt: new Date(),
-    });
-  } catch (error: any) {
-    console.error('Start session error:', error);
-    res.status(500).json({ error: 'Failed to start interview session' });
-  }
 });
 
 /**
- * POST /api/interviews/end-session
- * Track when interview session ends
+ * POST /api/interviews/create-web-call
+ * Public endpoint for candidates to start their AI interview session
  */
-router.post('/end-session', async (req: Request, res: Response) => {
-  try {
-    const { candidateId, sessionId, duration } = req.body;
+/**
+ * POST /api/interviews/create-web-call
+ * Public endpoint for candidates to start their AI interview session
+ */
+router.post('/create-web-call', async (req: Request, res: Response) => {
+    try {
+        const { agentId } = req.body;
 
-    const id = candidateId || sessionId;
-    if (!id) {
-      res.status(400).json({ error: 'Candidate ID or Session ID is required' });
-      return;
+        console.log('🎙️ Creating Retell web call');
+        const callData = await retellService.createWebCall(agentId);
+
+        res.json(callData);
+    } catch (error: any) {
+        console.error('Create web call error:', error);
+        res.status(500).json({ error: error.message || 'Failed to start interview session' });
     }
+});
 
-    const candidate = await Candidate.findById(id);
-    if (!candidate) {
-      res.status(404).json({ error: 'Candidate not found' });
-      return;
+/**
+ * POST /api/interviews/save-recording
+ * Public endpoint to save video recording to S3
+ */
+router.post('/save-recording', upload.single('file'), async (req: Request, res: Response) => {
+    try {
+        const file = req.file;
+        const { uid } = req.body;
+
+        if (!file) {
+            res.status(400).json({ error: 'No recording file provided' });
+            return;
+        }
+
+        console.log('🎥 Saving interview recording for candidate:', uid);
+
+        const folder = `interviews/${uid}`;
+        const filename = `recording_${Date.now()}.webm`;
+        const result = await uploadToS3(file.buffer, folder, filename, file.mimetype);
+
+        // Update interview or candidate with recording URL
+        await Interview.findOneAndUpdate(
+            { candidateId: uid, status: { $in: ['in_progress', 'completed'] } },
+            { fullRecordingUrl: result.url },
+            { sort: { createdAt: -1 } }
+        );
+
+        res.json({ success: true, url: result.url });
+    } catch (error: any) {
+        console.error('Save recording error:', error);
+        res.status(500).json({ error: 'Failed to save recording' });
     }
+});
 
-    // Update interview
-    const interview = await Interview.findOne({ candidateId: id, status: 'in_progress' });
-    if (interview) {
-      interview.status = 'completed';
-      interview.completedAt = new Date();
-      
-      if (duration) {
-        interview.duration = duration;
-      } else if (interview.startedAt) {
-        interview.duration = Math.floor((Date.now() - interview.startedAt.getTime()) / 1000);
-      }
+/**
+ * POST /api/interviews/submit-result
+ * Public endpoint to submit interview results and trigger analysis
+ */
+// POST /api/interviews/submit-result
+router.post('/submit-result', async (req: Request, res: Response) => {
+    try {
+        const { candidateId, transcript, duration, metadata } = req.body;
 
-      await interview.save();
+        if (!candidateId) {
+            res.status(400).json({ error: 'Candidate ID is required' });
+            return;
+        }
+
+        console.log('✅ Submitting interview results for:', candidateId);
+
+        // Find and update interview
+        const interview = await Interview.findOneAndUpdate(
+            { candidateId, status: { $ne: 'completed' } },
+            {
+                status: 'completed',
+                completedAt: new Date(),
+                transcript: transcript.map((t: any) => ({
+                    speaker: t.speaker,
+                    text: t.text,
+                    timestamp: typeof t.timestamp === 'string' ? new Date(t.timestamp).getTime() : t.timestamp
+                })),
+                duration,
+                retellData: metadata
+            },
+            { new: true, sort: { createdAt: -1 } }
+        ).populate('jobId');
+
+        if (!interview) {
+            res.status(404).json({ error: 'Active interview not found for this candidate' });
+            return;
+        }
+
+        // Update candidate status
+        await Candidate.findByIdAndUpdate(candidateId, {
+            status: 'interview_completed',
+            interviewStatus: 'completed'
+        });
+
+        // Trigger AI Analysis in background
+        const job = interview.jobId as any;
+        const formattedTranscript = interview.transcript.map(t => ({
+            speaker: t.speaker,
+            text: t.text,
+            timestamp: t.timestamp.toString()
+        }));
+
+        aiService.analyzeInterview(
+            formattedTranscript,
+            job?.description || '',
+            job?.requiredSkills || []
+        ).then(async (analysis) => {
+            // Update candidate with analysis
+            await Candidate.findByIdAndUpdate(candidateId, {
+                evaluation: analysis,
+                score: analysis.overallScore
+            });
+            console.log('✅ Analysis completed for candidate:', candidateId);
+        }).catch(err => console.error('Background analysis error:', err));
+
+        res.json({ success: true, interviewId: interview._id });
+    } catch (error: any) {
+        console.error('Submit result error:', error);
+        res.status(500).json({ error: 'Failed to submit interview results' });
     }
-
-    console.log(`✅ Interview COMPLETED: ${candidate.firstName} ${candidate.lastName} (${id})`);
-
-    res.json({
-      success: true,
-      candidateName: `${candidate.firstName} ${candidate.lastName}`,
-      completedAt: new Date(),
-      duration: duration || interview?.duration,
-    });
-  } catch (error: any) {
-    console.error('End session error:', error);
-    res.status(500).json({ error: 'Failed to end interview session' });
-  }
 });
 
 /**
  * GET /api/interviews/active-sessions
- * Get list of currently active interview sessions (admin only)
+ * Protected endpoint for HR to see live interviews
  */
 router.get('/active-sessions', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const activeInterviews = await Interview.find({
-      status: 'in_progress',
-    })
-      .populate('candidateId', 'firstName lastName email')
-      .sort({ startedAt: -1 });
+    try {
+        const interviews = await Interview.find({
+            status: 'in_progress'
+        }).populate('candidateId');
 
-    const sessions = activeInterviews.map((interview) => {
-      const candidate = interview.candidateId as any;
-      return {
-        _id: interview._id,
-        candidateId: candidate._id,
-        candidateName: `${candidate.firstName} ${candidate.lastName}`,
-        email: candidate.email,
-        startedAt: interview.startedAt,
-        status: 'in_progress',
-      };
-    });
+        const sessions = interviews.map(i => {
+            const candidate = i.candidateId as any;
+            return {
+                _id: i._id,
+                candidateId: candidate?._id,
+                candidateName: candidate ? `${candidate.firstName} ${candidate.lastName}` : 'Unknown',
+                startedAt: i.startedAt || i.createdAt,
+                status: i.status
+            };
+        });
 
-    res.json(sessions);
-  } catch (error: any) {
-    console.error('Get active sessions error:', error);
-    res.status(500).json({ error: 'Failed to fetch active sessions' });
-  }
+        res.json(sessions);
+    } catch (error: any) {
+        console.error('Active sessions error:', error);
+        res.status(500).json({ error: 'Failed to load active sessions' });
+    }
+});
+
+/**
+ * POST /api/interviews/end-session
+ * Protected endpoint for HR to manually end an interview
+ */
+router.post('/end-session', authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { candidateId } = req.body;
+
+        const interview = await Interview.findOneAndUpdate(
+            { candidateId, status: 'in_progress' },
+            { status: 'completed', completedAt: new Date() },
+            { new: true, sort: { createdAt: -1 } }
+        );
+
+        if (!interview) {
+            res.status(404).json({ error: 'No active session found' });
+            return;
+        }
+
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('End session error:', error);
+        res.status(500).json({ error: 'Failed to end interview' });
+    }
 });
 
 export default router;

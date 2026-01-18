@@ -1,418 +1,465 @@
-import express from 'express';
-// import { createRequire } from 'module'; // Removed to fix TS error
-// const require = createRequire(import.meta.url); // Removed to fix TS error
+import { Router, Response } from 'express';
+import { body, validationResult } from 'express-validator';
 import Job from '../models/Job.js';
-import Candidate from '../models/Candidate.js';
-import { User } from '../models/User.js';
-import { Company } from '../models/Company.js';
-import { authenticate } from '../middleware/auth.js';
-import aiService from '../services/ai.service.js';
-import n8nService from '../services/n8n.service.js';
-
+import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
-import pdfParse from 'pdf-parse';
-const router = express.Router();
+import aiService from '../services/ai.service.js';
 
-// Parse Job Description from file (protected)
-router.post('/parse-jd', authenticate, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
+
+/**
+ * GET /api/jobs
+ * List all jobs for the authenticated user's company
+ */
+router.get('/', async (req: AuthRequest, res: Response) => {
+    try {
+        const jobs = await Job.find({
+            createdBy: req.user?.id
+        }).sort({ createdAt: -1 });
+
+        res.json(jobs);
+    } catch (error) {
+        console.error('List jobs error:', error);
+        res.status(500).json({ error: 'Failed to list jobs' });
     }
-
-    let text = '';
-
-    if (req.file.mimetype === 'application/pdf') {
-      console.log('📄 Parsing PDF:', req.file.originalname);
-      try {
-        const data = await pdfParse(req.file.buffer);
-        console.log('✅ PDF Parsed, length:', (data.text || '').length);
-        text = data.text;
-      } catch (err: any) {
-        console.error('❌ PDF Parse Error:', err);
-        // Fallback message
-        text = "Could not auto-parse PDF. The file might be corrupted or in an unsupported format. Please copy text manually.";
-      }
-    } else if (req.file.mimetype === 'text/plain') {
-      console.log('📄 Parsing Text File:', req.file.originalname);
-      text = req.file.buffer.toString('utf-8');
-    } else if (
-      req.file.mimetype === 'application/msword' ||
-      req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ) {
-      return res.status(400).json({
-        error: 'Word documents are not yet supported. Please save as PDF or copy text content.'
-      });
-    } else {
-      return res.status(400).json({ error: 'Supported formats: PDF, TXT' });
-    }
-
-    // Basic cleanup
-    text = text ? text.trim() : '';
-
-    // Extract metadata using improved regex
-    // Matches "Location: City" or "Location - City" or "Location \n City"
-    const locationMatch = text.match(/Location[:\s-]+([^\n\r]+)/i);
-    // Matches "Experience: 3-5 Years" or "Experience Level: Senior"
-    const experienceMatch = text.match(/Experience(?: Level)?[:\s-]+([^\n\r]+)/i);
-
-    const extractedData = {
-      text,
-      location: locationMatch ? locationMatch[1].trim() : undefined,
-      experience: experienceMatch ? experienceMatch[1].trim() : undefined
-    };
-
-    console.log('📊 Extracted Metadata:', {
-      location: extractedData.location,
-      experience: extractedData.experience
-    });
-
-    res.json(extractedData);
-  } catch (error: any) {
-    console.error('Parse JD error:', error);
-    res.status(500).json({ error: `Failed to parse file: ${error.message}` });
-  }
 });
 
-// Get all jobs (protected)
-router.get('/', authenticate, async (req, res) => {
-  try {
-    const jobs = await Job.find()
-      .populate('createdBy', 'firstName lastName email')
-      .sort({ createdAt: -1 });
+/**
+ * GET /api/jobs/:id
+ * Get a specific job by ID
+ */
+router.get('/:id', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOne({
+            _id: req.params.id,
+            createdBy: req.user?.id
+        });
 
-    res.json(jobs);
-  } catch (error: any) {
-    console.error('Get jobs error:', error);
-    res.status(500).json({ error: 'Failed to fetch jobs' });
-  }
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        res.json(job);
+    } catch (error) {
+        console.error('Get job error:', error);
+        res.status(500).json({ error: 'Failed to get job' });
+    }
 });
 
-// Get job by ID (protected)
-router.get('/:id', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id)
-      .populate('createdBy', 'firstName lastName email');
+/**
+ * POST /api/jobs
+ * Create a new job
+ */
+router.post(
+    '/',
+    [
+        body('title').trim().notEmpty(),
+        body('description').trim().notEmpty(),
+        body('location').trim().notEmpty(),
+        body('experienceLevel').isIn(['entry', 'mid', 'senior', 'lead']),
+    ],
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                res.status(400).json({ errors: errors.array() });
+                return;
+            }
 
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+            const {
+                title,
+                description,
+                location,
+                employmentType,
+                experienceLevel,
+                requiredSkills,
+                optionalSkills,
+            } = req.body;
+
+            const job = await Job.create({
+                title,
+                description,
+                company: 'Company', // Will be populated from user's company in production
+                location,
+                employmentType: employmentType || 'full-time',
+                experienceLevel,
+                requiredSkills: requiredSkills || [],
+                optionalSkills: optionalSkills || [],
+                createdBy: req.user?.id,
+                status: 'draft',
+            });
+
+            res.status(201).json(job);
+        } catch (error) {
+            console.error('Create job error:', error);
+            res.status(500).json({ error: 'Failed to create job' });
+        }
     }
+);
 
-    res.json(job);
-  } catch (error: any) {
-    console.error('Get job error:', error);
-    res.status(500).json({ error: 'Failed to fetch job' });
-  }
+/**
+ * PATCH /api/jobs/:id
+ * Update a job
+ */
+router.patch('/:id', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                createdBy: req.user?.id,
+            },
+            req.body,
+            { new: true, runValidators: true }
+        );
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        res.json(job);
+    } catch (error) {
+        console.error('Update job error:', error);
+        res.status(500).json({ error: 'Failed to update job' });
+    }
 });
 
-// Create job (protected)
-router.post('/', authenticate, async (req, res) => {
-  try {
-    // Fetch the user to get their company information
-    const user = await User.findById((req as any).user.id);
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+/**
+ * DELETE /api/jobs/:id
+ * Delete a job
+ */
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOneAndDelete({
+            _id: req.params.id,
+            createdBy: req.user?.id,
+        });
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        res.json({ message: 'Job deleted successfully' });
+    } catch (error) {
+        console.error('Delete job error:', error);
+        res.status(500).json({ error: 'Failed to delete job' });
     }
-
-    const company = await Company.findById(user.companyId);
-    if (!company) {
-      return res.status(400).json({ error: 'User is not associated with a company' });
-    }
-
-    const jobData = {
-      ...req.body,
-      company: company.name,
-      createdBy: (req as any).user.id,
-    };
-
-    const job = new Job(jobData);
-    await job.save();
-
-    res.status(201).json(job);
-  } catch (error: any) {
-    console.error('Create job error:', error);
-    res.status(500).json({ error: 'Failed to create job' });
-  }
 });
 
-// Update job (protected)
-router.patch('/:id', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+/**
+ * POST /api/jobs/:id/generate-dna
+ * Generate Job DNA using AI
+ */
+router.post('/:id/generate-dna', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOne({
+            _id: req.params.id,
+            createdBy: req.user?.id,
+        });
 
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        // Generate DNA using AI service
+        const jobDNA = await aiService.generateJobDNA(job.description);
+
+        // Update job with generated DNA
+        job.jobDNA = jobDNA;
+        await job.save();
+
+        res.json({ jobDNA });
+    } catch (error) {
+        console.error('Generate DNA error:', error);
+        res.status(500).json({ error: 'Failed to generate Job DNA' });
     }
-
-    res.json(job);
-  } catch (error: any) {
-    console.error('Update job error:', error);
-    res.status(500).json({ error: 'Failed to update job' });
-  }
 });
 
-// Generate Job DNA (protected)
-router.post('/:id/generate-dna', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+/**
+ * POST /api/jobs/:id/generate-questions
+ * Generate interview questions using AI
+ */
+router.post('/:id/generate-questions', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOne({
+            _id: req.params.id,
+            createdBy: req.user?.id,
+        });
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        const { count, customPrompt } = req.body;
+
+        // Generate questions using AI service
+        const questions = await aiService.generateInterviewQuestions({
+            jobTitle: job.title,
+            jobDescription: job.description,
+            requiredSkills: job.requiredSkills,
+            experienceLevel: job.experienceLevel,
+            jobDNA: job.jobDNA,
+            count,
+            customPrompt,
+        });
+
+        // Update job with generated questions
+        job.interviewQuestions = questions;
+        job.status = 'active';
+        await job.save();
+
+        res.json({ questions });
+    } catch (error) {
+        console.error('Generate questions error:', error);
+        res.status(500).json({ error: 'Failed to generate interview questions' });
     }
-
-    const jobDNA = await aiService.generateJobDNA(job.description);
-
-    job.jobDNA = jobDNA;
-    await job.save();
-
-    res.json({ jobDNA });
-  } catch (error: any) {
-    console.error('Generate Job DNA error:', error);
-    res.status(500).json({ error: 'Failed to generate Job DNA' });
-  }
 });
 
-// Generate interview questions via AI (protected)
-router.post('/:id/generate-questions', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+/**
+ * GET /api/jobs/:id/questions
+ * Get interview questions for a job
+ */
+router.get('/:id/questions', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOne({
+            _id: req.params.id,
+            createdBy: req.user?.id,
+        });
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        res.json(job.interviewQuestions || []);
+    } catch (error) {
+        console.error('Get questions error:', error);
+        res.status(500).json({ error: 'Failed to get interview questions' });
     }
-
-    console.log('🎯 Generating questions for job:', job.title);
-    console.log('📊 Job has DNA:', !!job.jobDNA);
-
-    const questions = await aiService.generateInterviewQuestions({
-      jobTitle: job.title,
-      jobDescription: job.description,
-      requiredSkills: job.requiredSkills,
-      experienceLevel: job.experienceLevel,
-      jobDNA: job.jobDNA,
-      count: req.body.count,
-      customPrompt: req.body.customPrompt
-    });
-
-    console.log('✅ Generated questions count:', questions?.length || 0);
-
-    // Update job with generated questions
-    if (questions && Array.isArray(questions) && questions.length > 0) {
-      job.interviewQuestions = questions;
-      await job.save();
-      console.log('💾 Saved questions to database');
-    } else {
-      console.warn('⚠️  No questions generated or empty array returned');
-    }
-
-    res.json({ questions: job.interviewQuestions });
-  } catch (error: any) {
-    console.error('Generate questions error:', error);
-    res.status(500).json({ error: 'Failed to generate interview questions' });
-  }
 });
 
-// Sync interview questions to n8n (protected)
-router.post('/:id/sync-questions', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+/**
+ * POST /api/jobs/:id/questions
+ * Add a custom interview question
+ */
+router.post('/:id/questions', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOne({
+            _id: req.params.id,
+            createdBy: req.user?.id,
+        });
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        const question = req.body;
+        job.interviewQuestions.push(question);
+        await job.save();
+
+        res.status(201).json(question);
+    } catch (error) {
+        console.error('Add question error:', error);
+        res.status(500).json({ error: 'Failed to add question' });
     }
-
-    if (!job.interviewQuestions || job.interviewQuestions.length === 0) {
-      console.warn('⚠️ No questions found for job:', job._id);
-      return res.status(400).json({ error: 'No questions to sync' });
-    }
-
-    console.log('🔄 Syncing questions to n8n for job:', job.title, 'Count:', job.interviewQuestions.length);
-
-    // Create a clean payload with all relevant job details
-    const cleanQuestions = job.interviewQuestions.map((q: any) => {
-      // Handle mongoose document if applicable, otherwise use plain object
-      const plainQ = typeof q.toObject === 'function' ? q.toObject() : q;
-      // Remove internal mongoose _id if id exists, or keep _id as string
-      const { _id, ...rest } = plainQ;
-      return { ...rest, id: plainQ.id || _id };
-    });
-
-    // Format questions as text
-    const questionsText = job.interviewQuestions.map((q: any, index: number) => {
-      return `${index + 1}. ${q.text}\n   [${q.category}] - Duration: ${Math.floor(q.estimatedDuration / 60)}m ${q.estimatedDuration % 60}s`;
-    }).join('\n\n');
-
-    await n8nService.syncInterviewQuestions({
-      jobTitle: job.title,
-      jobDescription: job.description,  // Added context
-      jobDNA: job.jobDNA,               // Added context
-      questions: cleanQuestions,
-      questionsText: questionsText      // Added formatted text
-    });
-
-    res.json({ message: 'Questions synced successfully to n8n' });
-  } catch (error: any) {
-    console.error('Sync questions error:', error);
-    // Extract meaningful error message from axios error if available
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to sync questions';
-    res.status(500).json({ error: errorMessage, details: error.response?.data });
-  }
 });
 
-// Get interview questions for a job (protected)
-router.get('/:id/questions', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id).select('interviewQuestions title');
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
+/**
+ * PATCH /api/jobs/:id/questions/:questionId
+ * Update an interview question
+ */
+router.patch('/:id/questions/:questionId', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOne({
+            _id: req.params.id,
+            createdBy: req.user?.id,
+        });
 
-    res.json({ questions: job.interviewQuestions || [] });
-  } catch (error: any) {
-    console.error('Get questions error:', error);
-    res.status(500).json({ error: 'Failed to fetch interview questions' });
-  }
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        const questionIndex = job.interviewQuestions.findIndex(
+            (q) => q.id === req.params.questionId
+        );
+
+        if (questionIndex === -1) {
+            res.status(404).json({ error: 'Question not found' });
+            return;
+        }
+
+        job.interviewQuestions[questionIndex] = {
+            ...job.interviewQuestions[questionIndex],
+            ...req.body,
+        };
+
+        await job.save();
+
+        res.json(job.interviewQuestions[questionIndex]);
+    } catch (error) {
+        console.error('Update question error:', error);
+        res.status(500).json({ error: 'Failed to update question' });
+    }
 });
 
-// Add a new question to a job (protected)
-router.post('/:id/questions', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+/**
+ * DELETE /api/jobs/:id/questions/:questionId
+ * Delete an interview question
+ */
+router.delete('/:id/questions/:questionId', async (req: AuthRequest, res: Response) => {
+    try {
+        const job = await Job.findOne({
+            _id: req.params.id,
+            createdBy: req.user?.id,
+        });
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found' });
+            return;
+        }
+
+        job.interviewQuestions = job.interviewQuestions.filter(
+            (q) => q.id !== req.params.questionId
+        );
+
+        await job.save();
+
+        res.json({ message: 'Question deleted successfully' });
+    } catch (error) {
+        console.error('Delete question error:', error);
+        res.status(500).json({ error: 'Failed to delete question' });
     }
-
-    const newQuestion = {
-      id: req.body.id || `q${Date.now()}`,
-      ...req.body
-    };
-
-    job.interviewQuestions.push(newQuestion);
-    await job.save();
-
-    res.status(201).json({ question: newQuestion });
-  } catch (error: any) {
-    console.error('Add question error:', error);
-    res.status(500).json({ error: 'Failed to add question' });
-  }
 });
 
-// Update a specific question (protected)
-router.patch('/:id/questions/:questionId', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+/**
+ * POST /api/jobs/parse-jd
+ * Parse job description from file (PDF, DOC, DOCX)
+ */
+router.post('/parse-jd', upload.single('file'), async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.file) {
+            res.status(400).json({ error: 'No file uploaded' });
+            return;
+        }
+
+        // Import libraries dynamically to be safe with different environments
+        let pdfParse: any;
+        try {
+            const pdfParseLib: any = await import('pdf-parse');
+            if (typeof pdfParseLib === 'function') {
+                pdfParse = pdfParseLib;
+            } else if (typeof pdfParseLib.default === 'function') {
+                pdfParse = pdfParseLib.default;
+            } else if (typeof pdfParseLib.PDFParse === 'function') {
+                pdfParse = pdfParseLib.PDFParse;
+            }
+
+            if (!pdfParse) {
+                try {
+                    // @ts-ignore
+                    const { createRequire } = await import('module');
+                    const require = createRequire(process.cwd() + '/');
+                    const lib = require('pdf-parse');
+                    if (typeof lib === 'function') pdfParse = lib;
+                    else if (typeof lib.default === 'function') pdfParse = lib.default;
+                    else if (typeof lib.PDFParse === 'function') pdfParse = lib.PDFParse;
+                    else pdfParse = lib;
+                } catch (requireError) {
+                    console.warn('Require fallback failed:', requireError);
+                }
+            }
+
+            if (typeof pdfParse !== 'function') {
+                throw new Error(`pdf-parse is not a function: ${typeof pdfParse}`);
+            }
+        } catch (e: any) {
+            console.error('Failed to import pdf-parse:', e);
+            throw new Error(`PDF parser could not be loaded: ${e.message}`);
+        }
+
+        let mammoth: any = null;
+        try {
+            mammoth = await import('mammoth');
+        } catch (mammothError) {
+            console.warn('⚠️ Mammoth library not available');
+        }
+
+        let extractedText = '';
+
+        // Extract text based on file type
+        if (req.file.mimetype === 'application/pdf') {
+            console.log('🔍 Extracting text from PDF...');
+            try {
+                let pdfData: any;
+                if (pdfParse.prototype && typeof pdfParse.prototype.getText === 'function') {
+                    const parser = new pdfParse({ data: req.file.buffer });
+                    pdfData = await parser.getText();
+                } else {
+                    pdfData = await pdfParse(req.file.buffer);
+                }
+                extractedText = pdfData.text;
+                console.log('✅ PDF text extracted, length:', extractedText.length);
+            } catch (pdfError: any) {
+                console.error('❌ PDF extraction error:', pdfError);
+                throw new Error(`PDF extraction failed: ${pdfError.message}`);
+            }
+        } else if (req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            console.log('🔍 Extracting text from DOCX using mammoth...');
+            if (mammoth) {
+                try {
+                    const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+                    extractedText = result.value;
+                    console.log('✅ DOCX text extracted, length:', extractedText.length);
+                } catch (mammothError: any) {
+                    console.warn('⚠️ Mammoth extraction failed:', mammothError.message);
+                    extractedText = req.file.buffer.toString('utf-8');
+                }
+            } else {
+                extractedText = req.file.buffer.toString('utf-8');
+            }
+        } else if (req.file.mimetype === 'application/msword' || req.file.mimetype === 'text/plain') {
+            console.log('🔍 Extracting text from DOC or TXT...');
+            extractedText = req.file.buffer.toString('utf-8');
+            console.log('✅ Text extracted, length:', extractedText.length);
+        } else {
+            res.status(400).json({ error: 'Unsupported file type. Please upload PDF, DOC, or DOCX' });
+            return;
+        }
+
+        if (!extractedText || extractedText.trim().length < 50) {
+            console.error('❌ Extracted text too short:', extractedText.length);
+            res.status(400).json({
+                error: 'Could not extract sufficient text from the file. Please ensure it is not empty or image-based.'
+            });
+            return;
+        }
+
+        // Parse JD using AI
+        console.log('🤖 Sending to AI for parsing...');
+        const jobData = await aiService.parseJobDescription(extractedText);
+
+        // Return exactly what the frontend expects
+        res.json({
+            success: true,
+            ...jobData,
+            text: extractedText // Use full raw text as requested by user
+        });
+    } catch (error: any) {
+        console.error('❌ Parse JD error:', error);
+        res.status(500).json({
+            error: 'Failed to parse job description. Please try again or enter details manually.',
+            details: error.message
+        });
     }
-
-    const questionIndex = job.interviewQuestions.findIndex(
-      (q: any) => q.id === req.params.questionId
-    );
-
-    if (questionIndex === -1) {
-      return res.status(404).json({ error: 'Question not found' });
-    }
-
-    // Update the question
-    job.interviewQuestions[questionIndex] = {
-      ...job.interviewQuestions[questionIndex],
-      ...req.body,
-      id: req.params.questionId // Preserve the ID
-    };
-
-    await job.save();
-
-    res.json({ question: job.interviewQuestions[questionIndex] });
-  } catch (error: any) {
-    console.error('Update question error:', error);
-    res.status(500).json({ error: 'Failed to update question' });
-  }
-});
-
-// Delete a specific question (protected)
-router.delete('/:id/questions/:questionId', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
-
-    const questionIndex = job.interviewQuestions.findIndex(
-      (q: any) => q.id === req.params.questionId
-    );
-
-    if (questionIndex === -1) {
-      return res.status(404).json({ error: 'Question not found' });
-    }
-
-    job.interviewQuestions.splice(questionIndex, 1);
-    await job.save();
-
-    res.json({ message: 'Question deleted successfully' });
-  } catch (error: any) {
-    console.error('Delete question error:', error);
-    res.status(500).json({ error: 'Failed to delete question' });
-  }
-});
-
-// Delete job (protected)
-router.delete('/:id', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
-
-    // Delete all candidates associated with this job
-    await Candidate.deleteMany({ jobId: job._id });
-
-    // Delete the job
-    await job.deleteOne();
-
-    res.json({ message: 'Job and associated candidates deleted successfully' });
-  } catch (error: any) {
-    console.error('Delete job error:', error);
-    res.status(500).json({ error: 'Failed to delete job' });
-  }
-});
-
-// Test question generation (protected) - for debugging
-router.post('/:id/test-questions', authenticate, async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
-
-    console.log('🧪 TEST: Generating questions');
-    console.log('Job Title:', job.title);
-    console.log('Has Description:', !!job.description);
-    console.log('Has DNA:', !!job.jobDNA);
-    console.log('DNA Keys:', job.jobDNA ? Object.keys(job.jobDNA) : []);
-
-    const questions = await aiService.generateInterviewQuestions({
-      jobTitle: job.title,
-      jobDescription: job.description,
-      requiredSkills: job.requiredSkills,
-      experienceLevel: job.experienceLevel,
-      jobDNA: job.jobDNA,
-    });
-
-    console.log('🧪 TEST: Generated', questions?.length || 0, 'questions');
-
-    res.json({
-      test: true,
-      questionsGenerated: questions?.length || 0,
-      questions: questions,
-      jobHasDNA: !!job.jobDNA,
-      dnaKeys: job.jobDNA ? Object.keys(job.jobDNA) : []
-    });
-  } catch (error: any) {
-    console.error('🧪 TEST: Error:', error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 export default router;

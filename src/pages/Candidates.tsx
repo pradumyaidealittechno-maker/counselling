@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Upload, Search, Mail, MoreVertical, FileText, Dna, TrendingUp, Users, Plus, Loader } from 'lucide-react';
 import api from '../services/api';
@@ -53,12 +53,8 @@ export default function Candidates() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Array<{ _id: string; title: string }>>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [candidateToUploadResume, setCandidateToUploadResume] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-
-  const singleFileInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Check if jobId is in URL params
@@ -103,43 +99,6 @@ export default function Candidates() {
     }
   };
 
-  const handleUploadClick = () => {
-    if (!selectedJobId) {
-      alert('⚠️ Please select a job first!\n\nUse the dropdown above to select a job before uploading resumes.');
-      return;
-    }
-    fileInputRef.current?.click();
-  };
-
-  const handleSingleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !candidateToUploadResume) return;
-
-    try {
-      setLoading(true); // Use global loading since we removed uploading state
-      const file = files[0];
-      await api.candidates.uploadResumeForCandidate(candidateToUploadResume, file);
-
-      // Reload candidates
-      await loadCandidates();
-
-      setCandidateToUploadResume(null);
-      if (singleFileInputRef.current) {
-        singleFileInputRef.current.value = '';
-      }
-    } catch (err) {
-      console.error('Failed to upload resume:', err);
-      alert('Failed to upload resume. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const triggerSingleUpload = (candidateId: string) => {
-    setCandidateToUploadResume(candidateId);
-    singleFileInputRef.current?.click();
-  };
-
   const handleDelete = async (candidateId: string) => {
     if (window.confirm('Are you sure you want to delete this candidate? This action cannot be undone.')) {
       try {
@@ -166,9 +125,14 @@ export default function Candidates() {
       const createdAt = (c as any).createdAt;
       if (createdAt) {
         try {
-          const candidateDate = new Date(createdAt);
-          const filterDate = new Date(dateFilter);
-          matchesDate = candidateDate.toDateString() === filterDate.toDateString();
+          // Convert API timestamp (UTC) to local date YYYY-MM-DD for comparison
+          const createdDate = new Date(createdAt);
+          const yyyy = createdDate.getFullYear();
+          const mm = String(createdDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(createdDate.getDate()).padStart(2, '0');
+          const createdDateStr = `${yyyy}-${mm}-${dd}`;
+
+          matchesDate = createdDateStr === dateFilter;
         } catch {
           matchesDate = false;
         }
@@ -218,13 +182,7 @@ export default function Candidates() {
           </Link>
 
 
-          <input
-            type="file"
-            ref={singleFileInputRef}
-            onChange={handleSingleFileUpload}
-            accept=".pdf,.doc,.docx"
-            style={{ display: 'none' }}
-          />
+
         </div>
       </div>
 
@@ -265,25 +223,16 @@ export default function Candidates() {
       </div>
 
       {/* Upload Area */}
-      {/* <div
-        onClick={handleUploadClick}
+      <div
+        onClick={() => {
+          // Open the Add Candidate dialog which now supports resume upload
+          setShowAddDialog(true);
+        }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          if (!selectedJobId) {
-            alert('Please select a job before uploading resumes.');
-            return;
-          }
-          const files = e.dataTransfer.files;
-          if (files && files.length > 0) {
-            // Manually create a change event for the file input
-            const dt = new DataTransfer();
-            Array.from(files).forEach(file => dt.items.add(file));
-            if (fileInputRef.current) {
-              fileInputRef.current.files = dt.files;
-              handleSingleFileUpload({ target: fileInputRef.current } as any);
-            }
-          }
+          // Open dialog for drag and drop as well
+          setShowAddDialog(true);
         }}
         style={{
           border: '2px dashed var(--gray-200)',
@@ -292,15 +241,12 @@ export default function Candidates() {
           textAlign: 'center',
           marginBottom: '1rem',
           background: 'var(--gray-50)',
-          cursor: selectedJobId ? 'pointer' : 'not-allowed',
-          opacity: selectedJobId ? 1 : 0.6,
+          cursor: 'pointer',
           transition: 'all 0.2s',
         }}
         onMouseEnter={(e) => {
-          if (selectedJobId) {
-            e.currentTarget.style.borderColor = '#E91E63';
-            e.currentTarget.style.background = 'rgba(233, 30, 99, 0.02)';
-          }
+          e.currentTarget.style.borderColor = '#E91E63';
+          e.currentTarget.style.background = 'rgba(233, 30, 99, 0.02)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.borderColor = 'var(--gray-200)';
@@ -309,22 +255,14 @@ export default function Candidates() {
       >
         <Upload size={24} color="#9CA3AF" style={{ marginBottom: '0.5rem' }} />
         <p style={{ fontWeight: 500, marginBottom: '0.125rem', fontSize: '0.875rem', color: 'var(--gray-900)' }}>
-          {selectedJobId ? 'Drag and drop resumes here' : 'Select a job first'}
+          Click to add candidate with resume
         </p>
         <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-          {selectedJobId ? 'or click to browse (PDF, DOC, DOCX)' : 'Use the dropdown above to select a job'}
+          Upload resume to auto-fill candidate details (PDF, DOC, DOCX)
         </p>
-      </div> */}
+      </div>
 
-      {/* Hidden file input for bulk uploads */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleSingleFileUpload}
-        accept=".pdf,.doc,.docx"
-        multiple
-        style={{ display: 'none' }}
-      />
+
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', overflowX: 'auto' }}>

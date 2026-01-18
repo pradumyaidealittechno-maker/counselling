@@ -743,11 +743,11 @@ Return a JSON object with a "questions" array:
       jobDNA?: any;
       candidateScore?: number;
       recommendation?: string;
-      conversationHistory?: Array<{role: string; content: string}>;
+      conversationHistory?: Array<{ role: string; content: string }>;
     }
   ): Promise<string> {
     const apiKey = this.getApiKey();
-    
+
     if (this.shouldUseMock()) {
       return `This is a mock AI response. To use real AI assistant, please configure your OpenAI API key.
       
@@ -819,6 +819,292 @@ For valid hiring/recruitment questions: Provide concise, actionable insights. Be
       console.error('AI Chat error:', error.response?.data || error.message);
       throw new Error('Failed to get AI response. Please try again.');
     }
+  }
+
+  /**
+   * Parse resume text and extract candidate information
+   */
+  async parseResume(resumeText: string): Promise<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    experience?: string;
+    skills?: string[];
+    currentRole?: string;
+    summary?: string;
+    location?: string;
+  }> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      console.log('🎭 Using mock resume parsing (OpenAI API key not configured)');
+      return {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        phone: '+1 (555) 123-4567',
+        experience: '5 years',
+        skills: ['JavaScript', 'React', 'Node.js']
+      };
+    }
+
+    console.log('🤖 Using OpenAI API for resume parsing');
+    console.log('📝 Resume text length:', resumeText.length);
+
+    try {
+      const prompt = `You are an expert resume parser. Extract candidate information from the following resume text.
+
+RESUME TEXT:
+${resumeText}
+
+INSTRUCTIONS:
+1. **Analyze Structure**: Reconstruct logical sections (Work History, Skills) even if text is interleaved from columns.
+2. Extract the candidate's **FIRST NAME** and **LAST NAME**.
+3. Find the **EMAIL ADDRESS**.
+4. Find the **PHONE NUMBER**.
+5. Determine **YEARS OF EXPERIENCE**:
+   - Calculate total duration from work history dates (e.g., "Jan 2018 - Present").
+   - If explicit dates are missing, infer from "Senior", "Lead", "Junior".
+   - Format: "X years" (e.g., "5 years").
+6. Extract **TOP SKILLS** (limit to 10 most relevant technical/professional skills).
+7. Extract **CURRENT ROLE** (e.g., "Senior Accountant", "Dental Assistant"). Look at the most recent job or the headline.
+8. Extract **SUMMARY** (a brief 1-2 sentence professional summary).
+9. Extract **LOCATION** (City, Country).
+
+IMPORTANT RULES:
+- Use defaults if fields are missing (firstName="Unknown", experience="Not specified").
+- Be robust against "messy" text from optical character recognition or column mergers.
+
+Return ONLY valid JSON in this exact format:
+{
+  "firstName": "string",
+  "lastName": "string", 
+  "email": "string",
+  "phone": "string",
+  "experience": "string",
+  "skills": ["string"],
+  "currentRole": "string",
+  "summary": "string",
+  "location": "string"
+}`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert resume parser. You must extract structured candidate information accurately from any resume format. Always return valid JSON.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      const parsed = JSON.parse(response.data.choices[0].message.content);
+
+      // Validate and clean the parsed data
+      const result = {
+        firstName: parsed.firstName || 'Unknown',
+        lastName: parsed.lastName || 'Candidate',
+        email: parsed.email || '',
+        phone: parsed.phone,
+        experience: parsed.experience || 'Not specified',
+        skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+        currentRole: parsed.currentRole,
+        summary: parsed.summary,
+        location: parsed.location
+      };
+
+      console.log('✅ Resume parsed successfully:', result);
+      return result;
+    } catch (error: any) {
+      console.error('❌ Failed to parse resume:', error.response?.data || error.message);
+
+      // Fallback: Try to extract basic info using regex
+      console.log('🔄 Attempting fallback extraction...');
+      return this.fallbackResumeExtraction(resumeText);
+    }
+  }
+
+  /**
+   * Parse job description text and extract job details
+   */
+  async parseJobDescription(text: string): Promise<{
+    title: string;
+    department: string;
+    location: string;
+    employmentType: 'full-time' | 'part-time' | 'contract' | 'internship';
+    experienceLevel: 'entry' | 'mid' | 'senior' | 'lead';
+    description: string;
+    requiredSkills: string[];
+    optionalSkills: string[];
+  }> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      console.log('🎭 Using mock JD parsing (OpenAI API key not configured)');
+      return {
+        title: 'Software Engineer',
+        department: 'Engineering',
+        location: 'Remote',
+        employmentType: 'full-time',
+        experienceLevel: 'mid',
+        description: text || 'Mock job description...',
+        requiredSkills: ['JavaScript', 'React', 'Node.js'],
+        optionalSkills: ['AWS', 'Docker']
+      };
+    }
+
+    console.log('🤖 Using OpenAI API for JD parsing');
+
+    try {
+      const prompt = `You are an expert HR assistant. Extract structured job details from the following job description text.
+
+JOB DESCRIPTION TEXT:
+${text.substring(0, 10000)}
+
+INSTRUCTIONS:
+1. Extract **Job Title**.
+2. Extract **Department** (e.g., Engineering, Sales, Marketing). Infer if not explicit.
+3. Extract **Location**.
+4. Determine **Employment Type** (full-time, part-time, contract, internship). Default to "full-time".
+5. Determine **Experience Level** (entry, mid, senior, lead). Infer from years of experience or title.
+6. Clean and format the **Description**. Remove metadata headers/footers. Keep the core responsibilities and requirements.
+7. Extract **Required Skills** (Must-haves).
+8. Extract **Optional Skills** (Nice-to-haves).
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "string",
+  "department": "string",
+  "location": "string",
+  "employmentType": "full-time|part-time|contract|internship",
+  "experienceLevel": "entry|mid|senior|lead",
+  "description": "string",
+  "requiredSkills": ["string"],
+  "optionalSkills": ["string"]
+}`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an exert job description parser. Return valid JSON.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 45000
+        }
+      );
+
+      const parsed = JSON.parse(response.data.choices[0].message.content);
+
+      // Validate enums
+      const validEmploymentTypes = ['full-time', 'part-time', 'contract', 'internship'];
+      const validExperienceLevels = ['entry', 'mid', 'senior', 'lead'];
+
+      return {
+        title: parsed.title || 'Unknown Role',
+        department: parsed.department || 'Engineering',
+        location: parsed.location || 'Remote',
+        employmentType: validEmploymentTypes.includes(parsed.employmentType) ? parsed.employmentType : 'full-time',
+        experienceLevel: validExperienceLevels.includes(parsed.experienceLevel) ? parsed.experienceLevel : 'mid',
+        description: parsed.description || text,
+        requiredSkills: Array.isArray(parsed.requiredSkills) ? parsed.requiredSkills : [],
+        optionalSkills: Array.isArray(parsed.optionalSkills) ? parsed.optionalSkills : []
+      };
+
+    } catch (error: any) {
+      console.error('❌ Failed to parse JD:', error.response?.data || error.message);
+      // Fallback
+      return {
+        title: 'Uploaded Job',
+        department: 'General',
+        location: 'Remote',
+        employmentType: 'full-time',
+        experienceLevel: 'mid',
+        description: text,
+        requiredSkills: [],
+        optionalSkills: []
+      };
+    }
+  }
+
+  /**
+   * Fallback resume extraction using regex patterns
+   */
+  private fallbackResumeExtraction(text: string): {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    experience?: string;
+    skills?: string[];
+  } {
+    // Extract email
+    const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+    const email = emailMatch ? emailMatch[0] : '';
+
+    // Extract phone
+    const phoneMatch = text.match(/[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}/);
+    const phone = phoneMatch ? phoneMatch[0] : undefined;
+
+    // Try to extract name from first few lines
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    const firstLine = lines[0] || '';
+    const nameParts = firstLine.trim().split(/\s+/);
+    const firstName = nameParts[0] || 'Unknown';
+    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'Candidate';
+
+    // Try to extract experience
+    const experienceMatch = text.match(/(\d+)\+?\s*(years?|yrs?)/i);
+    const experience = experienceMatch ? `${experienceMatch[1]} years` : 'Not specified';
+
+    // Extract common skills
+    const commonSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL', 'AWS', 'Docker', 'Git'];
+    const skills = commonSkills.filter(skill =>
+      text.toLowerCase().includes(skill.toLowerCase())
+    );
+
+    console.log('✅ Fallback extraction completed:', { firstName, lastName, email, phone, experience, skills });
+
+    return {
+      firstName,
+      lastName,
+      email,
+      phone,
+      experience,
+      skills
+    };
   }
 }
 

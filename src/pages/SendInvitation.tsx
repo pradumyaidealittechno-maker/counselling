@@ -25,7 +25,6 @@ export default function SendInvitation() {
   const [message, setMessage] = useState('');
 
   const BASE_URL = window.location.origin; // e.g., http://localhost:5173
-  const API_URL = 'http://localhost:3001'; // Backend API server
 
   useEffect(() => {
     loadCandidates();
@@ -53,7 +52,7 @@ export default function SendInvitation() {
   useEffect(() => {
     if (selectedCandidate && interviewCode) {
       const jobTitle = selectedCandidate.jobId?.title || 'Position';
-      const link = `${BASE_URL}/interview?code=${interviewCode}`;
+      const link = `${BASE_URL}/interview/${interviewCode}`;
 
       setMessage(`Interview Invitation
 
@@ -81,7 +80,7 @@ Good luck!
   const loadCandidates = async () => {
     try {
       const data = await api.candidates.getAll();
-      setCandidates(data || []);
+      setCandidates(data?.candidates || data || []);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load candidates:', error);
@@ -92,24 +91,8 @@ Good luck!
   const generateCode = async (candidateId: string) => {
     setGenerating(true);
     try {
-      const response = await fetch(`${API_URL}/api/interviews/generate-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          candidateId,
-          expiresInHours: 168 // 7 days
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setInterviewCode(data.code);
-      } else {
-        alert('Failed to generate interview code');
-      }
+      const data = await api.interviews.generateCode(candidateId, 168);
+      setInterviewCode(data.code);
     } catch (error) {
       console.error('Failed to generate code:', error);
       alert('Failed to generate interview code');
@@ -127,33 +110,21 @@ Good luck!
     setSending(true);
 
     try {
-      // Call backend API to send invitation via N8N webhook
-      const response = await fetch(`${API_URL}/api/candidates/${selectedCandidateId}/resend-invitation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          subject,
-          message
-        })
+      const cleanSubject = subject.replace(/^Interview Invitation - /i, '');
+      await api.candidates.resendInvitation(selectedCandidateId, {
+        firstName,
+        lastName,
+        email,
+        subject: cleanSubject,
+        message
       });
 
-      if (response.ok) {
-        console.log('✅ Invitation sent successfully via N8N webhook');
-        setSent(true);
-        setTimeout(() => navigate('/dashboard/candidates'), 2000);
-      } else {
-        const error = await response.json();
-        alert(`Failed to send invitation: ${error.error || 'Unknown error'}`);
-      }
-    } catch (error) {
+      console.log('✅ Invitation sent successfully');
+      setSent(true);
+      setTimeout(() => navigate('/dashboard/candidates'), 2000);
+    } catch (error: any) {
       console.error('Failed to send invitation:', error);
-      alert('Failed to send invitation. Please try again.');
+      alert(`Failed to send invitation: ${error.message || 'Unknown error'}`);
     } finally {
       setSending(false);
     }

@@ -16,25 +16,25 @@ interface TranscriptEntry {
 }
 
 export default function CandidateInterview() {
-  const { id: _interviewId } = useParams();
+  const { id: codeFromPath } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const [isValidated, setIsValidated] = useState(false);
   const [candidateName, setCandidateName] = useState('');
   const [candidateUid, setCandidateUid] = useState('');
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState('');
-  
+
   const [hasMediaAccess, setHasMediaAccess] = useState(false);
   const [mediaError, setMediaError] = useState('');
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isMicOn, setIsMicOn] = useState(false);
-  
+
   const [interviewStatus, setInterviewStatus] = useState<'idle' | 'connecting' | 'active' | 'completed'>('idle');
   const [duration, setDuration] = useState(0);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -48,11 +48,14 @@ export default function CandidateInterview() {
 
   // Validate code on mount
   useEffect(() => {
-    const codeFromUrl = searchParams.get('code');
-    if (codeFromUrl) {
-      validateCode(codeFromUrl);
+    const codeFromSearch = searchParams.get('code');
+    const finalCode = codeFromSearch || codeFromPath;
+
+    if (finalCode && finalCode.length >= 6) {
+      validateCode(finalCode);
+      setCode(finalCode);
     }
-  }, [searchParams]);
+  }, [searchParams, codeFromPath]);
 
   // Load Retell SDK
   useEffect(() => {
@@ -60,7 +63,7 @@ export default function CandidateInterview() {
     script.src = 'https://esm.sh/retell-client-js-sdk';
     script.type = 'module';
     document.body.appendChild(script);
-    
+
     return () => {
       document.body.removeChild(script);
     };
@@ -91,7 +94,7 @@ export default function CandidateInterview() {
       });
 
       mediaStreamRef.current = stream;
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
@@ -278,7 +281,7 @@ export default function CandidateInterview() {
       client.on('call_started', () => {
         setInterviewStatus('active');
         startRecording();
-        
+
         // Start timer
         timerRef.current = setInterval(() => {
           setDuration((prev) => prev + 1);
@@ -301,7 +304,7 @@ export default function CandidateInterview() {
       client.on('call_ended', () => {
         setInterviewStatus('completed');
         stopRecording();
-        
+
         if (timerRef.current) {
           clearInterval(timerRef.current);
         }
@@ -317,7 +320,7 @@ export default function CandidateInterview() {
             text: update.transcript.trim(),
             timestamp: new Date().toISOString(),
           };
-          
+
           if (!update.is_partial) {
             setTranscript((prev) => [...prev, entry]);
           }
@@ -373,7 +376,7 @@ export default function CandidateInterview() {
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Enter Interview Code</h2>
           <p className="text-gray-600 mb-6">Please enter the unique code provided in your invitation email.</p>
-          
+
           <input
             type="text"
             value={code}
@@ -382,14 +385,14 @@ export default function CandidateInterview() {
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-xl font-mono uppercase tracking-wider mb-4 focus:border-purple-500 focus:outline-none"
             maxLength={8}
           />
-          
+
           {codeError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
               <AlertCircle size={20} />
               <span>{codeError}</span>
             </div>
           )}
-          
+
           <button
             onClick={() => validateCode(code)}
             disabled={code.length < 6}
@@ -432,7 +435,7 @@ export default function CandidateInterview() {
                 muted
                 className="w-full h-full object-cover transform scale-x-[-1]"
               />
-              
+
               {!hasMediaAccess && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
                   <Camera size={64} className="mb-4 opacity-50" />
@@ -480,12 +483,11 @@ export default function CandidateInterview() {
                 <div className="text-sm opacity-75">Duration</div>
                 <div className="text-3xl font-bold font-mono">{formatTime(duration)}</div>
               </div>
-              <div className={`px-4 py-2 rounded-full ${
-                interviewStatus === 'active' ? 'bg-green-500' :
+              <div className={`px-4 py-2 rounded-full ${interviewStatus === 'active' ? 'bg-green-500' :
                 interviewStatus === 'connecting' ? 'bg-yellow-500' :
-                interviewStatus === 'completed' ? 'bg-blue-500' :
-                'bg-gray-500'
-              }`}>
+                  interviewStatus === 'completed' ? 'bg-blue-500' :
+                    'bg-gray-500'
+                }`}>
                 <span className="text-white font-semibold capitalize">{interviewStatus}</span>
               </div>
             </div>
@@ -521,7 +523,7 @@ export default function CandidateInterview() {
         {/* Transcript Panel */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 max-h-[800px] flex flex-col">
           <h3 className="text-white text-xl font-bold mb-4">Live Transcript</h3>
-          
+
           <div className="flex-1 overflow-y-auto space-y-3">
             {transcript.length === 0 ? (
               <div className="text-white/50 text-center py-8">
@@ -531,11 +533,10 @@ export default function CandidateInterview() {
               transcript.map((entry, index) => (
                 <div
                   key={index}
-                  className={`p-3 rounded-lg ${
-                    entry.speaker === 'ai'
-                      ? 'bg-blue-500/20 border border-blue-500/30'
-                      : 'bg-green-500/20 border border-green-500/30'
-                  }`}
+                  className={`p-3 rounded-lg ${entry.speaker === 'ai'
+                    ? 'bg-blue-500/20 border border-blue-500/30'
+                    : 'bg-green-500/20 border border-green-500/30'
+                    }`}
                 >
                   <div className="text-xs text-white/75 mb-1">
                     {entry.speaker === 'ai' ? 'AI Interviewer' : 'You'}

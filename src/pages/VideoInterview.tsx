@@ -61,11 +61,13 @@ export default function VideoInterview() {
     }
   }, [started, webcamVideoRef.current]);
 
-  // Validate code on mount
+  // Redirect to the new multi-step interview page if code is present
   useEffect(() => {
     if (code) {
-      validateInterviewCode();
+      console.log('🔄 Redirecting to new interview format');
+      navigate(`/interview/${code}`);
     }
+<<<<<<< Updated upstream
   }, [code]);
   
   // Clean up audio context on unmount
@@ -76,10 +78,13 @@ export default function VideoInterview() {
       }
     };
   }, []);
+=======
+  }, [code, navigate]);
+>>>>>>> Stashed changes
 
   const validateInterviewCode = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/interviews/validate-code', {
+      const response = await fetch('/api/interviews/validate-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
@@ -225,14 +230,14 @@ export default function VideoInterview() {
     try {
       // Get agent ID from environment variable
       const agentId = import.meta.env.VITE_RETELL_AGENT_ID;
-      
+
       if (!agentId) {
         throw new Error('VITE_RETELL_AGENT_ID not configured. Please add it to .env file');
       }
 
       console.log('🔑 Requesting Retell token for agent:', agentId);
 
-      const response = await fetch('http://localhost:3001/api/interviews/create-web-call', {
+      const response = await fetch('/api/interviews/create-web-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentId })
@@ -266,7 +271,7 @@ export default function VideoInterview() {
           screenResolution: `${window.screen.width}x${window.screen.height}`
         };
 
-        await fetch('http://localhost:3001/api/interviews/start-session', {
+        await fetch('/api/interviews/start-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ candidateId: candidateUid, browserInfo })
@@ -427,7 +432,7 @@ export default function VideoInterview() {
       formData.append('candidate_name', candidateName);
       formData.append('uid', candidateUid);
 
-      const response = await fetch('http://localhost:3001/api/interviews/save-recording', {
+      const response = await fetch('/api/interviews/save-recording', {
         method: 'POST',
         body: formData
       });
@@ -455,10 +460,10 @@ export default function VideoInterview() {
       // Stop recording
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
-        
+
         // Wait for final data
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Upload recording
         await uploadRecording();
       }
@@ -468,7 +473,7 @@ export default function VideoInterview() {
 
       // Notify backend session ended
       try {
-        await fetch('http://localhost:3001/api/interviews/end-session', {
+        await fetch('/api/interviews/end-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ candidateId: candidateUid, duration })
@@ -610,7 +615,7 @@ export default function VideoInterview() {
           </div>
           <span style={{ fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
         </div>
-        
+
         <div style={{
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)',
           borderRadius: '1rem',
@@ -875,7 +880,7 @@ export default function VideoInterview() {
         {/* Action Button */}
         <button
           className="btn btn-primary"
-          style={{ 
+          style={{
             width: '100%',
             background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)'

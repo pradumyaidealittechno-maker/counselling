@@ -72,16 +72,16 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
       matchedCandidate = candidates.find((c: any) => {
         const cName = `${c.firstName} ${c.lastName}`.toLowerCase();
         const cEmail = c.email?.toLowerCase();
-        
+
         // Try exact name match first
         if (fullName && cName === fullName) return true;
-        
+
         // Try partial name match
         if (fullName && (cName.includes(fullName) || fullName.includes(cName))) return true;
-        
+
         // Try email match as fallback if email was provided in report
         if (email && cEmail === email) return true;
-        
+
         return false;
       });
 
@@ -104,7 +104,7 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
     // Update the candidate using findByIdAndUpdate
     const updatedCandidate = await Candidate.findByIdAndUpdate(
       matchedCandidate._id,
-      { 
+      {
         finalDecision: {
           decision: finalDecision === 'hired' ? 'Hire' : finalDecision === 'rejected' ? 'Reject' : 'Hold',
           decidedAt: new Date(),

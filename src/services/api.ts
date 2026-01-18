@@ -44,7 +44,7 @@ console.log(`   Debug Mode: ${DEBUG ? 'ON' : 'OFF'}`);
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
   if (DEBUG && token) {
     logger.info('Auth token found in localStorage');
   }
@@ -59,7 +59,10 @@ const handleResponse = async (response: Response) => {
 
   if (!response.ok) {
     logger.error(`Request failed with status ${response.status}`, data);
-    throw new Error(data.error || `HTTP ${response.status}`);
+    const error = new Error(data.error || `HTTP ${response.status}`);
+    (error as any).details = data.details;
+    (error as any).suggestion = data.suggestion;
+    throw error;
   }
 
   return data;
@@ -152,6 +155,7 @@ export const api = {
     logout: () => {
       logger.info('Logging out...');
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
       logger.success('Logged out successfully');
     },
@@ -341,9 +345,10 @@ export const api = {
       });
     },
 
-    resendInvitation: async (id: string) => {
+    resendInvitation: async (id: string, data?: { firstName?: string, lastName?: string, email?: string, subject?: string, message?: string }) => {
       return authFetch(`/api/candidates/${id}/resend-invitation`, {
         method: 'POST',
+        body: data ? JSON.stringify(data) : undefined
       });
     },
 
@@ -351,6 +356,22 @@ export const api = {
       return authFetch(`/api/candidates/${id}`, {
         method: 'DELETE',
       });
+    },
+
+    parseResume: async (file: File) => {
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      const token = getAuthToken();
+      const response = await fetch(`${API_URL}/api/candidates/parse-resume`, {
+        method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: formData,
+      });
+
+      return handleResponse(response);
     },
   },
 
@@ -394,12 +415,17 @@ export const api = {
       duration: number;
       metadata?: any;
     }) => {
-      const response = await fetch(`${API_URL}/api/interviews/submit-result`, {
+      return authFetch('/api/interviews/submit-result', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      return handleResponse(response);
+    },
+
+    generateCode: async (candidateId: string, expiresInHours?: number) => {
+      return authFetch('/api/interviews/generate-code', {
+        method: 'POST',
+        body: JSON.stringify({ candidateId, expiresInHours }),
+      });
     },
   },
 

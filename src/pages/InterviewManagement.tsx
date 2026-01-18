@@ -151,7 +151,7 @@ export default function InterviewManagement() {
   return (
     <div>
       {/* Header with Gradient */}
-      <div style={{ 
+      <div style={{
         marginBottom: '2rem',
         padding: '1.5rem',
         background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
@@ -166,7 +166,7 @@ export default function InterviewManagement() {
 
       {/* Enhanced Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%)',
           border: '2px solid rgba(16, 185, 129, 0.15)',
@@ -174,14 +174,14 @@ export default function InterviewManagement() {
           transition: 'all 0.3s',
           cursor: 'pointer'
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.1)';
-        }}>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.1)';
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: '56px',
@@ -202,7 +202,7 @@ export default function InterviewManagement() {
           </div>
         </div>
 
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.02) 100%)',
           border: '2px solid rgba(99, 102, 241, 0.15)',
@@ -210,14 +210,14 @@ export default function InterviewManagement() {
           transition: 'all 0.3s',
           cursor: 'pointer'
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(99, 102, 241, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(99, 102, 241, 0.1)';
-        }}>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(99, 102, 241, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(99, 102, 241, 0.1)';
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: '56px',
@@ -238,7 +238,7 @@ export default function InterviewManagement() {
           </div>
         </div>
 
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(233, 30, 99, 0.02) 100%)',
           border: '2px solid rgba(233, 30, 99, 0.15)',
@@ -246,14 +246,14 @@ export default function InterviewManagement() {
           transition: 'all 0.3s',
           cursor: 'pointer'
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(233, 30, 99, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(233, 30, 99, 0.1)';
-        }}>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(233, 30, 99, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(233, 30, 99, 0.1)';
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: '56px',
@@ -276,7 +276,7 @@ export default function InterviewManagement() {
       </div>
 
       {/* Active Sessions */}
-      <div className="card" style={{ 
+      <div className="card" style={{
         padding: '1.75rem',
         marginBottom: '2rem',
         border: '2px solid rgba(16, 185, 129, 0.15)',
@@ -381,7 +381,7 @@ export default function InterviewManagement() {
       </div>
 
       {/* Recent Interviews */}
-      <div className="card" style={{ 
+      <div className="card" style={{
         padding: '1.75rem',
         border: '2px solid rgba(99, 102, 241, 0.15)',
         boxShadow: '0 4px 20px rgba(99, 102, 241, 0.08)',

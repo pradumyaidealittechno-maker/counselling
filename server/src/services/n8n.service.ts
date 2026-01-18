@@ -7,6 +7,7 @@ export interface EmailPayload {
   candidateName?: string;
   interviewLink?: string;
   interviewCode?: string;
+  jobTitle?: string;
 }
 
 export interface InterviewQuestionsPayload {
@@ -44,18 +45,16 @@ class N8nService {
 
   async sendEmail(payload: EmailPayload): Promise<boolean> {
     try {
-      const emailWebhook = process.env.N8N_WEBHOOK_EMAIL;
-      
-      if (!emailWebhook) {
+      if (!this.emailWebhook) {
         console.warn('⚠️  N8N_WEBHOOK_EMAIL not configured in .env');
         return false;
       }
 
-      console.log('📧 Sending email via N8N webhook:', emailWebhook);
+      console.log('📧 Sending email via N8N webhook:', this.emailWebhook);
       console.log('   To:', payload.to);
       console.log('   Subject:', payload.subject);
 
-      const response = await axios.post(emailWebhook, payload, {
+      const response = await axios.post(this.emailWebhook, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 10000,
       });
@@ -72,13 +71,11 @@ class N8nService {
 
   async generateInterviewQuestions(payload: InterviewQuestionsPayload): Promise<any> {
     try {
-      const questionsWebhook = process.env.N8N_WEBHOOK_INTERVIEW_QUESTIONS;
-      
-      if (!questionsWebhook) {
+      if (!this.questionsWebhook) {
         throw new Error('N8N_WEBHOOK_INTERVIEW_QUESTIONS not configured in .env');
       }
 
-      const response = await axios.post(questionsWebhook, payload, {
+      const response = await axios.post(this.questionsWebhook, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 30000,
       });
@@ -130,14 +127,12 @@ class N8nService {
 
   async sendInterviewResult(payload: InterviewResultPayload): Promise<any> {
     try {
-      const resultWebhook = process.env.N8N_WEBHOOK_INTERVIEW_RESULT;
-      
-      if (!resultWebhook) {
+      if (!this.resultWebhook) {
         console.warn('N8N_WEBHOOK_INTERVIEW_RESULT not configured');
         return null;
       }
 
-      const response = await axios.post(resultWebhook, payload, {
+      const response = await axios.post(this.resultWebhook, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 60000,
       });
@@ -182,6 +177,7 @@ class N8nService {
       candidateName,
       interviewLink,
       interviewCode,
+      jobTitle,
     });
   }
 }

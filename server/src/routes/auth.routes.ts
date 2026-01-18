@@ -10,7 +10,7 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   console.log('\n🔐 AUTH: Register attempt');
   console.log(`   Email: ${req.body.email}`);
-  
+
   try {
     const { email, password, firstName, lastName, company, role } = req.body;
 
@@ -63,10 +63,12 @@ router.post('/register', async (req, res) => {
     console.log(`   ✅ User created: ${user._id}`);
 
     // Generate token
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret';
+    const jwtExpiry = process.env.JWT_EXPIRES_IN || '7d';
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      jwtSecret,
+      { expiresIn: jwtExpiry } as any
     );
     console.log('   ✅ Token generated');
 
@@ -92,7 +94,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   console.log('\n🔐 AUTH: Login attempt');
   console.log(`   Email: ${req.body.email}`);
-  
+
   try {
     const { email, password } = req.body;
 
@@ -127,10 +129,12 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate token
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret';
+    const jwtExpiry = process.env.JWT_EXPIRES_IN || '7d';
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      jwtSecret,
+      { expiresIn: jwtExpiry } as any
     );
     console.log('   ✅ Token generated');
 
@@ -155,7 +159,7 @@ router.post('/login', async (req, res) => {
 // Get current user
 router.get('/me', authenticate, async (req, res) => {
   console.log('\n🔐 AUTH: Get current user');
-  
+
   try {
     const user = await User.findById((req as any).user.id).select('-password');
     if (!user) {
@@ -176,7 +180,7 @@ export default router;
 // Update user profile  
 router.put('/update-profile', authenticate, async (req, res) => {
   console.log('\n🔐 AUTH: Update profile');
-  
+
   try {
     const { firstName, lastName } = req.body;
     const userId = (req as any).user.id;
