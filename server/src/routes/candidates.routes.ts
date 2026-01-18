@@ -13,8 +13,12 @@ import { config } from '../config/index.js';
 const router = Router();
 
 const refreshCandidateResumeUrl = async (candidateDoc: any) => {
-  // Convert to plain object if it's a mongoose document
-  const candidate = candidateDoc.toObject ? candidateDoc.toObject() : candidateDoc;
+  // Convert to plain object if it's a mongoose document, preserving all fields
+  const candidate = candidateDoc.toObject ? candidateDoc.toObject({ 
+    virtuals: true,
+    versionKey: false,
+    transform: false 
+  }) : candidateDoc;
 
   try {
     let key = '';
@@ -96,10 +100,31 @@ router.get(
         Candidate.countDocuments(filter),
       ]);
 
+      // Debug: Check first candidate before transformation
+      if (candidates.length > 0) {
+        console.log('🔍 First candidate from DB (raw):', {
+          id: candidates[0]._id,
+          email: candidates[0].email,
+          experience: candidates[0].experience,
+          hasExperienceField: 'experience' in candidates[0]
+        });
+      }
+
       // Refresh resume URLs and get plain objects
       const candidatesWithSignedUrls = await Promise.all(
         candidates.map(candidate => refreshCandidateResumeUrl(candidate))
       );
+
+      // Debug: Check first candidate after transformation
+      if (candidatesWithSignedUrls.length > 0) {
+        console.log('🔍 First candidate after transform:', {
+          id: candidatesWithSignedUrls[0]._id,
+          email: candidatesWithSignedUrls[0].email,
+          experience: candidatesWithSignedUrls[0].experience,
+          hasExperienceField: 'experience' in candidatesWithSignedUrls[0],
+          allKeys: Object.keys(candidatesWithSignedUrls[0])
+        });
+      }
 
       res.json({
         candidates: candidatesWithSignedUrls,

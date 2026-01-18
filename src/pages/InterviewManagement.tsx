@@ -281,7 +281,6 @@ export default function InterviewManagement() {
         marginBottom: '2rem',
         border: '2px solid rgba(16, 185, 129, 0.15)',
         boxShadow: '0 4px 20px rgba(16, 185, 129, 0.08)',
-        boxShadow: '0 4px 20px rgba(16, 185, 129, 0.08)',
         background: 'var(--white)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>

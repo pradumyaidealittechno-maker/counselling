@@ -86,7 +86,16 @@ export default function Candidates() {
       setLoading(true);
       const data = await api.candidates.getAll();
       // Backend returns { candidates: [...], pagination: {...} }
-      setCandidates(data?.candidates || data || []);
+      const candidatesList = data?.candidates || data || [];
+      
+      // Debug: Check if experience field is present
+      console.log('📊 Candidates loaded:', candidatesList.length);
+      if (candidatesList.length > 0) {
+        console.log('📋 First candidate:', candidatesList[0]);
+        console.log('💼 Experience field:', candidatesList[0].experience);
+      }
+      
+      setCandidates(candidatesList);
     } catch (err) {
       console.error('Failed to load candidates:', err);
     } finally {
