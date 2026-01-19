@@ -7,9 +7,17 @@ interface AddCandidateDialogProps {
     onClose: () => void;
     onSuccess: () => void;
     selectedJobId?: string | null;
+    initialData?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+        linkedIn?: string;
+        experience?: string;
+    };
 }
 
-export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selectedJobId }: AddCandidateDialogProps) {
+export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selectedJobId, initialData }: AddCandidateDialogProps) {
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -27,13 +35,20 @@ export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selecte
     useEffect(() => {
         if (isOpen) {
             loadJobs();
-            // Pre-select job if provided, otherwise default to empty
+            // Pre-select job if provided, or use initialData if available
             setFormData(prev => ({
                 ...prev,
-                jobId: selectedJobId || ''
+                jobId: selectedJobId || '',
+                firstName: initialData?.firstName || '',
+                lastName: initialData?.lastName || '',
+                email: initialData?.email || '',
+                phone: initialData?.phone || '',
+                linkedInUrl: initialData?.linkedIn || '', // map linkedIn -> linkedInUrl
+                experience: initialData?.experience || '',
+                experience: initialData?.experience || '',
             }));
         }
-    }, [isOpen, selectedJobId]);
+    }, [isOpen, selectedJobId, initialData]);
 
     const loadJobs = async () => {
         try {

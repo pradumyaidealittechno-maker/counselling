@@ -58,6 +58,8 @@ export default function Candidates() {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [parsedCandidateData, setParsedCandidateData] = useState<any>(null);
+  const [uploadJobId, setUploadJobId] = useState<string>(''); // Dedicated state for upload section
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jobSelectorRef = useRef<HTMLSelectElement>(null);
@@ -68,6 +70,7 @@ export default function Candidates() {
     const jobIdParam = params.get('jobId');
     if (jobIdParam) {
       setSelectedJobId(jobIdParam);
+      setUploadJobId(jobIdParam); // Also auto-select for upload
     }
 
     loadCandidates();
@@ -105,19 +108,9 @@ export default function Candidates() {
     }
   };
 
-  const handleUploadAreaClick = () => {
-    if (!selectedJobId) {
-      // Auto-focus the job selector when user clicks upload without selecting job
-      jobSelectorRef.current?.focus();
-      jobSelectorRef.current?.click(); // Try to open the dropdown
-      return;
-    }
-    fileInputRef.current?.click();
-  };
-
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0 || !selectedJobId) return;
+    if (!files || files.length === 0) return;
 
     setLoading(true);
     const file = files[0];
@@ -127,6 +120,7 @@ export default function Candidates() {
       const formData = new FormData();
       formData.append('resume', file);
 
+      // Note using relative URL to let proxy handle it or full URL if env not set
       const parseResponse = await fetch('http://localhost:3001/api/candidates/parse-resume', {
         method: 'POST',
         headers: {
@@ -145,33 +139,39 @@ export default function Candidates() {
 
       console.log('✅ Extracted candidate data:', candidateData);
 
-      // Step 2: Create candidate with extracted data + selected job
-      const createResponse = await fetch('http://localhost:3001/api/candidates', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          firstName: candidateData.firstName || 'Unknown',
-          lastName: candidateData.lastName || 'Candidate',
-          email: candidateData.email || '',
-          phone: candidateData.phone || '',
-          experience: candidateData.experience || '',
-          linkedIn: candidateData.linkedIn || '',
-          jobId: selectedJobId,
-        })
-      });
+      // Use the specific uploadJobId
+      if (uploadJobId) {
+          // Step 2: Create candidate with extracted data + selected job
+          const createResponse = await fetch('http://localhost:3001/api/candidates', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            },
+            body: JSON.stringify({
+              firstName: candidateData.firstName || 'Unknown',
+              lastName: candidateData.lastName || 'Candidate',
+              email: candidateData.email || '',
+              phone: candidateData.phone || '',
+              experience: candidateData.experience || '',
+              linkedIn: candidateData.linkedIn || '',
+              jobId: uploadJobId, // Use the upload section's job ID
+            })
+          });
 
-      if (!createResponse.ok) {
-        const error = await createResponse.json();
-        throw new Error(error.error || 'Failed to create candidate');
+          if (!createResponse.ok) {
+            const error = await createResponse.json();
+            throw new Error(error.error || 'Failed to create candidate');
+          }
+
+          showToast.success(`✅ Candidate created: ${candidateData.firstName} ${candidateData.lastName}`);
+          await loadCandidates();
+      } else {
+          // Fallback if somehow triggered without job (though button prevents it now, nice to keep safety)
+          setParsedCandidateData(candidateData);
+          setShowAddDialog(true);
+          showToast.success('Resume parsed. Please confirm details.');
       }
-
-      showToast.success(`✅ Candidate created: ${candidateData.firstName} ${candidateData.lastName}`);
-      
-      // Reload candidates list
-      await loadCandidates();
 
       // Reset file input
       if (fileInputRef.current) {
@@ -205,7 +205,14 @@ export default function Candidates() {
     const email = (c.email || '').toLowerCase();
 
     const matchesSearch = fullName.includes(term) || email.includes(term);
-    const matchesJob = !selectedJobId || (c.jobId as any)?._id === selectedJobId || c.job?._id === selectedJobId;
+    
+    // Improved job matching to handle both populated objects and ID strings
+    const jobMatch = !selectedJobId || 
+      (c.jobId && typeof c.jobId === 'object' && (c.jobId as any)._id === selectedJobId) || 
+      (c.jobId && typeof c.jobId === 'string' && c.jobId === selectedJobId) ||
+      (c.job && c.job._id === selectedJobId);
+
+    const matchesJob = jobMatch;
 
     // Date filter
     let matchesDate = true;
@@ -315,34 +322,64 @@ export default function Candidates() {
       </div>
 
       {/* Upload Area */}
-      <div
-        onClick={handleUploadAreaClick}
-        style={{
-          border: '2px dashed var(--gray-200)',
-          borderRadius: '0.75rem',
-          padding: '1.25rem',
-          textAlign: 'center',
-          marginBottom: '1rem',
-          background: 'var(--gray-50)',
-          cursor: selectedJobId ? 'pointer' : 'pointer', // Always clickable
-          transition: 'all 0.2s',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = '#E91E63';
-          e.currentTarget.style.background = 'rgba(233, 30, 99, 0.02)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'var(--gray-200)';
-          e.currentTarget.style.background = 'var(--gray-50)';
-        }}
-      >
-        <Upload size={24} color="#9CA3AF" style={{ marginBottom: '0.5rem' }} />
-        <p style={{ fontWeight: 500, marginBottom: '0.125rem', fontSize: '0.875rem', color: 'var(--gray-900)' }}>
-          {selectedJobId ? 'Click to upload resume' : 'Click to select job & upload resume'}
+      {/* Upload Area - Styled as per design */}
+      <div className="card" style={{ 
+        padding: '2rem', 
+        textAlign: 'center', 
+        marginBottom: '1.5rem',
+        border: '1px dashed var(--gray-300)', // Subtle dashed border like the image might implies or just clean card
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--white)' 
+      }}>
+        <Upload size={32} color="#9CA3AF" style={{ marginBottom: '1rem' }} />
+        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>Upload Resume</h3>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem', maxWidth: '400px' }}>
+          Select a job role and upload a resume to automatically parse details and create a candidate profile.
         </p>
-        <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-          {selectedJobId ? 'PDF, DOC, DOCX supported' : 'Select a job first, then upload'}
-        </p>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', width: '100%', maxWidth: '500px' }}>
+          <select
+            className="input"
+            value={uploadJobId}
+            onChange={(e) => setUploadJobId(e.target.value)}
+            style={{ 
+              flex: 1,
+              padding: '0.75rem',
+              borderColor: 'var(--gray-300)'
+            }}
+          >
+            <option value="">Select Job Role...</option>
+            {jobs.map(job => (
+              <option key={job._id} value={job._id}>{job.title}</option>
+            ))}
+          </select>
+          
+          <button
+            onClick={() => {
+              if (!uploadJobId) {
+                 showToast.error('Please select a job role first');
+                 return;
+              }
+              fileInputRef.current?.click();
+            }}
+            className="btn btn-primary"
+            style={{ 
+              padding: '0.75rem 1.5rem',
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              whiteSpace: 'nowrap',
+              backgroundColor: '#E91E63', // Ensuring brand color
+              border: 'none'
+            }}
+          >
+            <Upload size={18} />
+            Upload Resume
+          </button>
+        </div>
       </div>
 
 
@@ -714,6 +751,7 @@ export default function Candidates() {
         onClose={() => setShowAddDialog(false)}
         onSuccess={loadCandidates}
         selectedJobId={selectedJobId}
+        initialData={parsedCandidateData}
       />
     </div>
   );

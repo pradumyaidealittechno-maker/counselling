@@ -8,7 +8,97 @@ import { upload } from '../middleware/upload.js';
 import { uploadToS3 } from '../config/s3.js';
 import n8nService from '../services/n8n.service.js';
 
+import * as pdfParseModule from 'pdf-parse';
+
 const router = express.Router();
+
+// Parse Resume (protected) - New Endpoint
+router.post('/parse-resume', authenticate, upload.single('resume'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    let text = '';
+    
+    // Extract text based on file type
+    if (file.mimetype === 'application/pdf') {
+       try {
+        const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+        const data = await pdfParse(file.buffer);
+        text = data.text;
+      } catch (err) {
+        console.error('PDF Parse Error:', err);
+        return res.status(500).json({ error: 'Failed to parse PDF' });
+      }
+    } else if (file.mimetype === 'text/plain') {
+      text = file.buffer.toString('utf-8');
+    } else if (
+      file.mimetype === 'application/msword' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      // For now, return error or mock for DOCX as we don't have mammoth installed yet
+      // You can add mammoth later if needed
+      return res.status(400).json({ error: 'Word documents are not fully supported yet. Please upload PDF or TXT.' });
+    } else {
+        return res.status(400).json({ error: 'Unsupported file format. Please upload PDF or TXT.' });
+    }
+
+    // Regex extraction logic
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
+    const phoneRegex = /(\+\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}/;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    
+    const emailMatch = text.match(emailRegex);
+    const phoneMatch = text.match(phoneRegex);
+    
+    // Simple heuristic for Experience
+    // Look for keywords like "Experience", "Work History" followed by some years pattern or text
+    const experienceMatch = text.match(/(?:Experience|Work History|Employment)[^:]*:\s*([^.\n]+)/i);
+
+    // Find LinkedIn URL
+    const urls = text.match(urlRegex) || [];
+    const linkedInUrl = urls.find(url => url.toLowerCase().includes('linkedin.com'));
+
+    // Name Extraction Heuristic (First non-empty lines usually contains name)
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // Assume name is in the first 3 lines, look for a line with 2-3 words that doesn't look like an email/phone/address
+    let potentialName = '';
+    for (let i = 0; i < Math.min(lines.length, 5); i++) {
+        const line = lines[i];
+        if (!line.includes('@') && !line.match(/\d/) && line.split(' ').length >= 2 && line.split(' ').length <= 4) {
+             potentialName = line;
+             break;
+        }
+    }
+    
+    // Fallback to filename if no name found
+    if (!potentialName) {
+        potentialName = file.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+    }
+
+    const nameParts = potentialName.split(' ');
+    const firstName = nameParts[0] || 'Candidate';
+    const lastName = nameParts.slice(1).join(' ') || (nameParts[0] ? '' : 'Unknown');
+
+    const extractedData = {
+      firstName,
+      lastName,
+      email: emailMatch ? emailMatch[0] : '',
+      phone: phoneMatch ? phoneMatch[0] : '',
+      linkedIn: linkedInUrl || '',
+      experience: experienceMatch ? experienceMatch[1].trim() : '',
+      summary: text.substring(0, 500) // First 500 chars as summary preview
+    };
+
+    res.json({ success: true, data: extractedData });
+
+  } catch (error: any) {
+    console.error('Resume parse error:', error);
+    res.status(500).json({ error: 'Failed to parse resume' });
+  }
+});
 
 // Generate unique interview code
 const generateInterviewCode = (): string => {
@@ -64,7 +154,8 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
       firstName: nameParts[0] || 'Unknown',
       lastName: nameParts.slice(1).join(' ') || 'Candidate',
       email: null, // TODO: Extract email from resume text
-      phone: null
+      phone: null,
+      experience: null,
     };
 
     const firstName = candidateData.firstName || 'Unknown';
@@ -115,6 +206,7 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
       jobId,
       resumeUrl,
       resumeS3Key,
+      experience: candidateData.experience || '',
       interviewCode,
       interviewCodeExpiry,
       interviewStatus: email ? 'pending' : 'pending', // Use 'pending' - admin needs to add email manually
@@ -158,7 +250,7 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
 // Get all candidates (protected)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const candidates = await Candidate.find()
+    const candidates = await Candidate.find({})
       .populate('jobId', 'title company')
       .sort({ createdAt: -1 });
 
@@ -170,8 +262,27 @@ router.get('/', authenticate, async (req, res) => {
       const candidateObj = candidate.toObject();
       const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
       
+      const candidateId = candidate._id.toString();
+      
       const result = results.find((r: any) => {
-        const rName = r.candidateInformation?.fullName?.toLowerCase();
+        // 1. Try strict ID match (Highest confidence as per user request)
+        // User confirmed: candidate_result "candidate_id" (or "id") matches candidate "_id"
+        // Also handling 'candidate_id' (snake_case) as seen in user data
+        if (r.candidateId === candidateId || r.id === candidateId || r.candidate_id === candidateId) {
+          return true;
+        }
+
+        // 2. Fallback to Email match
+        const candidateEmail = candidate.email?.toLowerCase();
+        // Check both root and nested data structure
+        const rEmail = r.candidateInformation?.email?.toLowerCase() || r.data?.candidateInformation?.email?.toLowerCase();
+        
+        if (candidateEmail && rEmail === candidateEmail) {
+          return true;
+        }
+
+        // 3. Fallback to Name match
+        const rName = r.candidateInformation?.fullName?.toLowerCase() || r.data?.candidateInformation?.fullName?.toLowerCase();
         return rName && (rName.includes(fullName) || fullName.includes(rName));
       });
 
@@ -208,11 +319,32 @@ router.get('/:id', authenticate, async (req, res) => {
     // Find matching result in candidate_result collection
     // We try to match by name since we might not have a direct link yet
     const results = await CandidateResult.find({
-      'candidateInformation.fullName': { $exists: true }
+      $or: [
+        { 'candidateInformation.fullName': { $exists: true } },
+        { 'data.candidateInformation.fullName': { $exists: true } },
+        { 'id': candidate._id.toString() },
+        { 'candidateId': candidate._id.toString() },
+        { 'candidate_id': candidate._id.toString() }
+      ]
     });
 
+    const candidateId = candidate._id.toString();
+    const candidateEmail = candidate.email?.toLowerCase();
+
     const result = results.find(r => {
-      const rName = r.candidateInformation?.fullName?.toLowerCase();
+      // 1. Try strict ID match (Highest confidence)
+      if (r.id === candidateId || r.candidateId === candidateId || r.candidate_id === candidateId) {
+        return true;
+      }
+
+      // 2. Try strict Email match
+      const rEmail = r.candidateInformation?.email?.toLowerCase() || r.data?.candidateInformation?.email?.toLowerCase();
+      if (candidateEmail && rEmail === candidateEmail) {
+        return true;
+      }
+
+      // 3. Fallback to Name match
+      const rName = r.candidateInformation?.fullName?.toLowerCase() || r.data?.candidateInformation?.fullName?.toLowerCase();
       return rName && (rName.includes(fullName) || fullName.includes(rName));
     });
 
@@ -231,7 +363,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create candidate and send invitation (protected)
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, jobId, linkedInUrl } = req.body;
+    const { firstName, lastName, email, phone, experience, jobId, linkedInUrl } = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !jobId) {
@@ -261,6 +393,7 @@ router.post('/', authenticate, async (req, res) => {
       lastName,
       email,
       phone,
+      experience: experience || '',
       jobId,
       linkedInUrl,
       interviewCode,

@@ -166,17 +166,20 @@ export default function AnalysisReport() {
 
   if (reportData) {
     // Using report route - construct virtual candidate from report data
+    // Handle potential nested 'data' structure from backend
+    const info = reportData.candidateInformation || reportData.data?.candidateInformation;
+    
     displayCandidate = {
-      firstName: reportData.candidateInformation?.fullName?.split(' ')[0] || 'Unknown',
-      lastName: reportData.candidateInformation?.fullName?.split(' ').slice(1).join(' ') || '',
-      email: reportData.candidateInformation?.email || '',
-      job: { title: reportData.candidateInformation?.positionAppliedFor || '' },
-      interviewDate: reportData.candidateInformation?.interviewDate,
-      interviewDuration: reportData.candidateInformation?.interviewDuration,
-      transcript: reportData.transcript || [],
-      recordingUrl: reportData.recordingUrl,
+      firstName: info?.fullName?.split(' ')[0] || 'Unknown',
+      lastName: info?.fullName?.split(' ').slice(1).join(' ') || '',
+      email: info?.email || '',
+      job: { title: info?.positionAppliedFor || '' },
+      interviewDate: info?.interviewDate,
+      interviewDuration: info?.interviewDuration,
+      transcript: reportData.transcript || reportData.data?.transcript || [],
+      recordingUrl: reportData.recordingUrl || reportData.data?.recordingUrl,
     };
-    interviewAnalysis = reportData;
+    interviewAnalysis = reportData.data || reportData; // If wrapped in data, use that as analysis source, else use root matches logic
     console.log('Using Report Data - displayCandidate:', displayCandidate);
     console.log('Using Report Data - interviewAnalysis:', interviewAnalysis);
   } else {
@@ -195,19 +198,51 @@ export default function AnalysisReport() {
       // Helper to parse pipe-formatted score string: "| Title | 4/10 | Description |"
       const parsePipeScore = (str: string) => {
         if (!str) return { score: 0, rawScore: '0', text: '' };
+        
+        // Handle case where str is just a number or "X/Y" without pipes
+        if (!str.includes('|')) {
+           const [e, t] = str.split('/').map(s => parseFloat(s.trim()));
+           const validE = !isNaN(e) ? e : 0;
+           const validT = !isNaN(t) && t > 0 ? t : 10;
+           return {
+             score: (validE / validT) * 100,
+             rawScore: validE.toString(),
+             text: ''
+           };
+        }
+
         const parts = str.split('|').map(s => s.trim()).filter(Boolean);
         // parts[0] = Title, parts[1] = Score (4/10), parts[2] = Description
         const scorePart = parts[1] || '0/10';
-        const [earned, total] = scorePart.split('/').map(Number);
+        let [earned, total] = scorePart.split('/').map(Number);
+        
+        // Fallback: If total is missing but earned is a number (e.g. "7"), assume out of 10
+        if (isNaN(total) && !isNaN(earned)) {
+            total = 10;
+        }
+
         const normalizedScore = (!isNaN(earned) && !isNaN(total) && total > 0) ? (earned / total) * 100 : 0;
 
         // Show only the numerator number (e.g. "4" instead of "4/10")
         const displayScore = !isNaN(earned) ? earned.toString() : '0';
 
-        return { score: normalizedScore, rawScore: displayScore, text: parts[2] || '' };
+        // Check if description is actually in part 2 (sometimes AI puts it elsewhere or format varies)
+        const text = parts[2] || '';
+
+        return { score: normalizedScore, rawScore: displayScore, text };
       };
 
       /* Unused helper removed */
+
+      // Helper to parse Overall Score string like "18/50" or "7/10"
+      const parseOverallScore = (str: string) => {
+          if (!str) return 0;
+          const [earned, total] = str.split('/').map(Number);
+          if (!isNaN(earned) && !isNaN(total) && total > 0) {
+              return Math.round((earned / total) * 100);
+          }
+          return 0;
+      };
 
       const tech = parsePipeScore(interviewAnalysis.competencyAssessment?.technicalSkills);
       const comm = parsePipeScore(interviewAnalysis.competencyAssessment?.communication);
@@ -223,13 +258,20 @@ export default function AnalysisReport() {
         'Problem Solving DNA': prob.rawScore
       });
 
-      // Calculate overall score from the 5 traits to ensure consistency
-      const calculatedOverallScore = Math.round(
-        (tech.score + exp.score + cult.score + comm.score + prob.score) / 5
-      );
+      // Calculate overall score: Prioritize backend score, fallback to average
+      let finalOverallScore = 0;
+      const backendOverallStr = interviewAnalysis.competencyAssessment?.overallScore;
+      
+      if (backendOverallStr && backendOverallStr.includes('/')) {
+         finalOverallScore = parseOverallScore(backendOverallStr);
+      } else {
+         finalOverallScore = Math.round(
+          (tech.score + exp.score + cult.score + comm.score + prob.score) / 5
+         );
+      }
 
       return {
-        overallScore: calculatedOverallScore,
+        overallScore: finalOverallScore,
         recommendation: interviewAnalysis.recommendation?.hiringRecommendation || 'Pending',
         confidence: 85, // Default/Placeholder
         summary: interviewAnalysis.executiveSummary || interviewAnalysis.overallAssessment?.summary || 'Analysis completed.',
@@ -316,7 +358,7 @@ export default function AnalysisReport() {
               {displayCandidate.firstName} {displayCandidate.lastName}
             </h1>
             <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
-              {displayCandidate.job?.title || 'Position'} • {reportData?.candidateInformation?.interviewDate || displayCandidate.interviewDate || 'Date not available'}
+              {displayCandidate.job?.title || 'Position'} • {reportData?.candidateInformation?.interviewDate || reportData?.data?.candidateInformation?.interviewDate || displayCandidate.interviewDate || 'Date not available'}
             </p>
           </div>
         </div>
@@ -451,21 +493,24 @@ export default function AnalysisReport() {
                 <span style={{ width: '140px', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 500 }}>
                   {evalObj.dimension}
                 </span>
-                <div style={{ flex: 1, height: '20px', background: 'var(--gray-100)', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: '12px', background: 'var(--gray-100)', borderRadius: '6px', overflow: 'hidden' }}>
                   <div style={{
                     width: `${score}%`,
                     height: '100%',
                     background: scoreColor,
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    paddingRight: '0.5rem',
+                    borderRadius: '6px',
                     transition: 'width 0.5s ease'
-                  }}>
-                    <span style={{ color: 'white', fontSize: '0.625rem', fontWeight: 600 }}>{rawScore}</span>
-                  </div>
+                  }} />
                 </div>
+                <span style={{ 
+                  width: '32px', 
+                  textAlign: 'right', 
+                  fontSize: '0.875rem', 
+                  fontWeight: 700, 
+                  color: scoreColor 
+                }}>
+                  {rawScore}
+                </span>
               </div>
             );
           })}

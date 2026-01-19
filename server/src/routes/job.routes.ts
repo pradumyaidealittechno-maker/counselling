@@ -79,7 +79,7 @@ router.post('/parse-jd', authenticate, upload.single('file'), async (req, res) =
 // Get all jobs (protected)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const jobs = await Job.find()
+    const jobs = await Job.find({ createdBy: (req as any).user.id })
       .populate('createdBy', 'firstName lastName email')
       .sort({ createdAt: -1 });
 

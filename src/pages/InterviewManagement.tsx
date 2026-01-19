@@ -70,6 +70,7 @@ export default function InterviewManagement() {
           _id: c._id,
           candidateId: c._id,
           candidateName: `${c.firstName} ${c.lastName}`,
+          email: c.email,
           startedAt: c.interviewStartedAt,
           completedAt: c.interviewCompletedAt,
           status: 'completed',
@@ -430,43 +431,54 @@ export default function InterviewManagement() {
             </p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {filteredRecentInterviews.slice(0, 10).map((interview) => (
-              <div key={interview._id} style={{
-                padding: '1rem',
-                background: 'var(--gray-50)',
-                borderRadius: '0.75rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <p style={{ fontWeight: 600, color: 'var(--gray-900)', fontSize: '0.875rem' }}>
-                    {interview.candidateName}
-                  </p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-                    {new Date(interview.startedAt).toLocaleDateString()} at {new Date(interview.startedAt).toLocaleTimeString()}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {interview.recordingUrl && (
-                    <a
-                      href={interview.recordingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-sm btn-ghost"
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                    >
-                      <Play size={14} />
-                      View Recording
-                    </a>
-                  )}
-                  <span className="badge badge-success" style={{ fontSize: '0.625rem' }}>
-                    Completed
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Candidate</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Email</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Recording</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Date</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRecentInterviews.slice(0, 10).map((interview) => (
+                  <tr key={interview._id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
+                    <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: 'var(--gray-900)', fontSize: '0.875rem' }}>
+                      {interview.candidateName}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                      {interview.email}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      {interview.recordingUrl ? (
+                         <a
+                          href={interview.recordingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-sm btn-ghost"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#6366F1' }}
+                        >
+                          <Play size={14} />
+                          <span style={{ fontSize: '0.75rem' }}>View Recording</span>
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--gray-400)', fontStyle: 'italic' }}>Pending</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                      {new Date(interview.startedAt).toLocaleDateString()} at {new Date(interview.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                      <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>
+                        Completed
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

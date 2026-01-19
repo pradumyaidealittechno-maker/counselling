@@ -5,10 +5,13 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get all reports directly from candidate_result collection
-router.get('/', async (req, res) => {
+// Get all reports (protected) - now filtered by user's candidates
+router.get('/', authenticate, async (req, res) => {
   try {
-    const results = await CandidateResult.find({}).sort({ 'metadata.reportGenerated': -1 });
+    // 1. Find all reports (unfiltered as per user request to see "sab ka data")
+    const results = await CandidateResult.find({})
+      .sort({ 'metadata.reportGenerated': -1 });
+
     res.json(results);
   } catch (error) {
     console.error('Error fetching reports:', error);

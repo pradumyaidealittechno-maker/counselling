@@ -103,7 +103,15 @@ export default function Dashboard() {
         <Link to="/dashboard/candidates" className="btn btn-secondary btn-sm">
           <Upload size={16} /> Upload Resumes
         </Link>
-        <Link to="/dashboard/reports" className="btn btn-ghost btn-sm">
+        <Link to="/dashboard/reports" 
+          className="btn btn-sm"
+          style={{ 
+            background: 'white', 
+            border: '1px solid #d1d5db', 
+            color: '#374151',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          }}
+        >
           <FileText size={16} /> View Reports
         </Link>
       </div>
@@ -168,7 +176,7 @@ export default function Dashboard() {
                       <span style={{
                         padding: '0.125rem 0.375rem',
                         borderRadius: '9999px',
-                        fontSize: '0.5rem',
+                        fontSize: '0.85rem',
                         fontWeight: 500,
                         background: job.jobDNA ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
                         color: job.jobDNA ? '#059669' : '#D97706',
@@ -180,9 +188,9 @@ export default function Dashboard() {
                         {job.jobDNA ? 'DNA Ready' : 'DNA Pending'}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{job.department || 'No department'}</p>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>{job.department || 'No department'}</p>
                   </div>
-                  <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.625rem' }}>
+                  <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.95rem' }}>
                     {job.status}
                   </span>
                 </Link>
@@ -252,7 +260,7 @@ export default function Dashboard() {
                       <span style={{
                         padding: '0.125rem 0.5rem',
                         borderRadius: '9999px',
-                        fontSize: '0.625rem',
+                        fontSize: '0.95rem',
                         fontWeight: 500,
                         background: 'rgba(245, 158, 11, 0.1)',
                         color: '#D97706'

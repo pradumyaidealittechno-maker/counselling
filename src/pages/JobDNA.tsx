@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Dna, AlertTriangle, Save, Shield, FileText, Clock, Loader, Plus } from 'lucide-react';
+import { Dna, AlertTriangle, Save, Shield, FileText, Clock, Loader, Plus, Sparkles } from 'lucide-react';
 import api from '../services/api';
 
 type ImportanceLevel = 'critical' | 'high' | 'medium' | 'low';
@@ -179,29 +179,152 @@ export default function JobDNA() {
 
   if (!hasDNA) {
     return (
-      <div style={{ width: '100%' }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Dna size={20} color="#E91E63" />
-            <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.75rem' }}>Job DNA</span>
+      <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto', paddingBottom: '3rem' }}>
+        {/* Header Section */}
+        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+          <div style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '0.5rem', 
+            marginBottom: '1rem',
+            padding: '0.5rem 1rem',
+            background: 'rgba(233, 30, 99, 0.05)',
+            borderRadius: '9999px',
+            border: '1px solid rgba(233, 30, 99, 0.1)'
+          }}>
+            <Dna size={16} color="#E91E63" />
+            <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem', letterSpacing: '0.5px' }}>JOB DNA CONFIGURATION</span>
           </div>
-          <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>{job.title}</h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>{job.department || 'No department'} - Created {new Date(job.createdAt).toLocaleDateString()}</p>
+          <h1 style={{ 
+            fontSize: '2rem', 
+            fontWeight: 800, 
+            color: 'var(--gray-900)', 
+            marginBottom: '0.5rem',
+            letterSpacing: '-0.5px'
+          }}>
+            {job.title}
+          </h1>
+          <p style={{ fontSize: '1rem', color: 'var(--gray-500)', maxWidth: '600px', margin: '0 auto' }}>
+            {job.department || 'General'} • Created on {new Date(job.createdAt).toLocaleDateString()}
+          </p>
         </div>
-        <div className="card" style={{ padding: '2rem', textAlign: 'center', background: 'var(--white)' }}>
-          <div style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-            <Dna size={40} color="#E91E63" />
+
+        {/* Generator Card */}
+        <div className="card" style={{ 
+          padding: '3rem 2rem', 
+          textAlign: 'center', 
+          background: 'var(--white)',
+          border: '1px solid var(--gray-200)',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+          marginBottom: '2rem',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          {/* Decorative background element */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '6px',
+            background: 'linear-gradient(90deg, #E91E63 0%, #6366F1 50%, #E91E63 100%)'
+          }} />
+
+          <div style={{ 
+            width: '80px', 
+            height: '80px', 
+            background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            margin: '0 auto 1.5rem' 
+          }}>
+            <Sparkles size={40} color="#E91E63" />
           </div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Generate Job DNA</h2>
-          <p style={{ color: 'var(--gray-500)', fontSize: '0.95rem', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>Analyze the job description to extract skills, experience requirements, behavioral traits, and communication patterns.</p>
-          {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '0.5rem', padding: '0.75rem', marginBottom: '1rem', color: '#DC2626', fontSize: '0.875rem' }}>{error}</div>}
-          <button className="btn btn-primary" onClick={handleGenerateDNA} disabled={generating}>
-            {generating ? <><Loader size={18} className="animate-spin" /> Generating DNA...</> : <><Dna size={18} /> Generate Job DNA</>}
+
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--gray-900)' }}>
+            Generate AI Job DNA
+          </h2>
+          
+          <p style={{ 
+            color: 'var(--gray-600)', 
+            fontSize: '1rem', 
+            marginBottom: '2rem', 
+            maxWidth: '500px', 
+            margin: '0 auto 2rem',
+            lineHeight: 1.6
+          }}>
+            Our AI will analyze the job description to extract key skills, required experience, behavioral traits, and communication patterns to create the perfect candidate profile.
+          </p>
+
+          {error && (
+            <div style={{ 
+              background: 'rgba(239, 68, 68, 0.05)', 
+              border: '1px solid rgba(239, 68, 68, 0.2)', 
+              borderRadius: '0.75rem', 
+              padding: '1rem', 
+              marginBottom: '1.5rem', 
+              color: '#DC2626', 
+              fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem'
+            }}>
+              <AlertTriangle size={16} />
+              {error}
+            </div>
+          )}
+
+          <button 
+            className="btn btn-primary btn-lg" 
+            onClick={handleGenerateDNA} 
+            disabled={generating}
+            style={{ 
+              minWidth: '240px',
+              padding: '1rem 2rem',
+              fontSize: '1rem',
+              boxShadow: '0 4px 12px rgba(233, 30, 99, 0.2)'
+            }}
+          >
+            {generating ? (
+              <>
+                <Loader size={20} className="animate-spin" /> 
+                Analyzing Description...
+              </>
+            ) : (
+              <>
+                <Sparkles size={20} /> 
+                Generate Job DNA
+              </>
+            )}
           </button>
         </div>
-        <div className="card" style={{ padding: '1.5rem', marginTop: '1rem', background: 'var(--white)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}><FileText size={18} color="#6366F1" /><span style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--gray-900)' }}>Job Description</span></div>
-          <p style={{ fontSize: '1.05rem', color: 'var(--gray-700)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{job.description || 'No description provided'}</p>
+
+        {/* Job Description Preview */}
+        <div style={{ opacity: 0.8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingLeft: '0.5rem' }}>
+            <FileText size={18} color="#6B7280" />
+            <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Source Job Description</span>
+          </div>
+          
+          <div className="card" style={{ 
+            padding: '2rem', 
+            background: 'var(--gray-50)', 
+            border: '1px solid var(--gray-200)',
+            boxShadow: 'none'
+          }}>
+            <div style={{ 
+              fontSize: '0.95rem', 
+              color: 'var(--gray-700)', 
+              lineHeight: 1.8, 
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'inherit' 
+            }}>
+              {job.description || 'No description provided'}
+            </div>
+          </div>
         </div>
       </div>
     );

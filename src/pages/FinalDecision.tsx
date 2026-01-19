@@ -45,16 +45,6 @@ export default function FinalDecision() {
           // Load report data
           const data = await api.reports.getById(id);
           setReportData(data);
-          // Create virtual candidate object
-          const virtualCandidate = {
-            _id: id,
-            firstName: data.candidateInformation?.fullName?.split(' ')[0] || 'Unknown',
-            lastName: data.candidateInformation?.fullName?.split(' ').slice(1).join(' ') || '',
-            email: data.candidateInformation?.email || '',
-            status: 'pending',
-            job: { title: data.candidateInformation?.positionAppliedFor || '' }
-          };
-          setCandidate(virtualCandidate);
         } else {
           // Load candidate data
           const data = await api.candidates.getById(id);
@@ -69,6 +59,9 @@ export default function FinalDecision() {
       setLoading(false);
     }
   };
+
+  let displayCandidate: any = candidate;
+  let interviewAnalysis: any;
 
   const handleSubmit = async () => {
     if (!decision || !id) return;
@@ -109,7 +102,7 @@ export default function FinalDecision() {
     );
   }
 
-  if (error || !candidate) {
+  if (error || (!candidate && !reportData)) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
         <AlertTriangle size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
@@ -124,20 +117,72 @@ export default function FinalDecision() {
     );
   }
 
-  const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
+  if (reportData) {
+    // Check if data is nested - handling both direct and nested structure
+    const info = reportData.candidateInformation || reportData.data?.candidateInformation;
+    const reportSource = reportData.data || reportData;
 
-  // Parse score from reportData
-  let aiScore = 0;
-  if (reportData?.competencyAssessment?.overallScore) {
-    const [earned, total] = reportData.competencyAssessment.overallScore.split('/').map(Number);
-    if (!isNaN(earned) && !isNaN(total) && total > 0) {
-      aiScore = Math.round((earned / total) * 100);
-    }
+    displayCandidate = {
+      firstName: info?.fullName?.split(' ')[0] || 'Unknown',
+      lastName: info?.fullName?.split(' ').slice(1).join(' ') || '',
+      email: info?.email || '',
+      job: { title: info?.positionAppliedFor || '' },
+      transcript: reportData.transcript || reportSource.transcript || [],
+    };
+    interviewAnalysis = reportSource;
+  } else {
+    displayCandidate = candidate;
+    interviewAnalysis = (candidate as any)?.interviewAnalysis;
   }
 
+  // Safe check for interviewResult
+  const interviewResult = (displayCandidate as any)?.interviewResult;
+
+  // Construct recommendation object
+  const recommendation = (() => {
+    if (interviewAnalysis) {
+      const recSource = interviewAnalysis.recommendation || interviewAnalysis.data?.recommendation;
+      const scoreSource = interviewAnalysis.competencyAssessment || interviewAnalysis.data?.competencyAssessment;
+      
+      // Helper to parse overall score "18/50"
+      const parseOverallScore = (str: string) => {
+          if (!str) return 0;
+          const [earned, total] = str.split('/').map(Number);
+          if (!isNaN(earned) && !isNaN(total) && total > 0) {
+              return Math.round((earned / total) * 100);
+          }
+          return 0;
+      };
+
+      let finalOverallScore = 0;
+      if (scoreSource?.overallScore && scoreSource.overallScore.includes('/')) {
+          finalOverallScore = parseOverallScore(scoreSource.overallScore);
+      } else {
+          // Fallback simple calc if needed, or 0
+          finalOverallScore = 0; 
+      }
+
+      return {
+        overallScore: finalOverallScore || 0,
+        recommendation: recSource?.hiringRecommendation || 'Pending',
+        keyStrengths: interviewAnalysis.keyDiscussionPoints?.technicalExperience || interviewAnalysis.strengthsObserved || [],
+        keyConcerns: interviewAnalysis.areasOfConcern || [],
+        executiveSummary: interviewAnalysis.executiveSummary || '', // Added
+        keyDiscussionPoints: interviewAnalysis.keyDiscussionPoints || {} // Added
+      };
+    }
+    return interviewResult;
+  })();
+
+  const initials = `${displayCandidate?.firstName?.[0] || ''}${displayCandidate?.lastName?.[0] || ''}`;
+
+  // Parse score from reportData (using the logic we just added to recommendation)
+  let aiScore = recommendation?.overallScore || 0;
+
+  // Update these references to use our robust recommendation object
   // const aiRecommendation = reportData?.recommendation?.hiringRecommendation || 'Pending';
-  const strengths = reportData?.keyDiscussionPoints?.technicalExperience || [];
-  const concerns = reportData?.areasOfConcern || [];
+  const strengths = recommendation?.keyStrengths || [];
+  const concerns = recommendation?.keyConcerns || [];
 
   if (submitted) {
     return (
@@ -164,7 +209,7 @@ export default function FinalDecision() {
           Decision Recorded
         </h2>
         <p style={{ color: '#6B7280' }}>
-          {candidate.firstName} {candidate.lastName} has been marked as "{decision === 'hire' ? 'Hire' : decision === 'hold' ? 'Hold' : 'Reject'}"
+          {displayCandidate.firstName} {displayCandidate.lastName} has been marked as "{decision === 'hire' ? 'Hire' : decision === 'hold' ? 'Hold' : 'Reject'}"
         </p>
       </div>
     );
@@ -178,7 +223,7 @@ export default function FinalDecision() {
           Final Hiring Decision
         </h1>
         <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
-          Review the AI analysis and make your final decision for {candidate.firstName} {candidate.lastName}
+          Review the AI analysis and make your final decision for {displayCandidate.firstName} {displayCandidate.lastName}
         </p>
       </div>
 
@@ -206,10 +251,10 @@ export default function FinalDecision() {
             }}>{initials}</div>
             <div>
               <h2 style={{ fontWeight: 700, fontSize: '1.5rem', marginBottom: '0.375rem', color: '#111827' }}>
-                {candidate.firstName} {candidate.lastName}
+                {displayCandidate.firstName} {displayCandidate.lastName}
               </h2>
               <p style={{ color: '#6B7280', fontSize: '1rem', marginBottom: '0.25rem' }}>
-                {candidate.job?.title || 'Position'}
+                {displayCandidate.job?.title || 'Position'}
               </p>
             </div>
           </div>
@@ -245,6 +290,18 @@ export default function FinalDecision() {
           </div>
         </div>
       </div>
+
+      {/* Executive Summary Section (New) */}
+      {recommendation?.executiveSummary && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'white' }}>
+          <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '1rem', color: '#111827' }}>
+            Executive Summary
+          </h3>
+          <p style={{ color: '#374151', lineHeight: 1.6, fontSize: '0.925rem' }}>
+            {recommendation.executiveSummary}
+          </p>
+        </div>
+      )}
 
       {/* Strengths & Concerns Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>

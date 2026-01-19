@@ -5,16 +5,33 @@ import api from '../services/api';
 
 interface Report {
   _id: string;
-  candidateInformation: {
+  data?: {
+    candidateInformation?: {
+      fullName: string;
+      email?: string;
+      positionAppliedFor: string;
+      interviewDate?: string;
+    };
+    competencyAssessment?: {
+      overallScore: string;
+    };
+    recommendation?: {
+      hiringRecommendation: string;
+    };
+    metadata?: {
+      reportGenerated?: string;
+    };
+  };
+  candidateInformation?: {
     fullName: string;
     email?: string;
     positionAppliedFor: string;
     interviewDate?: string;
   };
-  competencyAssessment: {
+  competencyAssessment?: {
     overallScore: string; // "18/50"
   };
-  recommendation: {
+  recommendation?: {
     hiringRecommendation: string;
   };
   metadata?: {
@@ -56,15 +73,19 @@ export default function Reports() {
   };
 
   const filteredReports = reports.filter(r => {
+    const info = r.candidateInformation || r.data?.candidateInformation;
+    const rec = r.recommendation || r.data?.recommendation;
+    const meta = r.metadata || r.data?.metadata;
+
     const term = searchTerm.toLowerCase();
-    const fullName = r.candidateInformation?.fullName?.toLowerCase() || '';
-    const pos = r.candidateInformation?.positionAppliedFor?.toLowerCase() || '';
+    const fullName = info?.fullName?.toLowerCase() || '';
+    const pos = info?.positionAppliedFor?.toLowerCase() || '';
     const matchesSearch = fullName.includes(term) || pos.includes(term);
 
     // Date filter
     let matchesDate = true;
     if (dateFilter) {
-      const dateStr = r.candidateInformation?.interviewDate || r.metadata?.reportGenerated;
+      const dateStr = info?.interviewDate || meta?.reportGenerated;
       if (dateStr) {
         try {
           let reportDate: Date;
@@ -90,7 +111,7 @@ export default function Reports() {
     }
 
     // Status filter
-    const recommendation = r.recommendation?.hiringRecommendation || '';
+    const recommendation = rec?.hiringRecommendation || '';
     let matchesStatus = !statusFilter || recommendation === statusFilter;
 
     // Handle status aliasing (backend vs frontend display)
@@ -103,9 +124,12 @@ export default function Reports() {
   }).sort((a, b) => {
     // Sort purely by Interview Date (Latest First)
     const getDate = (report: Report) => {
+      const info = report.candidateInformation || report.data?.candidateInformation;
+      const meta = report.metadata || report.data?.metadata;
+      
       // Try multiple sources for the date
       // @ts-ignore - createdAt might exist on the object even if not in interface
-      const dateStr = report.candidateInformation?.interviewDate || report.metadata?.reportGenerated || report.createdAt;
+      const dateStr = info?.interviewDate || meta?.reportGenerated || report.createdAt;
       if (!dateStr) return 0;
 
       try {
@@ -285,10 +309,15 @@ export default function Reports() {
             </thead>
             <tbody>
               {currentReports.map((report) => {
-                // Get raw score "18/50" directly
-                const rawScore = report.competencyAssessment?.overallScore || 'N/A';
+                const info = report.candidateInformation || report.data?.candidateInformation;
+                const assess = report.competencyAssessment || report.data?.competencyAssessment;
+                const recomm = report.recommendation || report.data?.recommendation;
+                const meta = report.metadata || report.data?.metadata;
 
-                const recommendation = report.recommendation?.hiringRecommendation || 'Pending';
+                // Get raw score "18/50" directly
+                const rawScore = assess?.overallScore || 'N/A';
+
+                const recommendation = recomm?.hiringRecommendation || 'Pending';
                 const isRecommended = recommendation === 'Hire' || recommendation.toLowerCase() === 'recommended';
 
                 const getBaseColor = (status: string) => {
@@ -344,20 +373,20 @@ export default function Reports() {
                           fontSize: '0.875rem',
                           textTransform: 'uppercase'
                         }}>
-                          {report.candidateInformation?.fullName?.[0] || '?'}
+                          {info?.fullName?.[0] || '?'}
                         </div>
                         <div>
                           <div style={{ fontWeight: 500, color: 'var(--gray-900)' }}>
-                            {report.candidateInformation?.fullName || 'Unknown'}
+                            {info?.fullName || 'Unknown'}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-                            {report.candidateInformation?.email || 'No email'}
+                            {info?.email || 'No email'}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td style={{ padding: '1rem', color: 'var(--gray-500)' }}>
-                      {report.candidateInformation?.positionAppliedFor || '—'}
+                      {info?.positionAppliedFor || '—'}
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{
@@ -373,7 +402,7 @@ export default function Reports() {
                     <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                       {(() => {
                         // Try multiple date sources
-                        const dateStr = report.candidateInformation?.interviewDate || report.metadata?.reportGenerated;
+                        const dateStr = info?.interviewDate || meta?.reportGenerated;
                         if (!dateStr) return 'N/A';
 
                         try {
@@ -400,7 +429,10 @@ export default function Reports() {
                           return date.toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
-                            year: 'numeric'
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: 'numeric',
+                            hour12: true
                           });
                         } catch (err) {
                           return 'N/A';

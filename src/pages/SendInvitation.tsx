@@ -167,6 +167,8 @@ Good luck!
 
   /* Unused variable interviewLink removed */
 
+  const interviewLink = interviewCode ? `${BASE_URL}/interview?code=${interviewCode}` : '';
+
   if (sent) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
@@ -347,6 +349,61 @@ Good luck!
                     </div>
                   </div>
 
+                  {/* Integrated Toolbar for Link Options */}
+                  {interviewCode && (
+                    <div style={{ 
+                      padding: '0.5rem 0.75rem', 
+                      background: '#fff', 
+                      borderBottom: '1px solid #e5e7eb', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#374151' }}>Interview Link:</span>
+                            <div style={{ 
+                                background: '#EFF6FF', 
+                                border: '1px solid #BFDBFE', 
+                                color: '#2563EB', 
+                                fontSize: '0.75rem', 
+                                fontFamily: 'monospace', 
+                                padding: '0.125rem 0.375rem', 
+                                borderRadius: '0.25rem',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                maxWidth: '100%'
+                            }}>
+                                {interviewLink}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                             <button
+                                onClick={() => copyToClipboard(interviewLink, 'Interview Link')}
+                                className="btn btn-xs btn-ghost"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4B5563' }}
+                                title="Copy Link"
+                            >
+                                <Copy size={12} />
+                                <span style={{ fontSize: '0.75rem' }}>Copy</span>
+                            </button>
+                             <a
+                                href={interviewLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-xs btn-ghost"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4B5563', textDecoration: 'none' }}
+                                title="Open Link"
+                            >
+                                <Send size={12} /> {/* Using Send icon or ExternalLink if available, utilizing Send for now as per imports */}
+                                <span style={{ fontSize: '0.75rem' }}>Open</span>
+                            </a>
+                        </div>
+                    </div>
+                  )}
+
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -368,121 +425,7 @@ Good luck!
                   </div>
                 </div>
 
-                {/* Visual Preview with Copy Buttons */}
-                {interviewCode && (
-                  <div style={{
-                    marginTop: '1rem',
-                    padding: '1rem',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    borderRadius: '0.75rem',
-                    color: 'white'
-                  }}>
-                    <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', fontWeight: 600, opacity: 0.9 }}>
-                      Interview Details
-                    </h4>
-                    
-                    {/* Interview Code */}
-                    <div style={{
-                      background: 'rgba(255,255,255,0.15)',
-                      borderRadius: '0.5rem',
-                      padding: '0.75rem',
-                      marginBottom: '0.75rem',
-                      backdropFilter: 'blur(10px)'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.7rem', opacity: 0.8 }}>Interview Code</p>
-                          <p style={{
-                            margin: 0,
-                            fontSize: '1.25rem',
-                            fontWeight: 'bold',
-                            fontFamily: 'monospace',
-                            letterSpacing: '2px',
-                            color: '#FFD700'
-                          }}>
-                            {interviewCode}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => copyToClipboard(interviewCode, 'Interview Code')}
-                          style={{
-                            background: 'rgba(255,255,255,0.2)',
-                            border: '1px solid rgba(255,255,255,0.3)',
-                            borderRadius: '0.375rem',
-                            padding: '0.5rem 0.75rem',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.375rem',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-                          }}
-                        >
-                          <Copy size={14} />
-                          Copy
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Interview Link */}
-                    <div style={{
-                      background: 'rgba(255,255,255,0.15)',
-                      borderRadius: '0.5rem',
-                      padding: '0.75rem',
-                      backdropFilter: 'blur(10px)'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ flex: 1, marginRight: '0.75rem' }}>
-                          <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.7rem', opacity: 0.8 }}>Interview Link</p>
-                          <p style={{
-                            margin: 0,
-                            fontSize: '0.8rem',
-                            fontFamily: 'monospace',
-                            color: '#a7f3d0',
-                            wordBreak: 'break-all'
-                          }}>
-                            {`${BASE_URL}/interview?code=${interviewCode}`}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => copyToClipboard(`${BASE_URL}/interview?code=${interviewCode}`, 'Interview Link')}
-                          style={{
-                            background: 'rgba(255,255,255,0.2)',
-                            border: '1px solid rgba(255,255,255,0.3)',
-                            borderRadius: '0.375rem',
-                            padding: '0.5rem 0.75rem',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.375rem',
-                            transition: 'all 0.2s',
-                            flexShrink: 0
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-                          }}
-                        >
-                          <Copy size={14} />
-                          Copy
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* Visual Preview Removed as per request */}
               </div>
 
               {/* Actions */}
@@ -535,8 +478,8 @@ Good luck!
           border: '1px solid rgba(233, 30, 99, 0.15)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <Dna size={16} color="#E91E63" />
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem' }}>Interview Details</h3>
+            <Dna size={18} color="#E91E63" />
+            <h3 style={{ fontWeight: 600, fontSize: '1rem' }}>Interview Details</h3>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {[
@@ -551,10 +494,10 @@ Good luck!
                 padding: '0.5rem',
                 background: 'white',
                 borderRadius: '0.375rem',
-                fontSize: '0.75rem'
+                fontSize: '0.875rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280' }}>
-                  <item.icon size={14} />
+                  <item.icon size={16} />
                   <span>{item.label}</span>
                 </div>
                 <span style={{ fontWeight: 500, color: '#1F2937' }}>{item.value}</span>
@@ -565,8 +508,8 @@ Good luck!
 
         {/* Instructions for Candidate */}
         <div className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem' }}>Candidate Instructions</h3>
-          <ul style={{ fontSize: '0.75rem', color: '#4b5563', lineHeight: 1.8, paddingLeft: '1rem' }}>
+          <h3 style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.75rem' }}>Candidate Instructions</h3>
+          <ul style={{ fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.8, paddingLeft: '1rem' }}>
             <li>Stable internet connection</li>
             <li>Quiet, well-lit environment</li>
             <li>Camera and microphone enabled</li>
@@ -582,8 +525,8 @@ Good luck!
           borderRadius: '0.5rem',
           border: '1px solid #e5e7eb'
         }}>
-          <p style={{ fontSize: '0.625rem', color: '#6b7280', fontWeight: 500, marginBottom: '0.5rem' }}>💡 Tip</p>
-          <p style={{ fontSize: '0.625rem', color: '#6b7280', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 600, marginBottom: '0.5rem' }}>💡 Tip</p>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
             The interview code is automatically generated and included in the email. The link will validate the code and start the interview.
           </p>
         </div>
