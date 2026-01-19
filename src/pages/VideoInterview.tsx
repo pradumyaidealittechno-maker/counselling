@@ -16,7 +16,6 @@ export default function VideoInterview() {
   const code = searchParams.get('code');
 
   const [started, setStarted] = useState(false);
-  const [currentQuestion] = useState(1);
   const [micEnabled, setMicEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
@@ -567,9 +566,7 @@ export default function VideoInterview() {
               <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: '#E91E63' }}>✓</span> Find a quiet, well-lit environment
               </li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ color: '#E91E63' }}>✓</span> You'll answer 5 questions
-              </li>
+
               <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: '#E91E63' }}>✓</span> Take your time to provide thoughtful answers
               </li>
@@ -793,25 +790,6 @@ export default function VideoInterview() {
               animation: 'pulse 1s infinite'
             }} />
             <span style={{ color: 'white', fontSize: '0.75rem' }}>REC</span>
-          </div>
-        </div>
-
-        {/* Progress */}
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Progress</span>
-            <span style={{ color: '#1F2937', fontSize: '0.875rem', fontWeight: 500 }}>
-              Question {currentQuestion} of 5
-            </span>
-          </div>
-          <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
-            <div style={{
-              width: `${(currentQuestion / 5) * 100}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, #E91E63 0%, #6366F1 100%)',
-              transition: 'width 0.3s',
-              borderRadius: '4px'
-            }} />
           </div>
         </div>
 

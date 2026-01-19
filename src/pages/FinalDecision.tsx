@@ -132,7 +132,9 @@ export default function FinalDecision() {
     interviewAnalysis = reportSource;
   } else {
     displayCandidate = candidate;
-    interviewAnalysis = (candidate as any)?.interviewAnalysis;
+    // Fix: Handle nested data structure
+    const analysisRaw = (candidate as any)?.interviewAnalysis;
+    interviewAnalysis = analysisRaw?.data || analysisRaw;
   }
 
   // Safe check for interviewResult

@@ -9,6 +9,8 @@ import { uploadToS3 } from '../config/s3.js';
 import n8nService from '../services/n8n.service.js';
 
 import * as pdfParseModule from 'pdf-parse';
+import WordExtractor from 'word-extractor';
+const extractor = new WordExtractor();
 
 const router = express.Router();
 
@@ -38,9 +40,14 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
       file.mimetype === 'application/msword' ||
       file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ) {
-      // For now, return error or mock for DOCX as we don't have mammoth installed yet
-      // You can add mammoth later if needed
-      return res.status(400).json({ error: 'Word documents are not fully supported yet. Please upload PDF or TXT.' });
+      console.log('📄 Parsing Word File:', file.originalname);
+      try {
+        const doc = await extractor.extract(file.buffer);
+        text = doc.getBody();
+      } catch (err) {
+        console.error('Word Parse Error:', err);
+        return res.status(500).json({ error: 'Failed to parse Word document' });
+      }
     } else {
         return res.status(400).json({ error: 'Unsupported file format. Please upload PDF or TXT.' });
     }
@@ -250,7 +257,8 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
 // Get all candidates (protected)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const candidates = await Candidate.find({})
+    // Filter by createdBy to restrict access to the logged-in user
+    const candidates = await Candidate.find({ createdBy: (req as any).user.id })
       .populate('jobId', 'title company')
       .sort({ createdAt: -1 });
 
@@ -268,7 +276,11 @@ router.get('/', authenticate, async (req, res) => {
         // 1. Try strict ID match (Highest confidence as per user request)
         // User confirmed: candidate_result "candidate_id" (or "id") matches candidate "_id"
         // Also handling 'candidate_id' (snake_case) as seen in user data
-        if (r.candidateId === candidateId || r.id === candidateId || r.candidate_id === candidateId) {
+        // Handle potentially double-quoted ID string in DB e.g., "\"abc\""
+        const rCandidateId = r.candidateId || r.id || r.candidate_id;
+        const cleanRCandidateId = rCandidateId ? String(rCandidateId).replace(/^"|"$/g, '') : null;
+
+        if (cleanRCandidateId === candidateId) {
           return true;
         }
 
@@ -313,27 +325,45 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Candidate not found' });
     }
 
+    // Check ownership
+    // Ensure we handle both populated object and direct ID (though it should be populated here)
+    const creatorId = (candidate.createdBy as any)?._id?.toString() || (candidate.createdBy as any)?.toString();
+    if (creatorId && creatorId !== (req as any).user.id) {
+        return res.status(403).json({ error: 'You do not have permission to view this candidate' });
+    }
+
     // Fetch matching result using fuzzy search on name
     const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
     
     // Find matching result in candidate_result collection
     // We try to match by name since we might not have a direct link yet
+    // Handle potentially double-quoted ID string in DB e.g., "\"abc\""
+    const candidateIdStr = candidate._id.toString();
+    const quotedCandidateIdStr = `"${candidateIdStr}"`;
+
     const results = await CandidateResult.find({
       $or: [
         { 'candidateInformation.fullName': { $exists: true } },
         { 'data.candidateInformation.fullName': { $exists: true } },
-        { 'id': candidate._id.toString() },
-        { 'candidateId': candidate._id.toString() },
-        { 'candidate_id': candidate._id.toString() }
+        { 'id': candidateIdStr },
+        { 'id': quotedCandidateIdStr },
+        { 'candidateId': candidateIdStr },
+        { 'candidateId': quotedCandidateIdStr },
+        { 'candidate_id': candidateIdStr },
+        { 'candidate_id': quotedCandidateIdStr }
       ]
     });
 
-    const candidateId = candidate._id.toString();
+    const candidateId = candidateIdStr;
     const candidateEmail = candidate.email?.toLowerCase();
 
     const result = results.find(r => {
       // 1. Try strict ID match (Highest confidence)
-      if (r.id === candidateId || r.candidateId === candidateId || r.candidate_id === candidateId) {
+      // Handle potentially double-quoted ID string in DB e.g., "\"abc\""
+      const rCandidateId = r.candidateId || r.id || r.candidate_id;
+      const cleanRCandidateId = rCandidateId ? String(rCandidateId).replace(/^"|"$/g, '') : null;
+
+      if (cleanRCandidateId === candidateId) {
         return true;
       }
 
@@ -558,6 +588,87 @@ router.delete('/:id', authenticate, async (req, res) => {
   } catch (error: any) {
     console.error('Delete candidate error:', error);
     res.status(500).json({ error: 'Failed to delete candidate' });
+  }
+});
+
+// Manual save analysis result (protected) - Custom endpoint for user
+router.post('/:id/analysis', authenticate, async (req, res) => {
+  try {
+    const candidateId = req.params.id;
+    const analysisData = req.body;
+
+    // Check if candidate exists
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Check ownership
+    if (candidate.createdBy && candidate.createdBy.toString() !== (req as any).user.id) {
+        return res.status(403).json({ error: 'You do not have permission to update this candidate' });
+    }
+
+    // Check if result exists, update or create
+    let result = await CandidateResult.findOne({ 
+      $or: [
+        { candidateId: candidateId },
+        { id: candidateId },
+        { candidate_id: candidateId }
+      ]
+    });
+
+    if (result) {
+      // Update existing
+      Object.assign(result, analysisData);
+      await result.save();
+    } else {
+      // Create new
+      result = new CandidateResult({
+        ...analysisData,
+        candidateId: candidateId
+      });
+      await result.save();
+    }
+
+    // Also update candidate status and analysis data
+    candidate.status = 'ai_analysis_ready';
+    
+    // Handle nested data for analysis update
+    const source = (result as any).data || result;
+    const assessment = source.competencyAssessment || source.overallAssessment || {};
+    const rec = source.recommendation || source.overallAssessment || {};
+
+    const parseScore = (val: any): number => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+            if (val.includes('/')) {
+                const [actual, total] = val.split('/').map(s => parseFloat(s.trim()));
+                if (!isNaN(actual) && !isNaN(total) && total !== 0) {
+                    return Math.round((actual / total) * 100);
+                }
+            }
+            return parseFloat(val) || 0;
+        }
+        return 0;
+    };
+
+    candidate.analysis = {
+        overallScore: parseScore(assessment.overallScore || assessment.rating || source.overallScore),
+        technicalSkills: assessment.technicalSkills || source.technicalSkills || {},
+        communication: assessment.communication || source.communication || {},
+        problemSolving: assessment.problemSolving || source.problemSolving || {},
+        culturalFit: assessment.culturalFit || source.culturalFit || {},
+        recommendation: rec.hiringRecommendation || source.recommendation || '',
+        summary: source.executiveSummary || assessment.summary || source.summary || '',
+        keyInsights: source.keyInsights || [],
+        redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || []
+    };
+    await candidate.save();
+
+    res.json({ success: true, message: 'Analysis saved successfully', data: result });
+  } catch (error: any) {
+    console.error('Save analysis error:', error);
+    res.status(500).json({ error: 'Failed to save analysis' });
   }
 });
 

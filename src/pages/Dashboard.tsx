@@ -106,10 +106,10 @@ export default function Dashboard() {
         <Link to="/dashboard/reports" 
           className="btn btn-sm"
           style={{ 
-            background: 'white', 
-            border: '1px solid #d1d5db', 
-            color: '#374151',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            background: '#E91E63', 
+            border: 'none', 
+            color: 'white',
+            boxShadow: '0 4px 14px rgba(233, 30, 99, 0.4)'
           }}
         >
           <FileText size={16} /> View Reports

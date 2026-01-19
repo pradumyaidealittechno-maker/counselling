@@ -154,7 +154,7 @@ export default function CreateJob() {
             type="file"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            accept=".pdf,.doc,.docx"
+            accept=".pdf,.doc,.docx,.txt"
             style={{ display: 'none' }}
           />
 
@@ -190,9 +190,7 @@ export default function CreateJob() {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-900)' }}>
                 Upload Job Description
               </h3>
-              <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>
-                Upload a PDF or DOC file to generate Job DNA
-              </p>
+                Upload a PDF, DOC, or TXT file to generate Job DNA
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -202,7 +200,7 @@ export default function CreateJob() {
                 fontSize: '0.875rem'
               }}>
                 <File size={16} />
-                <span>PDF, DOC, DOCX supported</span>
+                <span>PDF, DOC, DOCX, TXT supported</span>
               </div>
               <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} disabled={uploading}>
                 {uploading ? 'Uploading...' : 'Upload File'} <ArrowRight size={18} />

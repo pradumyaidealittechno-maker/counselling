@@ -167,25 +167,47 @@ export default function AnalysisReport() {
   if (reportData) {
     // Using report route - construct virtual candidate from report data
     // Handle potential nested 'data' structure from backend
-    const info = reportData.candidateInformation || reportData.data?.candidateInformation;
+    // Try to find candidateInformation in either root or data
+    const rootInfo = reportData.candidateInformation;
+    const dataInfo = reportData.data?.candidateInformation;
+    const info = rootInfo || dataInfo || {};
     
+    // Try to find transcript and recording
+    const transcript = reportData.transcript || reportData.data?.transcript || [];
+    const recordingUrl = reportData.recordingUrl || reportData.data?.recordingUrl;
+
     displayCandidate = {
-      firstName: info?.fullName?.split(' ')[0] || 'Unknown',
-      lastName: info?.fullName?.split(' ').slice(1).join(' ') || '',
-      email: info?.email || '',
-      job: { title: info?.positionAppliedFor || '' },
-      interviewDate: info?.interviewDate,
-      interviewDuration: info?.interviewDuration,
-      transcript: reportData.transcript || reportData.data?.transcript || [],
-      recordingUrl: reportData.recordingUrl || reportData.data?.recordingUrl,
+      firstName: info.fullName?.split(' ')[0] || 'Unknown',
+      lastName: info.fullName?.split(' ').slice(1).join(' ') || '',
+      email: info.email || '',
+      job: { title: info.positionAppliedFor || '' },
+      interviewDate: info.interviewDate,
+      interviewDuration: info.interviewDuration,
+      transcript,
+      recordingUrl,
     };
-    interviewAnalysis = reportData.data || reportData; // If wrapped in data, use that as analysis source, else use root matches logic
+    
+    // Determine the source of analysis data
+    // If 'data' exists and has candidateInformation/competencyAssessment, use it.
+    // Otherwise use root.
+    interviewAnalysis = (reportData.data && reportData.data.competencyAssessment) ? reportData.data : reportData;
+    
     console.log('Using Report Data - displayCandidate:', displayCandidate);
     console.log('Using Report Data - interviewAnalysis:', interviewAnalysis);
   } else {
     // Using candidate route
     displayCandidate = candidate;
-    interviewAnalysis = (candidate as any)?.interviewAnalysis;
+    // Fix: Handle nested data structure (interviewAnalysis might contain 'data' wrapper)
+    const analysisRaw = (candidate as any)?.interviewAnalysis;
+    interviewAnalysis = analysisRaw?.data || analysisRaw;
+    
+    // Also ensure displayCandidate properties that might be in analysis are populated if missing in candidate
+    if (!displayCandidate.transcript && interviewAnalysis?.transcript) {
+        displayCandidate.transcript = interviewAnalysis.transcript;
+    }
+    if (!displayCandidate.recordingUrl && interviewAnalysis?.recordingUrl) {
+         displayCandidate.recordingUrl = interviewAnalysis.recordingUrl;
+    }
     console.log('Using Candidate Data - displayCandidate:', displayCandidate);
     console.log('Using Candidate Data - interviewAnalysis:', interviewAnalysis);
   }

@@ -388,7 +388,7 @@ export default function Candidates() {
         type="file"
         ref={fileInputRef}
         onChange={handleResumeUpload}
-        accept=".pdf,.doc,.docx"
+        accept=".pdf,.doc,.docx,.txt"
         style={{ display: 'none' }}
       />
 

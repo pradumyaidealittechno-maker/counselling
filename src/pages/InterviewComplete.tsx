@@ -105,7 +105,7 @@ export default function InterviewComplete() {
           <h3 style={{ color: '#1F2937', fontWeight: 600, marginBottom: '1rem' }}>What happens next?</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {[
-              { icon: Dna, text: 'AI analyzes your responses against Job DNA', color: '#E91E63' },
+              // { icon: Dna, text: 'AI analyzes your responses against Job DNA', color: '#E91E63' },
               { icon: Clock, text: 'Hiring team reviews within 3-5 business days', color: '#6366F1' },
               { icon: CheckCircle, text: 'You\'ll receive an update via email', color: '#10b981' }
             ].map((item, i) => (

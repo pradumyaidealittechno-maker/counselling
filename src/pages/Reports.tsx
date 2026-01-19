@@ -461,8 +461,8 @@ export default function Reports() {
                         }}
                         className="btn btn-sm"
                         style={{
-                          backgroundColor: 'rgba(233, 30, 99, 0.08)',
-                          color: '#E91E63',
+                          backgroundColor: '#E91E63',
+                          color: 'white',
                           border: 'none',
                           display: 'inline-flex',
                           alignItems: 'center',

@@ -11,6 +11,8 @@ import n8nService from '../services/n8n.service.js';
 
 import { upload } from '../middleware/upload.js';
 import * as pdfParseModule from 'pdf-parse';
+import WordExtractor from 'word-extractor';
+const extractor = new WordExtractor();
 const router = express.Router();
 
 // Parse Job Description from file (protected)
@@ -42,9 +44,15 @@ router.post('/parse-jd', authenticate, upload.single('file'), async (req, res) =
       req.file.mimetype === 'application/msword' ||
       req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ) {
-      return res.status(400).json({
-        error: 'Word documents are not yet supported. Please save as PDF or copy text content.'
-      });
+      console.log('📄 Parsing Word File:', req.file.originalname);
+      try {
+        const doc = await extractor.extract(req.file.buffer);
+        text = doc.getBody();
+        console.log('✅ Word Parsed, length:', (text || '').length);
+      } catch (err: any) {
+        console.error('❌ Word Parse Error:', err);
+        text = "Could not auto-parse Word document. Please copy text manually.";
+      }
     } else {
       return res.status(400).json({ error: 'Supported formats: PDF, TXT' });
     }

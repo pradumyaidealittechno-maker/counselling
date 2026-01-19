@@ -309,17 +309,24 @@ router.post('/:id/analyze', authenticate, async (req: AuthRequest, res: Response
       return;
     }
 
-    const candidate = interview.candidateId as unknown as { firstName: string; lastName: string; _id: string };
-    const job = interview.jobId as unknown as { title: string; jobDNA: Record<string, unknown>; _id: string };
+    const candidate = interview.candidateId as any;
+    const job = interview.jobId as any;
 
     const startTime = Date.now();
 
     // Run AI analysis
+    // CRITICAL FIX: Pass correct arguments to aiService (description, requiredSkills)
+    // Map transcript to match expected format (timestamp as string)
+    const transcriptForAI = interview.transcript.map((t: any) => ({
+        speaker: t.speaker,
+        text: t.text,
+        timestamp: String(t.timestamp)
+    }));
+
     const analysisResult = await aiService.analyzeInterview(
-      interview.transcript,
-      job.jobDNA,
-      job.title,
-      `${candidate.firstName} ${candidate.lastName}`
+      transcriptForAI,
+      job.description,
+      job.requiredSkills || []
     );
 
     const processingTime = Date.now() - startTime;
@@ -332,25 +339,68 @@ router.post('/:id/analyze', authenticate, async (req: AuthRequest, res: Response
 
     const totalCandidates = otherEvaluations.length + 1;
     const betterThan = otherEvaluations.filter(
-      e => e.recommendation.overallScore < analysisResult.recommendation.overallScore
+      e => e.recommendation.overallScore < analysisResult.overallScore
     ).length;
     const percentile = Math.round((betterThan / totalCandidates) * 100);
 
+    // Map recommendation string to decision enum
+    const recMap: Record<string, 'Hire' | 'Hold' | 'Reject'> = {
+        'strong_hire': 'Hire',
+        'hire': 'Hire',
+        'maybe': 'Hold',
+        'no_hire': 'Reject'
+    };
+    const decision = recMap[analysisResult.recommendation] || 'Hold';
+
     // Create evaluation
+    // Map simplified AI result to complex Evaluation schema
     const evaluation = await Evaluation.create({
       candidateId: candidate._id,
       jobId: job._id,
       interviewId: interview._id,
-      recommendation: analysisResult.recommendation,
-      dimensionEvaluations: analysisResult.dimensionEvaluations,
+      recommendation: {
+          decision: decision,
+          confidence: 85, // Default confidence as AI service doesn't return it
+          overallScore: analysisResult.overallScore
+      },
+      dimensionEvaluations: {
+          skillDNA: { 
+              overallScore: analysisResult.technicalSkills.score, 
+              strengths: analysisResult.technicalSkills.strengths,
+              gaps: analysisResult.technicalSkills.weaknesses,
+              impact: 'positive',
+              traitEvaluations: [] // Not returned by simple analysis
+          },
+          communicationDNA: {
+              overallScore: analysisResult.communication.score,
+              strengths: [],
+              gaps: [],
+              impact: 'positive',
+              traitEvaluations: []
+          },
+          culturalDNA: {
+              overallScore: analysisResult.culturalFit.score,
+              strengths: analysisResult.culturalFit.alignment,
+              gaps: [],
+              impact: 'positive',
+              traitEvaluations: []
+          },
+          behavioralDNA: {
+              overallScore: analysisResult.problemSolving.score, // Mapping problem solving to behavioral
+              strengths: [],
+              gaps: [],
+              impact: 'positive',
+              traitEvaluations: []
+          }
+      },
       summary: analysisResult.summary,
-      keyStrengths: analysisResult.keyStrengths,
-      keyConcerns: analysisResult.keyConcerns,
+      keyStrengths: analysisResult.keyInsights,
+      keyConcerns: analysisResult.redFlags,
       comparisonToOtherCandidates: {
         percentile,
         totalCandidates,
       },
-      rawAIResponse: analysisResult,
+      rawAIResponse: analysisResult as any,
       aiModel: 'gpt-4',
       processingTime,
     });
@@ -359,6 +409,17 @@ router.post('/:id/analyze', authenticate, async (req: AuthRequest, res: Response
     await Candidate.findByIdAndUpdate(candidate._id, {
       status: 'ai_analysis_ready',
       evaluationId: evaluation._id,
+      analysis: {
+        overallScore: analysisResult.overallScore,
+        technicalSkills: analysisResult.technicalSkills,
+        communication: analysisResult.communication,
+        problemSolving: analysisResult.problemSolving,
+        culturalFit: analysisResult.culturalFit,
+        recommendation: analysisResult.recommendation, // String format
+        summary: analysisResult.summary,
+        keyInsights: analysisResult.keyInsights,
+        redFlags: analysisResult.redFlags
+      }
     });
 
     res.json({
