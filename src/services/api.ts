@@ -407,6 +407,35 @@ export const api = {
     },
   },
 
+  // Notification APIs
+  notifications: {
+    getAll: async (page: number = 1, limit: number = 20) => {
+      return authFetch(`/api/notifications?page=${page}&limit=${limit}`);
+    },
+
+    getUnreadCount: async () => {
+      return authFetch('/api/notifications/unread-count');
+    },
+
+    markAsRead: async (id: string) => {
+      return authFetch(`/api/notifications/${id}/read`, {
+        method: 'PATCH',
+      });
+    },
+
+    markAllAsRead: async () => {
+      return authFetch('/api/notifications/mark-all-read', {
+        method: 'PATCH',
+      });
+    },
+
+    delete: async (id: string) => {
+      return authFetch(`/api/notifications/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
   // Upload APIs
   upload: {
     file: async (file: File, folder?: string) => {

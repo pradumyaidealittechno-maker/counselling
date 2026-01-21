@@ -11,6 +11,7 @@ declare global {
 }
 
 export default function VideoInterview() {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
@@ -79,7 +80,7 @@ export default function VideoInterview() {
 
   const validateInterviewCode = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/interviews/validate-code', {
+      const response = await fetch(`${API_URL}/api/interviews/validate-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
@@ -232,7 +233,7 @@ export default function VideoInterview() {
 
       console.log('🔑 Requesting Retell token for agent:', agentId);
 
-      const response = await fetch('http://localhost:3001/api/interviews/create-web-call', {
+      const response = await fetch(`${API_URL}/api/interviews/create-web-call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentId })
@@ -266,7 +267,7 @@ export default function VideoInterview() {
           screenResolution: `${window.screen.width}x${window.screen.height}`
         };
 
-        await fetch('http://localhost:3001/api/interviews/start-session', {
+        await fetch(`${API_URL}/api/interviews/start-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ candidateId: candidateUid, browserInfo })
@@ -427,7 +428,7 @@ export default function VideoInterview() {
       formData.append('candidate_name', candidateName);
       formData.append('uid', candidateUid);
 
-      const response = await fetch('http://localhost:3001/api/interviews/save-recording', {
+      const response = await fetch(`${API_URL}/api/interviews/save-recording`, {
         method: 'POST',
         body: formData
       });
@@ -468,7 +469,7 @@ export default function VideoInterview() {
 
       // Notify backend session ended
       try {
-        await fetch('http://localhost:3001/api/interviews/end-session', {
+        await fetch(`${API_URL}/api/interviews/end-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ candidateId: candidateUid, duration })

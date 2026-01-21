@@ -4,6 +4,7 @@ import { Camera, Save, X } from 'lucide-react';
 import { showToast } from '../utils/toast';
 
 export default function EditProfile() {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState({
@@ -20,7 +21,7 @@ export default function EditProfile() {
   const fetchUserData = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:3001/api/auth/me', {
+      const response = await fetch(`${API_URL}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -44,7 +45,7 @@ export default function EditProfile() {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:3001/api/auth/update-profile', {
+      const response = await fetch(`${API_URL}/api/auth/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

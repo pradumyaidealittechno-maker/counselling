@@ -14,7 +14,7 @@ interface InterviewSession {
 }
 
 export default function InterviewManagement() {
-  const API_URL = 'http://localhost:3001'; // Backend API server
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const [activeSessions, setActiveSessions] = useState<InterviewSession[]>([]);
   const [recentInterviews, setRecentInterviews] = useState<InterviewSession[]>([]);
   const [loading, setLoading] = useState(true);

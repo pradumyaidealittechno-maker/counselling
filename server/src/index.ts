@@ -31,6 +31,8 @@ import jobRoutes from './routes/job.routes.js';
 import reportRoutes from './routes/reports.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import aiRoutes from './routes/ai.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
+import { authenticate } from './middleware/auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -90,6 +92,8 @@ app.use('/api/upload', uploadRoutes);
 console.log('   ✅ /api/upload - Upload routes');
 app.use('/api/ai', aiRoutes);
 console.log('   ✅ /api/ai - AI Assistant routes');
+app.use('/api/notifications', authenticate, notificationRoutes);
+console.log('   ✅ /api/notifications - Notification routes');
 console.log('─'.repeat(60) + '\n');
 
 // Error handling

@@ -4,6 +4,7 @@ import Job from '../models/Job.js';
 import retellService from '../services/retell.service.js';
 import n8nService from '../services/n8n.service.js';
 import aiService from '../services/ai.service.js';
+import notificationService from '../services/notification.service.js';
 import { upload } from '../middleware/upload.js';
 import { uploadToS3 } from '../config/s3.js';
 
@@ -199,6 +200,8 @@ router.post('/submit-result', async (req, res) => {
       // Continue even if webhook fails
     }
 
+    // Note: Notification is created in /end-session endpoint to avoid duplicates
+
     res.json({
       success: true,
       message: 'Interview results submitted successfully',
@@ -315,6 +318,23 @@ router.post('/end-session', async (req, res) => {
     await candidate.save();
 
     console.log(`✅ Interview COMPLETED: ${candidate.firstName} ${candidate.lastName} (${id})`);
+
+    // Create notification for the recruiter/admin who created the job
+    try {
+      const job = await Job.findById(candidate.jobId);
+      if (job && job.createdBy) {
+        await notificationService.createInterviewCompleteNotification(
+          job.createdBy,
+          candidate._id,
+          `${candidate.firstName} ${candidate.lastName}`,
+          job.title
+        );
+        console.log(`📬 Notification created for user ${job.createdBy}`);
+      }
+    } catch (notifError) {
+      console.error('Notification creation failed:', notifError);
+      // Continue even if notification fails
+    }
 
     res.json({
       success: true,

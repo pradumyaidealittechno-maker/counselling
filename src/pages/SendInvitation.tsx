@@ -26,7 +26,7 @@ export default function SendInvitation() {
   const [message, setMessage] = useState('');
 
   const BASE_URL = window.location.origin; // e.g., http://localhost:5173
-  const API_URL = 'http://localhost:3001'; // Backend API server
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   useEffect(() => {
     loadCandidates();

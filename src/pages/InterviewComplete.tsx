@@ -61,38 +61,6 @@ export default function InterviewComplete() {
           Thank you for completing your interview for the {jobTitle} position at {companyName}.
         </p>
 
-        {/* AI Analysis Card */}
-        <div style={{
-          background: 'var(--white)',
-          borderRadius: '1rem',
-          padding: '1.5rem',
-          marginBottom: '2rem',
-          border: '1px solid #fce7f3',
-          boxShadow: '0 4px 20px rgba(233, 30, 99, 0.1)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-            <Dna size={20} color="#E91E63" />
-          <span style={{ color: 'var(--gray-800)', fontWeight: 600 }}>Job DNA Analysis in Progress</span>
-          </div>
-          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-            Our AI is analyzing your responses against the Job DNA framework and generating insights for the hiring team.
-          </p>
-          <div style={{
-            height: '8px',
-            background: '#f3f4f6',
-            borderRadius: '4px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              width: '60%',
-              height: '100%',
-              background: 'linear-gradient(90deg, #E91E63 0%, #6366F1 100%)',
-              borderRadius: '4px',
-              animation: 'progress 2s ease-in-out infinite'
-            }} />
-          </div>
-        </div>
-
         {/* What's Next */}
         <div style={{
           background: 'var(--white)',

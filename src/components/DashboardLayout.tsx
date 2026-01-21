@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import ChatbotDialog from './ChatbotDialog';
+import NotificationDropdown from './NotificationDropdown';
 import api from '../services/api';
 
 const navigation = [
@@ -248,33 +249,8 @@ export default function DashboardLayout() {
               {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
             </button>
 
-            {/* Notifications - Commented out as requested */}
-            {/* 
-            <button style={{
-              position: 'relative',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--gray-500)'
-            }}>
-              <Bell size={22} />
-              <span style={{
-                position: 'absolute',
-                top: '-4px',
-                right: '-4px',
-                width: '18px',
-                height: '18px',
-                background: '#E91E63',
-                borderRadius: '50%',
-                fontSize: '0.625rem',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 600
-              }}>3</span>
-            </button>
-            */}
+            {/* Notifications */}
+            <NotificationDropdown />
 
             {/* User Menu */}
             <div style={{ position: 'relative' }} ref={profileMenuRef}>

@@ -48,6 +48,7 @@ const getStatusConfig = (status: string) => {
 };
 
 export default function Candidates() {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,7 +122,9 @@ export default function Candidates() {
       formData.append('resume', file);
 
       // Note using relative URL to let proxy handle it or full URL if env not set
-      const parseResponse = await fetch('http://localhost:3001/api/candidates/parse-resume', {
+      // 2. Parse Resume
+      setUploadStatus('Parsing resume...');
+      const parseResponse = await fetch(`${API_URL}/api/candidates/parse-resume`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -141,8 +144,9 @@ export default function Candidates() {
 
       // Use the specific uploadJobId
       if (uploadJobId) {
-          // Step 2: Create candidate with extracted data + selected job
-          const createResponse = await fetch('http://localhost:3001/api/candidates', {
+        // Step 2: Create candidate with extracted data + selected job
+        try {
+          const createResponse = await fetch(`${API_URL}/api/candidates`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -166,11 +170,14 @@ export default function Candidates() {
 
           showToast.success(`✅ Candidate created: ${candidateData.firstName} ${candidateData.lastName}`);
           await loadCandidates();
+        } catch (error: any) {
+           throw new Error(error.message || 'Failed to create candidate');
+        }
       } else {
-          // Fallback if somehow triggered without job (though button prevents it now, nice to keep safety)
-          setParsedCandidateData(candidateData);
-          setShowAddDialog(true);
-          showToast.success('Resume parsed. Please confirm details.');
+        // Fallback if somehow triggered without job (though button prevents it now, nice to keep safety)
+        setParsedCandidateData(candidateData);
+        setShowAddDialog(true);
+        showToast.success('Resume parsed. Please confirm details.');
       }
 
       // Reset file input
