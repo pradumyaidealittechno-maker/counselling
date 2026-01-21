@@ -103,7 +103,7 @@ export const api = {
       firstName: string;
       lastName: string;
       company: string;
-      role?: string;
+      jobTitle?: string;
     }) => {
       logger.info('Registering new user...', { email: data.email });
 

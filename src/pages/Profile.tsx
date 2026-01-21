@@ -15,7 +15,7 @@ export default function Profile() {
       const response = await fetch('http://localhost:3001/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setUserData(data);
@@ -82,7 +82,7 @@ export default function Profile() {
             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1F2937', marginBottom: '0.25rem' }}>
               {userData.firstName} {userData.lastName}
             </h2>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{userData.role}</p>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{userData.jobTitle || userData.role || 'User'}</p>
           </div>
         </div>
 
@@ -137,7 +137,7 @@ export default function Profile() {
             </div>
             <div>
               <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Role</p>
-              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.role}</p>
+              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.jobTitle || userData.role || 'Not set'}</p>
             </div>
           </div>
 
@@ -156,10 +156,10 @@ export default function Profile() {
             <div>
               <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Member Since</p>
               <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>
-                {new Date(userData.createdAt).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                {new Date(userData.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
               </p>
             </div>

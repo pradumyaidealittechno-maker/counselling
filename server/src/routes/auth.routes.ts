@@ -12,10 +12,10 @@ router.post('/register', async (req, res) => {
   console.log(`   Email: ${req.body.email}`);
 
   try {
-    const { email, password, firstName, lastName, company, jobTitle, role } = req.body;
+    const { email, password, firstName, lastName, company, jobTitle } = req.body;
 
     // Validate input
-    if (!email || !password || !firstName || !lastName || !company) {
+    if (!email || !password || !firstName || !lastName || !company || !jobTitle) {
       console.log('   ❌ Missing required fields');
       return res.status(400).json({ error: 'All fields are required' });
     }
@@ -56,8 +56,7 @@ router.post('/register', async (req, res) => {
       lastName,
       company: companyDoc.name,
       companyId: companyDoc._id,
-      jobTitle: jobTitle || undefined, // Optional field
-      role: role || 'recruiter',
+      jobTitle,
     });
 
     await user.save();
@@ -65,7 +64,7 @@ router.post('/register', async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, jobTitle: user.jobTitle },
       process.env.JWT_SECRET as string,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -79,7 +78,7 @@ router.post('/register', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         company: user.company,
-        role: user.role,
+        jobTitle: user.jobTitle,
       },
     });
     console.log('   ✅ Registration successful\n');
@@ -129,7 +128,7 @@ router.post('/login', async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, jobTitle: user.jobTitle },
       process.env.JWT_SECRET as string,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -143,7 +142,7 @@ router.post('/login', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         company: user.company,
-        role: user.role,
+        jobTitle: user.jobTitle,
       },
     });
     console.log('   ✅ Login successful\n');

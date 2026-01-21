@@ -8,8 +8,7 @@ export interface IUser extends Document {
   lastName: string;
   company: string;
   companyId: mongoose.Types.ObjectId;
-  jobTitle?: string; // User's job title/role in their company
-  role: 'admin' | 'recruiter' | 'hiring_manager';
+  jobTitle: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -47,17 +46,13 @@ const userSchema = new Schema<IUser>(
     },
     jobTitle: {
       type: String,
+      required: true, // Made required as it replaces role
       trim: true,
     },
     companyId: {
       type: Schema.Types.ObjectId,
       ref: 'Company',
       required: true,
-    },
-    role: {
-      type: String,
-      enum: ['admin', 'recruiter', 'hiring_manager'],
-      default: 'recruiter',
     },
     isActive: {
       type: Boolean,

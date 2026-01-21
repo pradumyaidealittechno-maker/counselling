@@ -5,7 +5,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
-    role: string;
+    jobTitle: string;
     companyId?: string;
   };
 }
@@ -32,7 +32,7 @@ export const authorize = (...roles: string[]) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.user.jobTitle)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
