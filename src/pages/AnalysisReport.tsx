@@ -70,7 +70,22 @@ export default function AnalysisReport() {
         scale: 2, // Higher scale for better quality
         useCORS: true,
         logging: false,
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--white').trim() || '#ffffff'
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--white').trim() || '#ffffff',
+        onclone: (clonedDoc) => {
+          // Increase font sizes in the cloned document for the PDF
+          const element = clonedDoc.querySelector('[data-report-container]') as HTMLElement;
+          if (element) {
+            // Scale up base font size and specific elements
+            const allElements = element.querySelectorAll('*');
+            allElements.forEach((el) => {
+              const style = window.getComputedStyle(el as Element);
+              const fontSize = parseFloat(style.fontSize);
+              if (fontSize) {
+                (el as HTMLElement).style.fontSize = `${fontSize * 1.3}px`; // Increase by 30%
+              }
+            });
+          }
+        }
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -420,7 +435,7 @@ export default function AnalysisReport() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1rem' }}>
       {/* Main Content */}
-      <div ref={reportRef} style={{ padding: '20px', background: 'var(--white)' }}>
+      <div ref={reportRef} data-report-container style={{ padding: '20px', background: 'var(--white)' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
