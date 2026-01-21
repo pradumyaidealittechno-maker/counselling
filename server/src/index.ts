@@ -69,7 +69,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(requestLogger);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -110,6 +110,10 @@ const connectDB = async () => {
     console.log(`   Database: ${mongoose.connection.name}`);
     console.log(`   Host: ${mongoose.connection.host}`);
     console.log('─'.repeat(60) + '\n');
+
+    // Start watching candidate_result collection for auto-sync
+    const { startCandidateResultWatcher } = await import('./services/candidateResultWatcher.js');
+    startCandidateResultWatcher();
   } catch (error: any) {
     console.error('   ❌ MongoDB connection error:', error.message);
     console.error('─'.repeat(60) + '\n');

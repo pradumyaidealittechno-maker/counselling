@@ -30,16 +30,8 @@ export interface InterviewResultPayload {
 class N8nService {
   constructor() { }
 
-  private get emailWebhook(): string {
-    return process.env.N8N_WEBHOOK_EMAIL || '';
-  }
-
   private get questionsWebhook(): string {
     return process.env.N8N_WEBHOOK_INTERVIEW_QUESTIONS || '';
-  }
-
-  private get resultWebhook(): string {
-    return process.env.N8N_WEBHOOK_INTERVIEW_RESULT || '';
   }
 
   async sendEmail(payload: EmailPayload): Promise<boolean> {

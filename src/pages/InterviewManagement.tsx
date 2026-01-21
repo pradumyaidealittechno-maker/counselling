@@ -432,23 +432,28 @@ export default function InterviewManagement() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <thead>
                 <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Candidate</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Email</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Recording</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Date</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Status</th>
+                  <th style={{ width: '20%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Candidate</th>
+                  <th style={{ width: '15%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Status</th>
+                  <th style={{ width: '25%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Email</th>
+                  <th style={{ width: '20%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Recording</th>
+                  <th style={{ width: '20%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRecentInterviews.slice(0, 10).map((interview) => (
                   <tr key={interview._id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: 'var(--gray-900)', fontSize: '0.875rem' }}>
+                    <td style={{ padding: '1rem 2.5rem', fontWeight: 600, color: 'var(--gray-900)', fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {interview.candidateName}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                    <td style={{ padding: '1rem 1.5rem', textAlign: 'left' }}>
+                      <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>
+                        Completed
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {interview.email}
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>
@@ -469,11 +474,6 @@ export default function InterviewManagement() {
                     </td>
                     <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
                       {new Date(interview.startedAt).toLocaleDateString()} at {new Date(interview.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                      <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>
-                        Completed
-                      </span>
                     </td>
                   </tr>
                 ))}

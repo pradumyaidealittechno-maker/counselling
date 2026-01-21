@@ -79,7 +79,7 @@ export default function Dashboard() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading dashboard...</p>
+        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading dashboard...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -103,13 +103,13 @@ export default function Dashboard() {
         <Link to="/dashboard/candidates" className="btn btn-secondary btn-sm">
           <Upload size={16} /> Upload Resumes
         </Link>
-        <Link to="/dashboard/reports" 
+        <Link to="/dashboard/reports"
           className="btn btn-sm"
-          style={{ 
-            background: '#E91E63', 
-            border: 'none', 
-            color: 'white',
-            boxShadow: '0 4px 14px rgba(233, 30, 99, 0.4)'
+          style={{
+            background: 'var(--white)',
+            border: '1px solid rgb(59, 130, 246)',
+            color: 'rgb(59, 130, 246)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
           }}
         >
           <FileText size={16} /> View Reports
@@ -152,7 +152,7 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {jobs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
                 <Briefcase size={32} color="#D1D5DB" style={{ marginBottom: '0.5rem' }} />
                 <p style={{ fontSize: '0.875rem' }}>No jobs yet</p>
                 <Link to="/dashboard/jobs/create" className="btn btn-primary btn-sm" style={{ marginTop: '0.75rem' }}>
@@ -209,7 +209,7 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {candidates.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
                 <Users size={32} color="#D1D5DB" style={{ marginBottom: '0.5rem' }} />
                 <p style={{ fontSize: '0.875rem' }}>No candidates yet</p>
                 <Link to="/dashboard/candidates/invite" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem' }}>
@@ -307,7 +307,7 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-        <Link to="/dashboard/reports" className="btn btn-sm" style={{ background: 'white', color: '#E91E63' }}>
+        <Link to="/dashboard/reports" className="btn btn-sm" style={{ background: 'var(--white)', color: '#E91E63' }}>
           Review Now
         </Link>
       </div>

@@ -353,7 +353,7 @@ export default function JobDNA() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '0.5rem', marginBottom: '1rem' }}>
           <FileText size={16} color="#6366F1" />
           <div style={{ flex: 1 }}><p style={{ fontSize: '0.95rem', fontWeight: 500, color: 'var(--gray-900)' }}>AI-Generated Job DNA</p></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={12} color="var(--gray-400)" /><span style={{ fontSize: '0.625rem', color: 'var(--gray-500)' }}>Created {new Date(job.createdAt).toLocaleDateString()}</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={16} color="var(--gray-400)" /><span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>Created {new Date(job.createdAt).toLocaleDateString()} at {new Date(job.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
           <DNASection title="Skill DNA" dimension="skillDNA" traits={jobDNA.skillDNA} color="#6366F1" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />

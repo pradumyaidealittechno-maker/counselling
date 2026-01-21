@@ -45,7 +45,6 @@ export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selecte
                 phone: initialData?.phone || '',
                 linkedInUrl: initialData?.linkedIn || '', // map linkedIn -> linkedInUrl
                 experience: initialData?.experience || '',
-                experience: initialData?.experience || '',
             }));
         }
     }, [isOpen, selectedJobId, initialData]);

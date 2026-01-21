@@ -5,9 +5,9 @@ const storage = multer.memoryStorage();
 export const upload = multer({
   storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB
+    fileSize: 1024 * 1024 * 1024, // 1GB
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     const allowedMimes = [
       'application/pdf',
       'application/msword',

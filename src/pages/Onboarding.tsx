@@ -77,7 +77,7 @@ export default function Onboarding() {
           }}>
             <Sparkles size={24} color="white" />
           </div>
-          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
+          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-800)' }}>Intelligens</span>
         </div>
 
         {/* Progress Steps */}
@@ -151,7 +151,7 @@ export default function Onboarding() {
               <div style={{
                 width: '32px',
                 height: '32px',
-                background: 'white',
+                background: 'var(--white)',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -160,7 +160,7 @@ export default function Onboarding() {
               }}>
                 <item.icon size={16} color="#E91E63" />
               </div>
-              <span style={{ fontSize: '0.875rem', color: '#4b5563' }}>{item.text}</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>{item.text}</span>
             </div>
           ))}
         </div>
@@ -177,7 +177,7 @@ export default function Onboarding() {
         zIndex: 1
       }}>
         <div style={{
-          background: 'white',
+          background: 'var(--white)',
           borderRadius: '1.5rem',
           padding: '2.5rem',
           width: '100%',
@@ -187,10 +187,10 @@ export default function Onboarding() {
         }}>
           {step === 1 && (
             <>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1F2937' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>
                 Tell us about your company
               </h2>
-              <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.875rem' }}>
+              <p style={{ color: 'var(--gray-500)', marginBottom: '2rem', fontSize: '0.875rem' }}>
                 This helps us customize your recruitment experience
               </p>
               <div style={{ marginBottom: '1.25rem' }}>
@@ -220,10 +220,10 @@ export default function Onboarding() {
 
           {step === 2 && (
             <>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1F2937' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>
                 How big is your team?
               </h2>
-              <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.875rem' }}>
+              <p style={{ color: 'var(--gray-500)', marginBottom: '2rem', fontSize: '0.875rem' }}>
                 Select your company size
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
@@ -256,10 +256,10 @@ export default function Onboarding() {
 
           {step === 3 && (
             <>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1F2937' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>
                 Where do you hire?
               </h2>
-              <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.875rem' }}>
+              <p style={{ color: 'var(--gray-500)', marginBottom: '2rem', fontSize: '0.875rem' }}>
                 Add your primary hiring locations
               </p>
               <div style={{ marginBottom: '1.25rem' }}>
@@ -278,12 +278,12 @@ export default function Onboarding() {
                       padding: '0.5rem 1rem',
                       borderRadius: '9999px',
                       fontSize: '0.875rem',
-                      color: '#4b5563',
+                      color: 'var(--gray-600)',
                       border: '1px solid rgba(233, 30, 99, 0.2)'
                     }}>{loc}</span>
                   ))}
                   <button style={{
-                    background: 'white',
+                    background: 'var(--white)',
                     border: '1px dashed #d1d5db',
                     padding: '0.5rem 1rem',
                     borderRadius: '9999px',

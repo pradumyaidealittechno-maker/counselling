@@ -49,6 +49,43 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// Get report by Candidate ID
+router.get('/candidate/:candidateId', authenticate, async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    
+    // Verify candidate ownership
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    if (candidate.createdBy && candidate.createdBy.toString() !== (req as any).user.id) {
+      return res.status(403).json({ error: 'You do not have permission to view this candidate\'s report' });
+    }
+
+    // Comprehensive search for the report
+    const result = await CandidateResult.findOne({
+      $or: [
+        { candidateId: candidateId },
+        { id: candidateId },
+        { candidate_id: candidateId },
+        { 'candidateInformation.email': { $regex: new RegExp(`^${candidate.email}$`, 'i') } },
+        { 'data.candidateInformation.email': { $regex: new RegExp(`^${candidate.email}$`, 'i') } }
+      ]
+    }).sort({ createdAt: -1 });
+
+    if (!result) {
+      return res.status(404).json({ error: 'Report not found for this candidate' });
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Get report by candidate ID error:', error);
+    res.status(500).json({ error: 'Failed to fetch report' });
+  }
+});
+
 // Get report by ID
 router.get('/:id', authenticate, async (req, res) => {
   try {

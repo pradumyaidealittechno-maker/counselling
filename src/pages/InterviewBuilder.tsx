@@ -217,7 +217,7 @@ export default function InterviewBuilder() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading interview builder...</p>
+        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading interview builder...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -228,7 +228,7 @@ export default function InterviewBuilder() {
       <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '3rem' }}>
         <Dna size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>No Job Selected</h2>
-        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>Select a job to build interview questions</p>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>Select a job to build interview questions</p>
         <button className="btn btn-primary" onClick={() => navigate('/dashboard/jobs/create')}>
           <Plus size={18} /> Create New Job
         </button>
@@ -248,7 +248,7 @@ export default function InterviewBuilder() {
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
             Interview Question Builder
           </h1>
-          <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
             Generate questions for {job.title}
           </p>
         </div>
@@ -270,7 +270,7 @@ export default function InterviewBuilder() {
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
             Generate Interview Questions
           </h2>
-          <p style={{ color: '#6B7280', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
+          <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
             {job.jobDNA
               ? 'Use Job DNA™ to generate tailored interview questions that evaluate candidates against your specific requirements.'
               : 'Generate Job DNA first to create tailored interview questions.'}
@@ -279,7 +279,7 @@ export default function InterviewBuilder() {
           {job.jobDNA && (
             <div style={{ maxWidth: '400px', margin: '0 auto 1.5rem', textAlign: 'left' }}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.25rem' }}>
                   Number of Questions
                 </label>
                 <input
@@ -293,7 +293,7 @@ export default function InterviewBuilder() {
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.25rem' }}>
                   Custom Instructions (Optional)
                 </label>
                 <textarea
@@ -363,7 +363,7 @@ export default function InterviewBuilder() {
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
           Interview Question Builder
         </h1>
-        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
           Questions generated from Job DNA™ for {job.title}
         </p>
       </div>
@@ -418,7 +418,7 @@ export default function InterviewBuilder() {
               Communication: {coverage.communication} traits
             </span>
           </div>
-          <p style={{ fontSize: '0.625rem', color: '#6B7280', marginTop: '0.5rem' }}>
+          <p style={{ fontSize: '0.625rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
             {coverage.total} total DNA traits evaluated across {questions.length} questions
           </p>
         </div>
@@ -439,7 +439,7 @@ export default function InterviewBuilder() {
                 <div style={{
                   width: '20px',
                   height: '20px',
-                  background: 'white',
+                  background: 'var(--white)',
                   borderRadius: '50%',
                   position: 'absolute',
                   top: '2px',
@@ -463,7 +463,7 @@ export default function InterviewBuilder() {
                 <div style={{
                   width: '20px',
                   height: '20px',
-                  background: 'white',
+                  background: 'var(--white)',
                   borderRadius: '50%',
                   position: 'absolute',
                   top: '2px',
@@ -504,7 +504,7 @@ export default function InterviewBuilder() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '0.9375rem' }}>
                 {category} Questions
-                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#6B7280', fontWeight: 400 }}>
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 400 }}>
                   ({categoryQuestions.length})
                 </span>
               </h3>
@@ -664,20 +664,20 @@ function QuestionCard({
             </div>
           ) : (
             <>
-              <p style={{ fontSize: '1rem', lineHeight: 1.6, color: '#1F2937' }}>{question.text}</p>
+              <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'var(--gray-800)' }}>{question.text}</p>
 
               {/* DNA Mapping Preview */}
               {question.dnaMapping && question.dnaMapping.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                   <Dna size={12} color="#E91E63" />
-                  <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>Evaluates:</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>Evaluates:</span>
                   {question.dnaMapping.slice(0, 2).map((mapping, i) => (
                     <span key={i} style={{
                       fontSize: '0.75rem',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: 'var(--gray-700)',
                       padding: '0.125rem 0.375rem',
-                      background: 'white',
+                      background: 'var(--white)',
                       borderRadius: '0.25rem',
                       border: '1px solid #E5E7EB'
                     }}>
@@ -736,12 +736,12 @@ function QuestionCard({
         <div style={{
           padding: '1rem',
           borderTop: '1px solid #E5E7EB',
-          background: 'white'
+          background: 'var(--white)'
         }}>
           {/* DNA Mappings */}
           {question.dnaMapping && question.dnaMapping.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-800)', marginBottom: '0.5rem' }}>
                 DNA Trait Mappings
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -757,7 +757,7 @@ function QuestionCard({
                         <span style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', background: 'rgba(233, 30, 99, 0.1)', color: '#E91E63', borderRadius: '0.25rem' }}>
                           {mapping.dimension}
                         </span>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#1F2937' }}>{mapping.trait}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--gray-800)' }}>{mapping.trait}</span>
                       </div>
                       <span style={{
                         fontSize: '0.75rem',
@@ -776,7 +776,7 @@ function QuestionCard({
 
                     {mapping.signalsToEvaluate && mapping.signalsToEvaluate.length > 0 && (
                       <div>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', marginBottom: '0.25rem' }}>
                           Signals to Evaluate:
                         </p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -803,7 +803,7 @@ function QuestionCard({
           {/* Evaluation Criteria */}
           {question.evaluationCriteria && (
             <div style={{ marginBottom: '1rem' }}>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-800)', marginBottom: '0.5rem' }}>
                 Evaluation Criteria
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -836,12 +836,12 @@ function QuestionCard({
           {/* Follow-up Questions */}
           {question.followUpQuestions && question.followUpQuestions.length > 0 && (
             <div>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1F2937', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-800)', marginBottom: '0.5rem' }}>
                 Follow-up Questions
               </h4>
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
                 {question.followUpQuestions.map((fq, i) => (
-                  <li key={i} style={{ fontSize: '0.875rem', color: '#4B5563', marginBottom: '0.25rem' }}>{fq}</li>
+                  <li key={i} style={{ fontSize: '0.875rem', color: 'var(--gray-600)', marginBottom: '0.25rem' }}>{fq}</li>
                 ))}
               </ul>
             </div>

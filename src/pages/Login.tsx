@@ -81,14 +81,14 @@ export default function Login() {
           }}>
             <Sparkles size={28} color="white" />
           </div>
-          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
+          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--gray-800)' }}>Intelligens</span>
         </Link>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: '#1F2937', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--gray-800)', marginBottom: '1rem' }}>
             Welcome back
           </h1>
-          <p style={{ color: '#6b7280', fontSize: '1.125rem', maxWidth: '400px', marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--gray-500)', fontSize: '1.125rem', maxWidth: '400px', marginBottom: '2rem' }}>
             Sign in to access your AI-powered recruitment dashboard and continue making smarter hiring decisions.
           </p>
 
@@ -103,7 +103,7 @@ export default function Login() {
                 <div style={{
                   width: '36px',
                   height: '36px',
-                  background: 'white',
+                  background: 'var(--white)',
                   borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
@@ -112,7 +112,7 @@ export default function Login() {
                 }}>
                   <item.icon size={18} color="#E91E63" />
                 </div>
-                <span style={{ color: '#4b5563', fontSize: '0.875rem' }}>{item.text}</span>
+                <span style={{ color: 'var(--gray-600)', fontSize: '0.875rem' }}>{item.text}</span>
               </div>
             ))}
           </div>
@@ -122,15 +122,15 @@ export default function Login() {
       {/* Right Panel - Form */}
       <div style={{
         width: '480px',
-        background: 'white',
+        background: 'var(--white)',
         padding: '3rem',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         boxShadow: '-10px 0 40px rgba(233, 30, 99, 0.05)'
       }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1F2937' }}>Sign in</h2>
-        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>Sign in</h2>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '2rem' }}>
           Don't have an account? <Link to="/signup" style={{ color: '#E91E63', fontWeight: 500 }}>Sign up</Link>
         </p>
 
@@ -141,7 +141,7 @@ export default function Login() {
             padding: '0.75rem',
             border: '1px solid #e5e7eb',
             borderRadius: '0.5rem',
-            background: 'white',
+            background: 'var(--white)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -157,7 +157,7 @@ export default function Login() {
             padding: '0.75rem',
             border: '1px solid #e5e7eb',
             borderRadius: '0.5rem',
-            background: 'white',
+            background: 'var(--white)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -233,7 +233,7 @@ export default function Login() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input type="checkbox" disabled={loading} />
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Remember me</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>Remember me</span>
             </label>
             <a href="#" style={{ fontSize: '0.875rem', color: '#E91E63' }}>Forgot password?</a>
           </div>

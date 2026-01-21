@@ -164,7 +164,7 @@ export default function VideoInterview() {
       // 5. Start recording with mixed stream
       const mediaRecorder = new MediaRecorder(mixedStream, {
         mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 2500000
+        videoBitsPerSecond: 1500000
       });
 
       mediaRecorder.ondataavailable = (event) => {
@@ -521,7 +521,7 @@ export default function VideoInterview() {
             }}>
               <Sparkles size={28} color="white" />
             </div>
-            <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--gray-800)' }}>Intelligens</span>
           </div>
 
           <div style={{
@@ -537,18 +537,18 @@ export default function VideoInterview() {
           }}>
             <Video size={48} color="white" />
           </div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1F2937', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--gray-800)', marginBottom: '1rem' }}>
             Welcome to Your Interview
           </h1>
           <p style={{ color: '#E91E63', fontWeight: 500, marginBottom: '0.5rem' }}>
             {jobTitle} at {companyName}
           </p>
-          <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--gray-500)', marginBottom: '2rem' }}>
             This AI-powered interview will take approximately 20-30 minutes
           </p>
 
           <div style={{
-            background: 'white',
+            background: 'var(--white)',
             borderRadius: '1rem',
             padding: '1.5rem',
             marginBottom: '2rem',
@@ -556,10 +556,10 @@ export default function VideoInterview() {
             border: '1px solid #fce7f3',
             boxShadow: '0 4px 20px rgba(233, 30, 99, 0.1)'
           }}>
-            <h3 style={{ color: '#1F2937', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 style={{ color: 'var(--gray-800)', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Dna size={18} color="#E91E63" /> Before you begin:
             </h3>
-            <ul style={{ color: '#4b5563', fontSize: '0.875rem', lineHeight: 2, listStyle: 'none', padding: 0 }}>
+            <ul style={{ color: 'var(--gray-600)', fontSize: '0.875rem', lineHeight: 2, listStyle: 'none', padding: 0 }}>
               <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: '#E91E63' }}>✓</span> Ensure your camera and microphone are working
               </li>
@@ -593,7 +593,7 @@ export default function VideoInterview() {
       gap: '1px'
     }}>
       {/* Left Panel - AI Interviewer */}
-      <div style={{ background: 'white', padding: '1.25rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
+      <div style={{ background: 'var(--white)', padding: '1.25rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
           <div style={{
             width: '32px',
@@ -606,7 +606,7 @@ export default function VideoInterview() {
           }}>
             <Sparkles size={18} color="white" />
           </div>
-          <span style={{ fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
+          <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Intelligens</span>
         </div>
         
         <div style={{
@@ -631,7 +631,7 @@ export default function VideoInterview() {
           }}>
             <span style={{ fontSize: '2.5rem' }}>👩‍💼</span>
           </div>
-          <p style={{ color: '#1F2937', fontWeight: 600, marginBottom: '0.25rem' }}>Monika</p>
+          <p style={{ color: 'var(--gray-800)', fontWeight: 600, marginBottom: '0.25rem' }}>Monika</p>
           <p style={{ color: '#E91E63', fontSize: '0.875rem' }}>AI Recruiter</p>
         </div>
 
@@ -660,7 +660,7 @@ export default function VideoInterview() {
 
         <div style={{ flex: 1, marginBottom: '1rem' }}>
           <p style={{ color: '#E91E63', fontSize: '0.75rem', marginBottom: '0.5rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Question</p>
-          <p style={{ color: '#1F2937', fontSize: '0.875rem', lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--gray-800)', fontSize: '0.875rem', lineHeight: 1.6 }}>
             Listen carefully and provide thoughtful answers to each question.
           </p>
         </div>
@@ -674,14 +674,14 @@ export default function VideoInterview() {
           gap: '0.5rem'
         }}>
           <Dna size={16} color="#E91E63" />
-          <span style={{ fontSize: '0.75rem', color: '#4b5563' }}>Powered by Job DNA</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--gray-600)' }}>Powered by Job DNA</span>
         </div>
       </div>
 
       {/* Center Panel - Transcript */}
-      <div style={{ background: 'white', padding: '1.25rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
+      <div style={{ background: 'var(--white)', padding: '1.25rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ color: '#1F2937', fontWeight: 600 }}>Live Transcription</h3>
+          <h3 style={{ color: 'var(--gray-800)', fontWeight: 600 }}>Live Transcription</h3>
           <span style={{
             color: '#E91E63',
             fontSize: '0.75rem',
@@ -719,7 +719,7 @@ export default function VideoInterview() {
                     {formatTime(item.time)}
                   </span>
                 </div>
-                <p style={{ color: '#4b5563', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                <p style={{ color: 'var(--gray-600)', fontSize: '0.875rem', lineHeight: 1.6 }}>
                   {item.text}
                 </p>
               </div>
@@ -729,9 +729,9 @@ export default function VideoInterview() {
       </div>
 
       {/* Right Panel - Candidate Video */}
-      <div style={{ background: 'white', padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: 'var(--white)', padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ color: '#1F2937', fontWeight: 600 }}>Your Camera</h3>
+          <h3 style={{ color: 'var(--gray-800)', fontWeight: 600 }}>Your Camera</h3>
           <div style={{
             background: 'rgba(233, 30, 99, 0.1)',
             color: '#E91E63',

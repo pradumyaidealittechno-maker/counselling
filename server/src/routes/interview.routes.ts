@@ -27,7 +27,7 @@ router.post('/validate-code', async (req, res) => {
     }
 
     // Check if code is expired
-    if (new Date() > candidate.interviewCodeExpiry) {
+    if (candidate.interviewCodeExpiry && new Date() > candidate.interviewCodeExpiry) {
       candidate.interviewStatus = 'expired';
       await candidate.save();
       return res.status(400).json({ valid: false, error: 'Code expired' });

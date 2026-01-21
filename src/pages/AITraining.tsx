@@ -54,7 +54,7 @@ export default function AITraining() {
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
           {complete ? 'AI Agent Ready!' : 'Training AI Interview Agent'}
         </h1>
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--gray-500)' }}>
           {complete 
             ? 'Your AI interview agent has been trained on the approved Job DNA'
             : 'Training AI agent on approved Job DNA for Senior Software Engineer'}
@@ -75,7 +75,7 @@ export default function AITraining() {
         <Dna size={24} color="#6366f1" />
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 500, fontSize: '0.875rem' }}>Training Source: Job DNA</p>
-          <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Senior Software Engineer • 18 traits across 5 dimensions</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>Senior Software Engineer • 18 traits across 5 dimensions</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           <Shield size={14} color="#10b981" />
@@ -88,7 +88,7 @@ export default function AITraining() {
         <div style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Training Progress</span>
-            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>{Math.round(progress)}%</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>{Math.round(progress)}%</span>
           </div>
           <div style={{ height: '12px', background: '#e5e7eb', borderRadius: '6px', overflow: 'hidden' }}>
             <div style={{
@@ -161,7 +161,7 @@ export default function AITraining() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {['Skill DNA', 'Experience DNA', 'Behavioral DNA', 'Communication DNA', 'Cultural DNA'].map((dim, i) => (
                 <span key={i} style={{
-                  background: 'white',
+                  background: 'var(--white)',
                   border: '1px solid #e5e7eb',
                   padding: '0.5rem 1rem',
                   borderRadius: '9999px',

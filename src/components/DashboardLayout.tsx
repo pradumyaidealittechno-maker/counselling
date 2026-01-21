@@ -15,7 +15,7 @@ import {
   Moon,
   Sun
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import ChatbotDialog from './ChatbotDialog';
 import api from '../services/api';
 
@@ -36,6 +36,23 @@ export default function DashboardLayout() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [chatbotOpen, setChatbotOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -260,7 +277,7 @@ export default function DashboardLayout() {
             */}
 
             {/* User Menu */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} ref={profileMenuRef}>
             <div onClick={() => setShowProfileMenu(!showProfileMenu)} style={{
               display: 'flex',
               alignItems: 'center',
@@ -282,7 +299,6 @@ export default function DashboardLayout() {
               </div>
               <div>
                 <p style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-900)' }}>{userName}</p>
-                <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>HR Manager</p>
               </div>
               <ChevronDown size={16} color="var(--gray-500)" />
             </div>

@@ -42,14 +42,28 @@ export default function FinalDecision() {
       setLoading(true);
       if (id) {
         if (isFromReports) {
-          // Load report data
+          // Load directly from reports API by Report ID
           const data = await api.reports.getById(id);
+          console.log('FinalDecision - Direct Report Data:', data);
           setReportData(data);
         } else {
-          // Load candidate data
-          const data = await api.candidates.getById(id);
-          setCandidate(data);
-          setReportData((data as any).interviewAnalysis);
+          // Candidate-based route (/dashboard/candidates/:id/decision)
+          // 1. Load candidate data first
+          const cData = await api.candidates.getById(id);
+          setCandidate(cData);
+          
+          // 2. Try to load report data by candidate ID
+          try {
+            const rData = await api.reports.getByCandidateId(id);
+            console.log('FinalDecision - Report by Candidate ID:', rData);
+            setReportData(rData);
+          } catch (reportErr) {
+            console.warn('Report not found for candidate in decision view:', reportErr);
+            // Fallback to embedded analysis if available
+            if ((cData as any).interviewAnalysis) {
+              setReportData((cData as any).interviewAnalysis);
+            }
+          }
         }
       }
     } catch (err: any) {
@@ -96,7 +110,7 @@ export default function FinalDecision() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading...</p>
+        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -106,10 +120,10 @@ export default function FinalDecision() {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
         <AlertTriangle size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1F2937' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>
           Data Not Found
         </h2>
-        <p style={{ color: '#6B7280', marginBottom: '1.5rem' }}>{error || 'Unable to load candidate data.'}</p>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem' }}>{error || 'Unable to load candidate data.'}</p>
         <Link to="/dashboard/reports" className="btn btn-primary">
           Back to Reports
         </Link>
@@ -210,7 +224,7 @@ export default function FinalDecision() {
         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>
           Decision Recorded
         </h2>
-        <p style={{ color: '#6B7280' }}>
+        <p style={{ color: 'var(--gray-500)' }}>
           {displayCandidate.firstName} {displayCandidate.lastName} has been marked as "{decision === 'hire' ? 'Hire' : decision === 'hold' ? 'Hold' : 'Reject'}"
         </p>
       </div>
@@ -221,10 +235,10 @@ export default function FinalDecision() {
     <div style={{ padding: '2rem 3rem' }}>
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', color: '#111827' }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--gray-900)' }}>
           Final Hiring Decision
         </h1>
-        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
           Review the AI analysis and make your final decision for {displayCandidate.firstName} {displayCandidate.lastName}
         </p>
       </div>
@@ -233,8 +247,8 @@ export default function FinalDecision() {
       <div className="card" style={{
         padding: '2rem',
         marginBottom: '2rem',
-        background: 'linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%)',
-        border: '1px solid #E5E7EB'
+        background: 'var(--white)',
+        border: '1px solid var(--gray-200)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
@@ -252,10 +266,10 @@ export default function FinalDecision() {
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
             }}>{initials}</div>
             <div>
-              <h2 style={{ fontWeight: 700, fontSize: '1.5rem', marginBottom: '0.375rem', color: '#111827' }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.5rem', marginBottom: '0.375rem', color: 'var(--gray-900)' }}>
                 {displayCandidate.firstName} {displayCandidate.lastName}
               </h2>
-              <p style={{ color: '#6B7280', fontSize: '1rem', marginBottom: '0.25rem' }}>
+              <p style={{ color: 'var(--gray-500)', fontSize: '1rem', marginBottom: '0.25rem' }}>
                 {displayCandidate.job?.title || 'Position'}
               </p>
             </div>
@@ -275,7 +289,7 @@ export default function FinalDecision() {
                 width: '100px',
                 height: '100px',
                 borderRadius: '50%',
-                background: 'white',
+                background: 'var(--white)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -284,7 +298,7 @@ export default function FinalDecision() {
                 <p style={{ fontSize: '2rem', fontWeight: 700, color: '#10B981', marginBottom: '0.125rem' }}>
                   {aiScore}%
                 </p>
-                <p style={{ fontSize: '0.625rem', color: '#6B7280', fontWeight: 600, letterSpacing: '0.05em' }}>
+                <p style={{ fontSize: '0.625rem', color: 'var(--gray-500)', fontWeight: 600, letterSpacing: '0.05em' }}>
                   AI SCORE
                 </p>
               </div>
@@ -295,11 +309,11 @@ export default function FinalDecision() {
 
       {/* Executive Summary Section (New) */}
       {recommendation?.executiveSummary && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'white' }}>
-          <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '1rem', color: '#111827' }}>
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'var(--white)' }}>
+          <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>
             Executive Summary
           </h3>
-          <p style={{ color: '#374151', lineHeight: 1.6, fontSize: '0.925rem' }}>
+          <p style={{ color: 'var(--gray-700)', lineHeight: 1.6, fontSize: '0.925rem' }}>
             {recommendation.executiveSummary}
           </p>
         </div>
@@ -311,7 +325,7 @@ export default function FinalDecision() {
         <div className="card" style={{
           padding: '1.5rem',
           border: '2px solid #D1FAE5',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%)'
+          background: 'var(--white)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <div style={{
@@ -334,7 +348,7 @@ export default function FinalDecision() {
               ))}
             </ul>
           ) : (
-            <p style={{ fontSize: '0.875rem', color: '#6B7280', fontStyle: 'italic' }}>No strengths recorded</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No strengths recorded</p>
           )}
         </div>
 
@@ -342,7 +356,7 @@ export default function FinalDecision() {
         <div className="card" style={{
           padding: '1.5rem',
           border: '2px solid #FEF3C7',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%)'
+          background: 'var(--white)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <div style={{
@@ -365,14 +379,14 @@ export default function FinalDecision() {
               ))}
             </ul>
           ) : (
-            <p style={{ fontSize: '0.875rem', color: '#6B7280', fontStyle: 'italic' }}>No concerns identified</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No concerns identified</p>
           )}
         </div>
       </div>
 
       {/* Your Decision Section */}
-      <div className="card" style={{ padding: '2rem', marginBottom: '2rem', background: 'white' }}>
-        <h3 style={{ fontWeight: 700, marginBottom: '1.5rem', fontSize: '1.25rem', color: '#111827' }}>
+      <div className="card" style={{ padding: '2rem', marginBottom: '2rem', background: 'var(--white)' }}>
+        <h3 style={{ fontWeight: 700, marginBottom: '1.5rem', fontSize: '1.25rem', color: 'var(--gray-900)' }}>
           Your Decision
         </h3>
 
@@ -467,7 +481,7 @@ export default function FinalDecision() {
               htmlFor="notes-toggle"
               style={{
                 fontSize: '0.9375rem',
-                color: '#374151',
+                color: 'var(--gray-700)',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
@@ -559,10 +573,10 @@ export default function FinalDecision() {
             fontSize: '1rem',
             fontWeight: 600,
             borderRadius: '0.75rem',
-            color: '#6B7280',
+            color: 'var(--gray-500)',
             textDecoration: 'none',
             border: '2px solid #E5E7EB',
-            background: 'white',
+            background: 'var(--white)',
             transition: 'all 0.2s',
             display: 'inline-flex',
             alignItems: 'center',

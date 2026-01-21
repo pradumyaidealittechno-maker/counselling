@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Dna, Clock, Video, Loader, Users, X, MessageSquare, Play } from 'lucide-react';
+import { ArrowLeft, Dna, Clock, Video, Loader, Users, X, MessageSquare } from 'lucide-react';
 import api from '../services/api';
 
 interface Candidate {
@@ -70,7 +70,7 @@ export default function AnalysisReport() {
         scale: 2, // Higher scale for better quality
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--white').trim() || '#ffffff'
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -116,15 +116,24 @@ export default function AnalysisReport() {
       setLoading(true);
       if (id) {
         if (isReportRoute) {
-          // Fetch directly from reports API
+          // Fetch directly from reports API by Report ID
           const data = await api.reports.getById(id);
-          console.log('AnalysisReport - Report Data:', data);
+          console.log('AnalysisReport - Direct Report Data:', data);
           setReportData(data);
         } else {
-          // Fetch from candidates API (legacy route)
-          const data = await api.candidates.getById(id);
-          console.log('AnalysisReport - Candidate Data:', data);
-          setCandidate(data);
+          // Candidate Report Route (/dashboard/candidates/:id/report)
+          // 1. Fetch from reports API by Candidate ID
+          try {
+            const rData = await api.reports.getByCandidateId(id);
+            console.log('AnalysisReport - Report by Candidate ID:', rData);
+            setReportData(rData);
+          } catch (reportErr) {
+            console.warn('Report not found for candidate, showing candidate info only:', reportErr);
+            // 2. Fetch from candidates API (fallback/legacy)
+            const cData = await api.candidates.getById(id);
+            console.log('AnalysisReport - Candidate Data (Fallback):', cData);
+            setCandidate(cData);
+          }
         }
       }
     } catch (err: any) {
@@ -411,7 +420,7 @@ export default function AnalysisReport() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1rem' }}>
       {/* Main Content */}
-      <div ref={reportRef} style={{ padding: '20px', background: 'white' }}>
+      <div ref={reportRef} style={{ padding: '20px', background: 'var(--white)' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -823,7 +832,7 @@ export default function AnalysisReport() {
             padding: '2rem'
           }} onClick={() => setShowTranscript(false)}>
             <div style={{
-              background: 'white',
+              background: 'var(--white)',
               borderRadius: '1rem',
               width: '100%',
               maxWidth: '800px',

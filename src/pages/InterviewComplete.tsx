@@ -37,7 +37,7 @@ export default function InterviewComplete() {
           }}>
             <Sparkles size={24} color="white" />
           </div>
-          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
+          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-800)' }}>Intelligens</span>
         </div>
 
         <div style={{
@@ -54,16 +54,16 @@ export default function InterviewComplete() {
           <CheckCircle size={48} color="white" />
         </div>
 
-        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1F2937', marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--gray-800)', marginBottom: '1rem' }}>
           Interview Completed!
         </h1>
-        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '2rem' }}>
           Thank you for completing your interview for the {jobTitle} position at {companyName}.
         </p>
 
         {/* AI Analysis Card */}
         <div style={{
-          background: 'white',
+          background: 'var(--white)',
           borderRadius: '1rem',
           padding: '1.5rem',
           marginBottom: '2rem',
@@ -72,9 +72,9 @@ export default function InterviewComplete() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <Dna size={20} color="#E91E63" />
-          <span style={{ color: '#1F2937', fontWeight: 600 }}>Job DNA Analysis in Progress</span>
+          <span style={{ color: 'var(--gray-800)', fontWeight: 600 }}>Job DNA Analysis in Progress</span>
           </div>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem', marginBottom: '1rem' }}>
             Our AI is analyzing your responses against the Job DNA framework and generating insights for the hiring team.
           </p>
           <div style={{
@@ -95,14 +95,14 @@ export default function InterviewComplete() {
 
         {/* What's Next */}
         <div style={{
-          background: 'white',
+          background: 'var(--white)',
           borderRadius: '1rem',
           padding: '1.5rem',
           textAlign: 'left',
           marginBottom: '2rem',
           border: '1px solid #e5e7eb'
         }}>
-          <h3 style={{ color: '#1F2937', fontWeight: 600, marginBottom: '1rem' }}>What happens next?</h3>
+          <h3 style={{ color: 'var(--gray-800)', fontWeight: 600, marginBottom: '1rem' }}>What happens next?</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {[
               // { icon: Dna, text: 'AI analyzes your responses against Job DNA', color: '#E91E63' },
@@ -121,7 +121,7 @@ export default function InterviewComplete() {
                 }}>
                   <item.icon size={16} color={item.color} />
                 </div>
-                <span style={{ color: '#4b5563', fontSize: '0.875rem' }}>{item.text}</span>
+                <span style={{ color: 'var(--gray-600)', fontSize: '0.875rem' }}>{item.text}</span>
               </div>
             ))}
           </div>

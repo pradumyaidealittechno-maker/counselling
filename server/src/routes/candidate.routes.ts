@@ -360,7 +360,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const result = results.find(r => {
       // 1. Try strict ID match (Highest confidence)
       // Handle potentially double-quoted ID string in DB e.g., "\"abc\""
-      const rCandidateId = r.candidateId || r.id || r.candidate_id;
+      const rCandidateId = r.candidateId || r.id || (r as any).candidate_id;
       const cleanRCandidateId = rCandidateId ? String(rCandidateId).replace(/^"|"$/g, '') : null;
 
       if (cleanRCandidateId === candidateId) {
@@ -368,13 +368,13 @@ router.get('/:id', authenticate, async (req, res) => {
       }
 
       // 2. Try strict Email match
-      const rEmail = r.candidateInformation?.email?.toLowerCase() || r.data?.candidateInformation?.email?.toLowerCase();
+      const rEmail = r.candidateInformation?.email?.toLowerCase();
       if (candidateEmail && rEmail === candidateEmail) {
         return true;
       }
 
       // 3. Fallback to Name match
-      const rName = r.candidateInformation?.fullName?.toLowerCase() || r.data?.candidateInformation?.fullName?.toLowerCase();
+      const rName = r.candidateInformation?.fullName?.toLowerCase();
       return rName && (rName.includes(fullName) || fullName.includes(rName));
     });
 
@@ -669,6 +669,262 @@ router.post('/:id/analysis', authenticate, async (req, res) => {
   } catch (error: any) {
     console.error('Save analysis error:', error);
     res.status(500).json({ error: 'Failed to save analysis' });
+  }
+});
+
+// Webhook: Auto-sync candidate result (PUBLIC - called by n8n/external service)
+// POST /api/candidate/webhook/result
+router.post('/webhook/result', async (req, res) => {
+  try {
+    const { candidate_id, data } = req.body;
+
+    console.log('📥 Webhook received for candidate_id:', candidate_id);
+
+    if (!candidate_id) {
+      return res.status(400).json({ error: 'candidate_id is required' });
+    }
+
+    // Find the candidate
+    const candidate = await Candidate.findById(candidate_id);
+    if (!candidate) {
+      console.log('❌ Candidate not found:', candidate_id);
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    console.log('✅ Found candidate:', candidate.firstName, candidate.lastName);
+
+    // Save to CandidateResult collection
+    let result = await CandidateResult.findOne({ candidate_id: candidate_id });
+    if (result) {
+      // Update existing
+      (result as any).data = data;
+      (result as any).candidate_id = candidate_id;
+      await result.save();
+      console.log('📝 Updated existing CandidateResult');
+    } else {
+      // Create new
+      result = new CandidateResult({
+        candidate_id: candidate_id,
+        data: data,
+        ...data // Also spread data at root level for backward compatibility
+      });
+      await result.save();
+      console.log('📝 Created new CandidateResult');
+    }
+
+    // Parse score helper
+    const parseScore = (val: any): number => {
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') {
+        if (val.includes('/')) {
+          const [actual, total] = val.split('/').map(s => parseFloat(s.trim()));
+          if (!isNaN(actual) && !isNaN(total) && total !== 0) {
+            return Math.round((actual / total) * 100);
+          }
+        }
+        return parseFloat(val) || 0;
+      }
+      return 0;
+    };
+
+    // Extract and sync analysis to candidate
+    const dataObj = data || {};
+    const assessment = dataObj.competencyAssessment || dataObj.overallAssessment || {};
+    const rec = dataObj.recommendation || {};
+
+    candidate.analysis = {
+      overallScore: parseScore(assessment.overallScore || assessment.rating),
+      technicalSkills: assessment.technicalSkills || {},
+      communication: assessment.communication || {},
+      problemSolving: assessment.problemSolving || {},
+      culturalFit: assessment.culturalFit || {},
+      recommendation: rec.hiringRecommendation || rec.decision || '',
+      summary: dataObj.executiveSummary || assessment.summary || '',
+      keyInsights: dataObj.strengthsObserved || [],
+      redFlags: dataObj.areasOfConcern || dataObj.keyDiscussionPoints?.redFlags || []
+    };
+
+    candidate.status = 'ai_analysis_ready';
+    await candidate.save();
+
+    console.log('✅ Analysis synced to candidate:', candidate.firstName, candidate.lastName);
+
+    res.json({
+      success: true,
+      message: 'Result saved and synced to candidate',
+      candidateId: candidate_id,
+      candidateName: `${candidate.firstName} ${candidate.lastName}`
+    });
+  } catch (error: any) {
+    console.error('Webhook error:', error);
+    res.status(500).json({ error: 'Failed to process webhook' });
+  }
+});
+
+// Sync all CandidateResults to Candidates by candidate_id (protected)
+router.post('/sync-analysis', authenticate, async (_req, res) => {
+  try {
+    // Fetch all CandidateResults that have candidate_id field
+    const results = await CandidateResult.find({});
+
+    console.log(`📊 Found ${results.length} CandidateResults total`);
+
+    let synced = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    const parseScore = (val: any): number => {
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') {
+        if (val.includes('/')) {
+          const [actual, total] = val.split('/').map(s => parseFloat(s.trim()));
+          if (!isNaN(actual) && !isNaN(total) && total !== 0) {
+            return Math.round((actual / total) * 100);
+          }
+        }
+        return parseFloat(val) || 0;
+      }
+      return 0;
+    };
+
+    for (const result of results) {
+      try {
+        const resultData = result as any;
+        
+        // Get candidate_id from root level (snake_case as per user's data)
+        const candidateId = resultData.candidate_id;
+        
+        if (!candidateId) {
+          console.log('⚠️ No candidate_id in result, skipping');
+          continue;
+        }
+
+        console.log(`🔍 Looking for candidate with ID: ${candidateId}`);
+
+        // Find candidate by _id
+        const candidate = await Candidate.findById(candidateId);
+        
+        if (!candidate) {
+          errors.push(`Candidate not found for ID: ${candidateId}`);
+          failed++;
+          continue;
+        }
+
+        console.log(`🔗 Found candidate: ${candidate.firstName} ${candidate.lastName}`);
+
+        // Extract analysis data from nested 'data' object
+        const dataObj = resultData.data || resultData;
+        const assessment = dataObj.competencyAssessment || dataObj.overallAssessment || {};
+        const rec = dataObj.recommendation || {};
+
+        candidate.analysis = {
+          overallScore: parseScore(assessment.overallScore || assessment.rating),
+          technicalSkills: assessment.technicalSkills || {},
+          communication: assessment.communication || {},
+          problemSolving: assessment.problemSolving || {},
+          culturalFit: assessment.culturalFit || {},
+          recommendation: rec.hiringRecommendation || rec.decision || '',
+          summary: dataObj.executiveSummary || assessment.summary || '',
+          keyInsights: dataObj.strengthsObserved || [],
+          redFlags: dataObj.areasOfConcern || dataObj.keyDiscussionPoints?.redFlags || []
+        };
+
+        candidate.status = 'ai_analysis_ready';
+        await candidate.save();
+        
+        console.log(`✅ Synced analysis for: ${candidate.firstName} ${candidate.lastName}`);
+        synced++;
+      } catch (err: any) {
+        console.error('Sync error:', err.message);
+        errors.push(err.message);
+        failed++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Synced ${synced} candidates, ${failed} failed`,
+      synced,
+      failed,
+      errors: errors.slice(0, 10) // Show first 10 errors only
+    });
+  } catch (error: any) {
+    console.error('Sync analysis error:', error);
+    res.status(500).json({ error: 'Failed to sync analysis' });
+  }
+});
+
+// Sync single candidate analysis by candidateId (protected)
+router.post('/:id/sync-analysis', authenticate, async (req, res) => {
+  try {
+    const candidateId = req.params.id;
+
+    // Find candidate
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Find matching CandidateResult by candidateId
+    const result = await CandidateResult.findOne({
+      $or: [
+        { candidateId: candidateId },
+        { candidateId: `"${candidateId}"` },
+        { id: candidateId },
+        { candidate_id: candidateId }
+      ]
+    });
+
+    if (!result) {
+      return res.status(404).json({ error: 'No analysis result found for this candidate' });
+    }
+
+    const parseScore = (val: any): number => {
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') {
+        if (val.includes('/')) {
+          const [actual, total] = val.split('/').map(s => parseFloat(s.trim()));
+          if (!isNaN(actual) && !isNaN(total) && total !== 0) {
+            return Math.round((actual / total) * 100);
+          }
+        }
+        return parseFloat(val) || 0;
+      }
+      return 0;
+    };
+
+    // Extract and sync analysis data
+    const source = (result as any).data || result;
+    const assessment = source.competencyAssessment || source.overallAssessment || {};
+    const rec = source.recommendation || source.overallAssessment || {};
+
+    candidate.analysis = {
+      overallScore: parseScore(assessment.overallScore || assessment.rating || source.overallScore),
+      technicalSkills: assessment.technicalSkills || source.technicalSkills || {},
+      communication: assessment.communication || source.communication || {},
+      problemSolving: assessment.problemSolving || source.problemSolving || {},
+      culturalFit: assessment.culturalFit || source.culturalFit || {},
+      recommendation: rec.hiringRecommendation || source.recommendation || '',
+      summary: source.executiveSummary || assessment.summary || source.summary || '',
+      keyInsights: source.keyInsights || [],
+      redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || []
+    };
+
+    candidate.status = 'ai_analysis_ready';
+    await candidate.save();
+
+    res.json({
+      success: true,
+      message: 'Analysis synced successfully',
+      candidate: {
+        id: candidate._id,
+        name: `${candidate.firstName} ${candidate.lastName}`,
+        analysis: candidate.analysis
+      }
+    });
+  } catch (error: any) {
+    console.error('Sync single analysis error:', error);
+    res.status(500).json({ error: 'Failed to sync analysis' });
   }
 });
 

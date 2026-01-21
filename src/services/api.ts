@@ -181,6 +181,10 @@ export const api = {
       return authFetch(`/api/reports/${id}`);
     },
 
+    getByCandidateId: async (candidateId: string) => {
+      return authFetch(`/api/reports/candidate/${candidateId}`);
+    },
+
     updateDecision: async (id: string, decision: string, notes?: string) => {
       return authFetch(`/api/reports/${id}/decision`, {
         method: 'PATCH',

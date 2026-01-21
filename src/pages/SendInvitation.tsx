@@ -185,10 +185,10 @@ Good luck!
           }}>
             <CheckCircle size={32} color="white" />
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.25rem', color: '#1F2937' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--gray-800)' }}>
             Invitation Sent!
           </h2>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
             The candidate will receive an email with interview instructions.
           </p>
         </div>
@@ -210,10 +210,10 @@ Good luck!
       {/* Main Form */}
       <div>
         <div style={{ marginBottom: '1rem' }}>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: '#1F2937' }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--gray-800)' }}>
             Send Interview Invitation
           </h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
             Invite a candidate to complete their AI-powered interview
           </p>
         </div>
@@ -300,7 +300,7 @@ Good luck!
                   {generating ? (
                     <>
                       <Loader size={20} color="#10B981" style={{ animation: 'spin 1s linear infinite' }} />
-                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Generating code...</span>
+                      <span style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>Generating code...</span>
                     </>
                   ) : (
                     <>
@@ -332,14 +332,14 @@ Good luck!
               <div>
                 <label className="label" style={{ fontSize: '0.75rem' }}>Email Content</label>
                 <div style={{
-                  background: 'white',
+                  background: 'var(--white)',
                   borderRadius: '0.5rem',
                   border: '1px solid #e5e7eb',
                   overflow: 'hidden'
                 }}>
                   <div style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
                     <div style={{ marginBottom: '0.5rem' }}>
-                      <label style={{ fontSize: '0.625rem', color: '#6b7280', display: 'block', marginBottom: '0.125rem' }}>Subject:</label>
+                      <label style={{ fontSize: '0.625rem', color: 'var(--gray-500)', display: 'block', marginBottom: '0.125rem' }}>Subject:</label>
                       <input
                         type="text"
                         value={subject}
@@ -362,7 +362,7 @@ Good luck!
                       gap: '0.5rem'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#374151' }}>Interview Link:</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--gray-700)' }}>Interview Link:</span>
                             <div style={{ 
                                 background: '#EFF6FF', 
                                 border: '1px solid #BFDBFE', 
@@ -383,7 +383,7 @@ Good luck!
                              <button
                                 onClick={() => copyToClipboard(interviewLink, 'Interview Link')}
                                 className="btn btn-xs btn-ghost"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4B5563' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--gray-600)' }}
                                 title="Copy Link"
                             >
                                 <Copy size={12} />
@@ -394,7 +394,7 @@ Good luck!
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn btn-xs btn-ghost"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4B5563', textDecoration: 'none' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--gray-600)', textDecoration: 'none' }}
                                 title="Open Link"
                             >
                                 <Send size={12} /> {/* Using Send icon or ExternalLink if available, utilizing Send for now as per imports */}
@@ -420,7 +420,7 @@ Good luck!
                     }}
                     placeholder="Enter email HTML content here..."
                   />
-                  <div style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', borderTop: '1px solid #e5e7eb', fontSize: '0.625rem', color: '#6b7280' }}>
+                  <div style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', borderTop: '1px solid #e5e7eb', fontSize: '0.625rem', color: 'var(--gray-500)' }}>
                     HTML tags supported. Ensure Interview Code and Link are included.
                   </div>
                 </div>
@@ -458,7 +458,7 @@ Good luck!
             <div style={{
               textAlign: 'center',
               padding: '3rem 1rem',
-              color: '#6b7280',
+              color: 'var(--gray-500)',
               background: '#f9fafb',
               borderRadius: '0.5rem'
             }}>
@@ -492,15 +492,15 @@ Good luck!
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '0.5rem',
-                background: 'white',
+                background: 'var(--white)',
                 borderRadius: '0.375rem',
                 fontSize: '0.875rem'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--gray-500)' }}>
                   <item.icon size={16} />
                   <span>{item.label}</span>
                 </div>
-                <span style={{ fontWeight: 500, color: '#1F2937' }}>{item.value}</span>
+                <span style={{ fontWeight: 500, color: 'var(--gray-800)' }}>{item.value}</span>
               </div>
             ))}
           </div>
@@ -509,7 +509,7 @@ Good luck!
         {/* Instructions for Candidate */}
         <div className="card" style={{ padding: '1rem' }}>
           <h3 style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.75rem' }}>Candidate Instructions</h3>
-          <ul style={{ fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.8, paddingLeft: '1rem' }}>
+          <ul style={{ fontSize: '0.875rem', color: 'var(--gray-600)', lineHeight: 1.8, paddingLeft: '1rem' }}>
             <li>Stable internet connection</li>
             <li>Quiet, well-lit environment</li>
             <li>Camera and microphone enabled</li>
@@ -525,8 +525,8 @@ Good luck!
           borderRadius: '0.5rem',
           border: '1px solid #e5e7eb'
         }}>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 600, marginBottom: '0.5rem' }}>💡 Tip</p>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 600, marginBottom: '0.5rem' }}>💡 Tip</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', lineHeight: 1.5 }}>
             The interview code is automatically generated and included in the email. The link will validate the code and start the interview.
           </p>
         </div>

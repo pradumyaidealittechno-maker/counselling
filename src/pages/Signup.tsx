@@ -95,14 +95,14 @@ export default function Signup() {
           }}>
             <Sparkles size={28} color="white" />
           </div>
-          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1F2937' }}>Intelligens</span>
+          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--gray-800)' }}>Intelligens</span>
         </Link>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: '#1F2937', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--gray-800)', marginBottom: '1rem' }}>
             Start hiring smarter
           </h1>
-          <p style={{ color: '#6b7280', fontSize: '1.125rem', maxWidth: '400px', marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--gray-500)', fontSize: '1.125rem', maxWidth: '400px', marginBottom: '2rem' }}>
             Create your account and experience AI-powered recruitment that saves time and improves hiring quality.
           </p>
 
@@ -117,7 +117,7 @@ export default function Signup() {
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '1rem',
-                background: 'white',
+                background: 'var(--white)',
                 padding: '1rem',
                 borderRadius: '0.75rem',
                 boxShadow: '0 2px 12px rgba(233, 30, 99, 0.08)',
@@ -135,8 +135,8 @@ export default function Signup() {
                   <item.icon size={22} color="#E91E63" />
                 </div>
                 <div>
-                  <p style={{ fontWeight: 600, color: '#1F2937', fontSize: '0.875rem' }}>{item.title}</p>
-                  <p style={{ color: '#6b7280', fontSize: '0.75rem' }}>{item.desc}</p>
+                  <p style={{ fontWeight: 600, color: 'var(--gray-800)', fontSize: '0.875rem' }}>{item.title}</p>
+                  <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem' }}>{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -147,15 +147,15 @@ export default function Signup() {
       {/* Right Panel */}
       <div style={{
         width: '480px',
-        background: 'white',
+        background: 'var(--white)',
         padding: '3rem',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         boxShadow: '-10px 0 40px rgba(233, 30, 99, 0.05)'
       }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1F2937' }}>Create account</h2>
-        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>Create account</h2>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '2rem' }}>
           Already have an account? <Link to="/login" style={{ color: '#E91E63', fontWeight: 500 }}>Sign in</Link>
         </p>
 
@@ -166,7 +166,7 @@ export default function Signup() {
             padding: '0.75rem',
             border: '1px solid #e5e7eb',
             borderRadius: '0.5rem',
-            background: 'white',
+            background: 'var(--white)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -181,7 +181,7 @@ export default function Signup() {
             padding: '0.75rem',
             border: '1px solid #e5e7eb',
             borderRadius: '0.5rem',
-            background: 'white',
+            background: 'var(--white)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

@@ -123,7 +123,7 @@ export default function EditProfile() {
                 <Camera size={20} color="white" />
               </div>
             </div>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
               Click camera icon to upload photo (Coming soon)
             </p>
           </div>
@@ -135,7 +135,7 @@ export default function EditProfile() {
                 display: 'block',
                 fontSize: '0.875rem',
                 fontWeight: 500,
-                color: '#374151',
+                color: 'var(--gray-700)',
                 marginBottom: '0.5rem'
               }}>
                 First Name
@@ -163,7 +163,7 @@ export default function EditProfile() {
                 display: 'block',
                 fontSize: '0.875rem',
                 fontWeight: 500,
-                color: '#374151',
+                color: 'var(--gray-700)',
                 marginBottom: '0.5rem'
               }}>
                 Last Name
@@ -190,7 +190,7 @@ export default function EditProfile() {
                 display: 'block',
                 fontSize: '0.875rem',
                 fontWeight: 500,
-                color: '#374151',
+                color: 'var(--gray-700)',
                 marginBottom: '0.5rem'
               }}>
                 Email (Read-only)
@@ -206,7 +206,7 @@ export default function EditProfile() {
                   borderRadius: '0.5rem',
                   fontSize: '0.875rem',
                   background: '#f9fafb',
-                  color: '#6b7280'
+                  color: 'var(--gray-500)'
                 }}
               />
             </div>
@@ -216,7 +216,7 @@ export default function EditProfile() {
                 display: 'block',
                 fontSize: '0.875rem',
                 fontWeight: 500,
-                color: '#374151',
+                color: 'var(--gray-700)',
                 marginBottom: '0.5rem'
               }}>
                 Company (Read-only)
@@ -232,7 +232,7 @@ export default function EditProfile() {
                   borderRadius: '0.5rem',
                   fontSize: '0.875rem',
                   background: '#f9fafb',
-                  color: '#6b7280'
+                  color: 'var(--gray-500)'
                 }}
               />
             </div>
@@ -248,8 +248,8 @@ export default function EditProfile() {
               padding: '0.75rem 1.5rem',
               border: '2px solid #e5e7eb',
               borderRadius: '0.5rem',
-              background: 'white',
-              color: '#374151',
+              background: 'var(--white)',
+              color: 'var(--gray-700)',
               fontSize: '0.875rem',
               fontWeight: 500,
               cursor: 'pointer',

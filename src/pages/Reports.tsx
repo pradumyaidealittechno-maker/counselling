@@ -285,7 +285,7 @@ export default function Reports() {
           </button>
         </div>
       ) : filteredReports.length === 0 ? (
-        <div style={{ padding: '4rem', textAlign: 'center', background: 'white', borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '4rem', textAlign: 'center', background: 'var(--white)', borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
           <FileText size={48} color="#D1D5DB" style={{ marginBottom: '1rem' }} />
           <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
             No reports found

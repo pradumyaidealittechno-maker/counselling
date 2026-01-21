@@ -258,7 +258,7 @@ export default function Candidates() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: '#6B7280' }}>Loading candidates...</p>
+        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading candidates...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -570,7 +570,7 @@ export default function Candidates() {
                       <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
                         {(candidate.status === 'interview_complete' || candidate.status === 'ai_analysis_ready') ? (
                           <Link
-                            to={`/dashboard/reports/${candidate._id}`}
+                            to={`/dashboard/candidates/${candidate._id}/report`}
                             className="btn btn-sm"
                             style={{
                               padding: '0.25rem 0.75rem',
@@ -630,7 +630,7 @@ export default function Candidates() {
                             position: 'absolute',
                             right: 0,
                             top: 'calc(100% + 4px)',
-                            background: 'white',
+                            background: 'var(--white)',
                             border: '1px solid #E5E7EB',
                             borderRadius: '0.375rem',
                             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
