@@ -135,7 +135,7 @@ export default function Login() {
         </p>
 
         {/* SSO Buttons */}
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        {/* <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
           <button style={{
             flex: 1,
             padding: '0.75rem',
@@ -168,9 +168,9 @@ export default function Login() {
             <img src="https://www.microsoft.com/favicon.ico" alt="Microsoft" width="20" height="20" />
             Microsoft
           </button>
-        </div>
+        </div> */}
 
-        <div style={{
+        {/* <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: '1rem',
@@ -179,7 +179,7 @@ export default function Login() {
           <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
           <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>or continue with email</span>
           <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
-        </div>
+        </div> */}
 
         <form onSubmit={handleSubmit}>
           {error && (
@@ -197,16 +197,16 @@ export default function Login() {
               <span style={{ color: '#DC2626', fontSize: '0.875rem' }}>{error}</span>
             </div>
           )}
-          
+
           <div style={{ marginBottom: '1rem' }}>
             <label className="label">Email</label>
             <div style={{ position: 'relative' }}>
               <Mail size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                type="email" 
-                className="input" 
-                placeholder="you@company.com" 
-                style={{ paddingLeft: '40px' }} 
+              <input
+                type="email"
+                className="input"
+                placeholder="you@company.com"
+                style={{ paddingLeft: '40px' }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -218,11 +218,11 @@ export default function Login() {
             <label className="label">Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                type="password" 
-                className="input" 
-                placeholder="••••••••" 
-                style={{ paddingLeft: '40px' }} 
+              <input
+                type="password"
+                className="input"
+                placeholder="••••••••"
+                style={{ paddingLeft: '40px' }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -237,10 +237,10 @@ export default function Login() {
             </label>
             <a href="#" style={{ fontSize: '0.875rem', color: '#E91E63' }}>Forgot password?</a>
           </div>
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ 
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{
               width: '100%',
               background: loading ? '#9CA3AF' : 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
               boxShadow: '0 4px 14px rgba(233, 30, 99, 0.3)',

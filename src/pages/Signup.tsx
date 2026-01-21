@@ -10,12 +10,13 @@ export default function Signup() {
     lastName: '',
     email: '',
     password: '',
-    company: ''
+    company: '',
+    jobTitle: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
@@ -31,6 +32,7 @@ export default function Signup() {
     console.log('   Email:', formData.email);
     console.log('   Name:', formData.firstName, formData.lastName);
     console.log('   Company:', formData.company);
+    console.log('   Job Title:', formData.jobTitle);
 
     try {
       console.log('%c📡 Calling API...', 'color: #3B82F6;');
@@ -113,9 +115,9 @@ export default function Signup() {
               { icon: Video, title: 'AI Video Interviews', desc: 'Automated candidate screening' },
               { icon: Brain, title: 'Smart Recommendations', desc: 'Explainable hiring decisions' }
             ].map((item, i) => (
-              <div key={i} style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div key={i} style={{
+                display: 'flex',
+                alignItems: 'center',
                 gap: '1rem',
                 background: 'var(--white)',
                 padding: '1rem',
@@ -160,7 +162,7 @@ export default function Signup() {
         </p>
 
         {/* SSO Buttons */}
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        {/* <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
           <button style={{
             flex: 1,
             padding: '0.75rem',
@@ -191,13 +193,13 @@ export default function Signup() {
             <img src="https://www.microsoft.com/favicon.ico" alt="Microsoft" width="20" height="20" />
             Microsoft
           </button>
-        </div>
+        </div> */}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+        {/* <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
           <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
           <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>or continue with email</span>
           <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
-        </div>
+        </div> */}
 
         <form onSubmit={handleSubmit}>
           {error && (
@@ -215,17 +217,17 @@ export default function Signup() {
               <span style={{ color: '#DC2626', fontSize: '0.875rem' }}>{error}</span>
             </div>
           )}
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div>
               <label className="label">First Name</label>
               <div style={{ position: 'relative' }}>
                 <User size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   name="firstName"
-                  className="input" 
-                  placeholder="John" 
+                  className="input"
+                  placeholder="John"
                   style={{ paddingLeft: '40px' }}
                   value={formData.firstName}
                   onChange={handleChange}
@@ -236,10 +238,10 @@ export default function Signup() {
             </div>
             <div>
               <label className="label">Last Name</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="lastName"
-                className="input" 
+                className="input"
                 placeholder="Doe"
                 value={formData.lastName}
                 onChange={handleChange}
@@ -252,11 +254,11 @@ export default function Signup() {
             <label className="label">Work Email</label>
             <div style={{ position: 'relative' }}>
               <Mail size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                type="email" 
+              <input
+                type="email"
                 name="email"
-                className="input" 
-                placeholder="you@company.com" 
+                className="input"
+                placeholder="you@company.com"
                 style={{ paddingLeft: '40px' }}
                 value={formData.email}
                 onChange={handleChange}
@@ -269,11 +271,11 @@ export default function Signup() {
             <label className="label">Company Name</label>
             <div style={{ position: 'relative' }}>
               <Building size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="company"
-                className="input" 
-                placeholder="Acme Inc." 
+                className="input"
+                placeholder="Acme Inc."
                 style={{ paddingLeft: '40px' }}
                 value={formData.company}
                 onChange={handleChange}
@@ -282,15 +284,35 @@ export default function Signup() {
               />
             </div>
           </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label className="label">Job Title</label>
+            <select
+              name="jobTitle"
+              className="input"
+              value={formData.jobTitle}
+              onChange={handleChange}
+              disabled={loading}
+              style={{ cursor: 'pointer' }}
+            >
+              <option value="">Select your job title</option>
+              <option value="Recruitment Consultant">Recruitment Consultant</option>
+              <option value="HR Consultant">HR Consultant</option>
+              <option value="Tech Lead">Tech Lead</option>
+              <option value="Product Manager">Product Manager</option>
+              <option value="HR Manager">HR Manager</option>
+              <option value="Recruiter">Recruiter</option>
+              <option value="CEO">CEO</option>
+            </select>
+          </div>
           <div style={{ marginBottom: '1.5rem' }}>
             <label className="label">Password</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                type="password" 
+              <input
+                type="password"
                 name="password"
-                className="input" 
-                placeholder="••••••••" 
+                className="input"
+                placeholder="••••••••"
                 style={{ paddingLeft: '40px' }}
                 value={formData.password}
                 onChange={handleChange}
@@ -303,10 +325,10 @@ export default function Signup() {
               Minimum 8 characters
             </p>
           </div>
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ 
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{
               width: '100%',
               background: loading ? '#9CA3AF' : 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
               boxShadow: '0 4px 14px rgba(233, 30, 99, 0.3)',

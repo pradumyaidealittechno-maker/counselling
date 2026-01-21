@@ -10,9 +10,9 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   console.log('\n🔐 AUTH: Register attempt');
   console.log(`   Email: ${req.body.email}`);
-  
+
   try {
-    const { email, password, firstName, lastName, company, role } = req.body;
+    const { email, password, firstName, lastName, company, jobTitle, role } = req.body;
 
     // Validate input
     if (!email || !password || !firstName || !lastName || !company) {
@@ -56,6 +56,7 @@ router.post('/register', async (req, res) => {
       lastName,
       company: companyDoc.name,
       companyId: companyDoc._id,
+      jobTitle: jobTitle || undefined, // Optional field
       role: role || 'recruiter',
     });
 
@@ -92,7 +93,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   console.log('\n🔐 AUTH: Login attempt');
   console.log(`   Email: ${req.body.email}`);
-  
+
   try {
     const { email, password } = req.body;
 
@@ -155,7 +156,7 @@ router.post('/login', async (req, res) => {
 // Get current user
 router.get('/me', authenticate, async (req, res) => {
   console.log('\n🔐 AUTH: Get current user');
-  
+
   try {
     const user = await User.findById((req as any).user.id).select('-password');
     if (!user) {
@@ -176,7 +177,7 @@ export default router;
 // Update user profile  
 router.put('/update-profile', authenticate, async (req, res) => {
   console.log('\n🔐 AUTH: Update profile');
-  
+
   try {
     const { firstName, lastName } = req.body;
     const userId = (req as any).user.id;

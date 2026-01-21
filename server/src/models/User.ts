@@ -8,6 +8,7 @@ export interface IUser extends Document {
   lastName: string;
   company: string;
   companyId: mongoose.Types.ObjectId;
+  jobTitle?: string; // User's job title/role in their company
   role: 'admin' | 'recruiter' | 'hiring_manager';
   isActive: boolean;
   createdAt: Date;
@@ -44,6 +45,10 @@ const userSchema = new Schema<IUser>(
       required: true,
       trim: true,
     },
+    jobTitle: {
+      type: String,
+      trim: true,
+    },
     companyId: {
       type: Schema.Types.ObjectId,
       ref: 'Company',
@@ -66,7 +71,7 @@ const userSchema = new Schema<IUser>(
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
