@@ -131,7 +131,8 @@ export default function Login() {
       }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>Sign in</h2>
         <p style={{ color: 'var(--gray-500)', marginBottom: '2rem' }}>
-          Don't have an account? <Link to="/signup" style={{ color: '#E91E63', fontWeight: 500 }}>Sign up</Link>
+          Don't have an account?
+           {/* <Link to="/signup" style={{ color: '#E91E63', fontWeight: 500 }}>Sign up</Link> */}
         </p>
 
         {/* SSO Buttons */}

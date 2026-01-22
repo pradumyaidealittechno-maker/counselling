@@ -60,9 +60,46 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
     const emailMatch = text.match(emailRegex);
     const phoneMatch = text.match(phoneRegex);
     
-    // Simple heuristic for Experience
-    // Look for keywords like "Experience", "Work History" followed by some years pattern or text
-    const experienceMatch = text.match(/(?:Experience|Work History|Employment)[^:]*:\s*([^.\n]+)/i);
+    // Refined heuristic for Experience: extract "X years" or "X.Y years"
+    // Look for number (int/decimal) followed by "years", avoiding dates (often > 1900)
+    console.log('--- Parsing Experience ---');
+    const yearRegex = /(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?|yr)/gi;
+    const yearMatches = Array.from(text.matchAll(yearRegex));
+    let experienceString = '';
+    
+    console.log(`Global year matches found: ${yearMatches.length}`);
+
+    if (yearMatches.length > 0) {
+       // Filter out likely dates (e.g. 2020) or very high numbers
+       const validMatches = yearMatches.filter(m => {
+           const num = parseFloat(m[1]);
+           return num < 50 && num > 0;
+       });
+
+       if (validMatches.length > 0) {
+           // Find max experience mentioned
+           const maxExp = validMatches.reduce((max, current) => {
+               return parseFloat(current[1]) > parseFloat(max[1]) ? current : max;
+           }, validMatches[0]);
+           experienceString = `${maxExp[1]} years`;
+           console.log(`Selected max experience: ${experienceString}`);
+       }
+    }
+
+    // Fallback: If no explicit "years" pattern found, look for "Experience: X" or "Total Experience: X"
+    if (!experienceString) {
+        console.log('Trying fallback experience extraction...');
+        const fallbackMatch = text.match(/(?:Total\s*)?(?:Experience|Exp|Work History)\s*[:\-\|]?\s*(\d+(?:\.\d+)?)(?!\d)/i);
+        if (fallbackMatch) {
+            const num = parseFloat(fallbackMatch[1]);
+            if (num < 50 && num > 0) {
+                experienceString = `${num} years`;
+                console.log(`Fallback match found: ${experienceString}`);
+            }
+        }
+    }
+    console.log(`Final extracted experience: "${experienceString}"`);
+    console.log('--------------------------');
 
     // Find LinkedIn URL
     const urls = text.match(urlRegex) || [];
@@ -95,7 +132,7 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
       email: emailMatch ? emailMatch[0] : '',
       phone: phoneMatch ? phoneMatch[0] : '',
       linkedIn: linkedInUrl || '',
-      experience: experienceMatch ? experienceMatch[1].trim() : '',
+      experience: experienceString || '',
       summary: text.substring(0, 500) // First 500 chars as summary preview
     };
 
