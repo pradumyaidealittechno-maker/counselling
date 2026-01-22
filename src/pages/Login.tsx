@@ -22,7 +22,12 @@ export default function Login() {
       console.log('%c📡 Calling API...', 'color: #3B82F6;');
       const result = await api.auth.login(email, password);
       console.log('%c✅ Login successful!', 'color: #10B981; font-weight: bold;', result);
-      navigate('/dashboard');
+
+      if (result.user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       console.error('%c❌ Login failed:', 'color: #EF4444; font-weight: bold;', err.message);
       setError(err.message || 'Login failed. Please check your credentials.');
@@ -132,7 +137,7 @@ export default function Login() {
         <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-800)' }}>Sign in</h2>
         <p style={{ color: 'var(--gray-500)', marginBottom: '2rem' }}>
           Don't have an account?
-           {/* <Link to="/signup" style={{ color: '#E91E63', fontWeight: 500 }}>Sign up</Link> */}
+          <Link to="/signup" style={{ color: '#E91E63', fontWeight: 500 }}>Sign up</Link>
         </p>
 
         {/* SSO Buttons */}

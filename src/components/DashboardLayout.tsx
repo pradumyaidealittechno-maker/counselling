@@ -64,6 +64,13 @@ export default function DashboardLayout() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [navigate]);
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
@@ -74,7 +81,7 @@ export default function DashboardLayout() {
       try {
         console.log('🔍 Fetching user data for header...');
         const userData = await api.auth.getMe();
-        
+
         if (userData && userData.firstName && userData.lastName) {
           const fullName = `${userData.firstName} ${userData.lastName}`;
           console.log('👤 Setting user name to:', fullName);
@@ -254,44 +261,44 @@ export default function DashboardLayout() {
 
             {/* User Menu */}
             <div style={{ position: 'relative' }} ref={profileMenuRef}>
-            <div onClick={() => setShowProfileMenu(!showProfileMenu)} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              cursor: 'pointer'
-            }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+              <div onClick={() => setShowProfileMenu(!showProfileMenu)} style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontWeight: 600
+                gap: '0.75rem',
+                cursor: 'pointer'
               }}>
-                {userInitials}
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 600
+                }}>
+                  {userInitials}
+                </div>
+                <div>
+                  <p style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-900)' }}>{userName}</p>
+                </div>
+                <ChevronDown size={16} color="var(--gray-500)" />
               </div>
-              <div>
-                <p style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--gray-900)' }}>{userName}</p>
-              </div>
-              <ChevronDown size={16} color="var(--gray-500)" />
-            </div>
               {showProfileMenu && (
-                <div style={{position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '220px', background: 'var(--white)', borderRadius: '0.75rem', boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)', border: '1px solid var(--gray-200)', padding: '0.5rem', zIndex: 50}}>
-                  <Link to="/dashboard/profile" onClick={() => setShowProfileMenu(false)} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: 'var(--gray-700)', textDecoration: 'none', cursor: 'pointer'}}>
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '220px', background: 'var(--white)', borderRadius: '0.75rem', boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)', border: '1px solid var(--gray-200)', padding: '0.5rem', zIndex: 50 }}>
+                  <Link to="/dashboard/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: 'var(--gray-700)', textDecoration: 'none', cursor: 'pointer' }}>
                     <UserCircle size={18} />
-                    <span style={{fontSize: '0.875rem'}}>View Profile</span>
+                    <span style={{ fontSize: '0.875rem' }}>View Profile</span>
                   </Link>
-                  <Link to="/dashboard/profile/edit" onClick={() => setShowProfileMenu(false)} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: 'var(--gray-700)', textDecoration: 'none', cursor: 'pointer'}}>
+                  <Link to="/dashboard/profile/edit" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: 'var(--gray-700)', textDecoration: 'none', cursor: 'pointer' }}>
                     <Edit size={18} />
-                    <span style={{fontSize: '0.875rem'}}>Update Profile</span>
+                    <span style={{ fontSize: '0.875rem' }}>Update Profile</span>
                   </Link>
-                  <div style={{height: '1px', background: 'var(--gray-200)', margin: '0.5rem 0'}} />
-                  <div onClick={handleLogout} style={{display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#DC2626', cursor: 'pointer'}}>
+                  <div style={{ height: '1px', background: 'var(--gray-200)', margin: '0.5rem 0' }} />
+                  <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem', color: '#DC2626', cursor: 'pointer' }}>
                     <LogOut size={18} />
-                    <span style={{fontSize: '0.875rem', fontWeight: 500}}>Logout</span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Logout</span>
                   </div>
                 </div>
               )}
@@ -306,8 +313,8 @@ export default function DashboardLayout() {
       </div>
 
       {/* Chatbot Dialog */}
-      <ChatbotDialog 
-        isOpen={chatbotOpen} 
+      <ChatbotDialog
+        isOpen={chatbotOpen}
         onClose={() => setChatbotOpen(false)}
       />
     </div>

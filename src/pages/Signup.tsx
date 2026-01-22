@@ -23,31 +23,31 @@ export default function Signup() {
     }));
   };
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setError('');
-  //   setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  //   console.log('%c📝 Signup Form Submitted', 'color: #8B5CF6; font-weight: bold;');
-  //   console.log('   Email:', formData.email);
-  //   console.log('   Name:', formData.firstName, formData.lastName);
-  //   console.log('   Company:', formData.company);
-  //   console.log('   Job Title:', formData.jobTitle);
+    console.log('%c📝 Signup Form Submitted', 'color: #8B5CF6; font-weight: bold;');
+    console.log('   Email:', formData.email);
+    console.log('   Name:', formData.firstName, formData.lastName);
+    console.log('   Company:', formData.company);
+    console.log('   Job Title:', formData.jobTitle);
 
-  //   try {
-  //     console.log('%c📡 Calling API...', 'color: #3B82F6;');
-  //     const result = await api.auth.register(formData);
-  //     console.log('%c✅ Registration successful!', 'color: #10B981; font-weight: bold;', result);
-  //     navigate('/onboarding');
-  //   } catch (err: any) {
-  //     console.error('%c❌ Registration failed:', 'color: #EF4444; font-weight: bold;', err.message);
-  //     setError(err.message || 'Registration failed. Please try again.');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+    try {
+      console.log('%c📡 Calling API...', 'color: #3B82F6;');
+      const result = await api.auth.register(formData);
+      console.log('%c✅ Registration successful!', 'color: #10B981; font-weight: bold;', result);
+      navigate('/onboarding');
+    } catch (err: any) {
+      console.error('%c❌ Registration failed:', 'color: #EF4444; font-weight: bold;', err.message);
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -202,8 +202,7 @@ export default function Signup() {
           <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
         </div> */}
 
-        <form >
-            {/* <form onSubmit={handleSubmit}> */}
+        <form onSubmit={handleSubmit}>
           {error && (
             <div style={{
               background: '#FEE2E2',

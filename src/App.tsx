@@ -21,14 +21,16 @@ import FinalDecision from './pages/FinalDecision';
 import InterviewManagement from './pages/InterviewManagement';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminLayout from './components/AdminLayout';
 import DashboardLayout from './components/DashboardLayout';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <BrowserRouter>
-      <Toaster 
-        position="bottom-right" 
+      <Toaster
+        position="bottom-right"
         toastOptions={{
           style: {
             background: '#333',
@@ -63,6 +65,11 @@ function App() {
         <Route path="/interview" element={<VideoInterview />} />
         <Route path="/interview/:id" element={<CandidateInterview />} />
         <Route path="/interview-complete" element={<InterviewComplete />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+        </Route>
 
         {/* Dashboard Routes */}
         <Route path="/dashboard" element={<DashboardLayout />}>

@@ -455,6 +455,20 @@ export const api = {
       return handleResponse(response);
     },
   },
+
+  // Admin APIs
+  admin: {
+    getUsers: async () => {
+      return authFetch('/api/admin/users');
+    },
+
+    toggleUserStatus: async (userId: string, isActive: boolean) => {
+      return authFetch(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive }),
+      });
+    },
+  },
 };
 
 export default api;

@@ -10,6 +10,7 @@ export interface IUser extends Document {
   companyId: mongoose.Types.ObjectId;
   jobTitle: string;
   isActive: boolean;
+  role: 'user' | 'admin';
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -56,7 +57,12 @@ const userSchema = new Schema<IUser>(
     },
     isActive: {
       type: Boolean,
-      default: true,
+      default: false,
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
     },
   },
   {

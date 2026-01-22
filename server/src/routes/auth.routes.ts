@@ -57,6 +57,7 @@ router.post('/register', async (req, res) => {
       company: companyDoc.name,
       companyId: companyDoc._id,
       jobTitle,
+      isActive: false, // Default to inactive until approved by admin
     });
 
     await user.save();
@@ -64,7 +65,7 @@ router.post('/register', async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { id: user._id, email: user.email, jobTitle: user.jobTitle },
+      { id: user._id, email: user.email, jobTitle: user.jobTitle, role: user.role },
       process.env.JWT_SECRET as string,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -79,6 +80,7 @@ router.post('/register', async (req, res) => {
         lastName: user.lastName,
         company: user.company,
         jobTitle: user.jobTitle,
+        role: user.role,
       },
     });
     console.log('   ✅ Registration successful\n');
@@ -128,7 +130,7 @@ router.post('/login', async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { id: user._id, email: user.email, jobTitle: user.jobTitle },
+      { id: user._id, email: user.email, jobTitle: user.jobTitle, role: user.role },
       process.env.JWT_SECRET as string,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -143,6 +145,7 @@ router.post('/login', async (req, res) => {
         lastName: user.lastName,
         company: user.company,
         jobTitle: user.jobTitle,
+        role: user.role,
       },
     });
     console.log('   ✅ Login successful\n');
@@ -170,8 +173,6 @@ router.get('/me', authenticate, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
-
-export default router;
 
 // Update user profile  
 router.put('/update-profile', authenticate, async (req, res) => {
@@ -205,3 +206,4 @@ router.put('/update-profile', authenticate, async (req, res) => {
   }
 });
 
+export default router;

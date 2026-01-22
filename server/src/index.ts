@@ -33,6 +33,8 @@ import uploadRoutes from './routes/upload.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import { authenticate } from './middleware/auth.js';
+import adminRoutes from './routes/admin.routes.js';
+import { seedAdmin } from './services/seeder.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -94,6 +96,8 @@ app.use('/api/ai', aiRoutes);
 console.log('   ✅ /api/ai - AI Assistant routes');
 app.use('/api/notifications', authenticate, notificationRoutes);
 console.log('   ✅ /api/notifications - Notification routes');
+app.use('/api/admin', adminRoutes);
+console.log('   ✅ /api/admin - Admin routes');
 console.log('─'.repeat(60) + '\n');
 
 // Error handling
@@ -103,13 +107,13 @@ app.use(errorHandler);
 const connectDB = async () => {
   console.log('🔌 CONNECTING TO DATABASE:');
   console.log('─'.repeat(60));
-  
+
   try {
     const uri = process.env.MONGODB_URI as string;
     console.log(`   URI: ${uri?.replace(/:[^:@]+@/, ':***@')}`);
-    
+
     await mongoose.connect(uri);
-    
+
     console.log('   ✅ MongoDB connected successfully');
     console.log(`   Database: ${mongoose.connection.name}`);
     console.log(`   Host: ${mongoose.connection.host}`);
@@ -118,6 +122,9 @@ const connectDB = async () => {
     // Start watching candidate_result collection for auto-sync
     const { startCandidateResultWatcher } = await import('./services/candidateResultWatcher.js');
     startCandidateResultWatcher();
+
+    // Seed admin
+    await seedAdmin();
   } catch (error: any) {
     console.error('   ❌ MongoDB connection error:', error.message);
     console.error('─'.repeat(60) + '\n');
@@ -133,7 +140,7 @@ const connectDB = async () => {
 // Start server
 const startServer = async () => {
   await connectDB();
-  
+
   app.listen(PORT, () => {
     console.log('═'.repeat(60));
     console.log('🎉 SERVER STARTED SUCCESSFULLY!');
