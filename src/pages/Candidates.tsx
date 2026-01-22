@@ -61,6 +61,7 @@ export default function Candidates() {
   const itemsPerPage = 10;
   const [parsedCandidateData, setParsedCandidateData] = useState<any>(null);
   const [uploadJobId, setUploadJobId] = useState<string>(''); // Dedicated state for upload section
+  const [uploadStatus, setUploadStatus] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jobSelectorRef = useRef<HTMLSelectElement>(null);
@@ -189,6 +190,7 @@ export default function Candidates() {
       showToast.error(err.message || 'Failed to process resume. Please try again.');
     } finally {
       setLoading(false);
+      setUploadStatus('');
     }
   };
 
@@ -265,7 +267,7 @@ export default function Candidates() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
         <Loader size={40} color="#E91E63" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>Loading candidates...</p>
+        <p style={{ marginTop: '1rem', color: 'var(--gray-500)' }}>{uploadStatus || 'Loading candidates...'}</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
