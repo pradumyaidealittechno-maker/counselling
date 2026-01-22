@@ -62,6 +62,32 @@ router.patch('/users/:id/status', async (req, res) => {
             return res.status(400).json({ error: 'Cannot deactivate your own admin account' });
         }
 
+        // Trigger webhook if user is activated
+        if (isActive) {
+            const webhookUrl = process.env.N8N_WEBHOOK_USER_ACTIVATE_EMAIL;
+            if (webhookUrl) {
+                console.log(`📡 Triggering activation webhook for ${user.email}`);
+                try {
+                    await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: user.email,
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                            company: user.company,
+                            jobTitle: user.jobTitle,
+                            activatedAt: new Date().toISOString()
+                        })
+                    });
+                    console.log('✅ Activation webhook triggered successfully');
+                } catch (webhookError) {
+                    console.error('❌ Failed to trigger activation webhook:', webhookError);
+                    // Don't fail the request, just log the error
+                }
+            }
+        }
+
         res.json({ message: `User ${isActive ? 'activated' : 'deactivated'} successfully`, user });
     } catch (error: any) {
         console.error('Error updating user status:', error);
