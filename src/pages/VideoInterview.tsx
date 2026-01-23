@@ -35,7 +35,7 @@ export default function VideoInterview() {
   const recordedChunksRef = useRef<Blob[]>([]);
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number>(0);
-  
+
   // Audio Mixing Refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
@@ -68,7 +68,7 @@ export default function VideoInterview() {
       validateInterviewCode();
     }
   }, [code]);
-  
+
   // Clean up audio context on unmount
   useEffect(() => {
     return () => {
@@ -136,7 +136,7 @@ export default function VideoInterview() {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContextClass();
       const destination = audioContext.createMediaStreamDestination();
-      
+
       audioContextRef.current = audioContext;
       audioDestinationRef.current = destination;
 
@@ -191,12 +191,12 @@ export default function VideoInterview() {
       console.log('No agent track available to connect');
       return;
     }
-    
+
     if (!audioContextRef.current || !agentGainRef.current) {
       console.log('Mixer not ready, will connect later');
       return;
     }
-    
+
     try {
       console.log('🔌 Connecting agent audio track to mixer...');
       const agentStream = new MediaStream([agentTrackRef.current]);
@@ -214,7 +214,7 @@ export default function VideoInterview() {
       webcamStreamRef.current.getTracks().forEach(track => track.stop());
       webcamStreamRef.current = null;
     }
-    
+
     // Close audio context
     if (audioContextRef.current) {
       audioContextRef.current.close();
@@ -226,7 +226,7 @@ export default function VideoInterview() {
     try {
       // Get agent ID from environment variable
       const agentId = import.meta.env.VITE_RETELL_AGENT_ID;
-      
+
       if (!agentId) {
         throw new Error('VITE_RETELL_AGENT_ID not configured. Please add it to .env file');
       }
@@ -341,7 +341,7 @@ export default function VideoInterview() {
       setStarted(true);
       setIsRecording(true);
       startTimeRef.current = Date.now();
-      
+
       console.log('✅ Interview started successfully');
     } catch (error) {
       console.error('Failed to start interview:', error);
@@ -349,15 +349,15 @@ export default function VideoInterview() {
       stopWebcam();
     }
   };
-  
+
   const findAndConnectAgentTrack = (client: any) => {
     if (!client || !client.room) {
       console.log('Client or room not ready for agent track search');
       return;
     }
-    
+
     console.log('🔍 Searching for agent audio track...');
-    
+
     // Search all remote participants
     for (const participant of client.room.remoteParticipants.values()) {
       for (const publication of participant.audioTrackPublications.values()) {
@@ -371,11 +371,11 @@ export default function VideoInterview() {
     }
   };
 
-  
+
   const enableSystemAudioFallback = async () => {
     try {
       showToast.success("Please select 'This Tab' and enable 'Share tab audio' in the sharing dialog to record the AI's voice.");
-      
+
       // @ts-ignore - getDisplayMedia options
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: true, // Required to get the tab picker  
@@ -385,31 +385,31 @@ export default function VideoInterview() {
           autoGainControl: false
         }
       } as any);
-      
+
       // We only want the audio
       const audioTrack = displayStream.getAudioTracks()[0];
-      
+
       if (!audioTrack) {
         showToast.error("No audio shared. Please try again and ensure 'Share Audio' is checked.");
         displayStream.getTracks().forEach(t => t.stop());
         return;
       }
-      
+
       console.log('🖥️ System audio track obtained from screen share');
-      
+
       // Stop the video track immediately as we don't need it
       displayStream.getVideoTracks().forEach(t => t.stop());
-      
+
       if (audioContextRef.current && audioDestinationRef.current) {
         const systemSource = audioContextRef.current.createMediaStreamSource(new MediaStream([audioTrack]));
         systemSource.connect(audioDestinationRef.current);
         // Note: Do NOT connect to destination here as it will cause feedback loop if it captures speakers
         // But since we are capturing TAB audio, it's already playing.
       }
-      
+
       // Disable the button or show success
       showToast.success("System audio enabled! The AI voice will now be recorded.");
-      
+
     } catch (err) {
       console.error('Failed to get system audio:', err);
     }
@@ -456,10 +456,10 @@ export default function VideoInterview() {
       // Stop recording
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
-        
+
         // Wait for final data
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Upload recording
         await uploadRecording();
       }
@@ -609,7 +609,7 @@ export default function VideoInterview() {
           </div>
           <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Intelligens</span>
         </div>
-        
+
         <div style={{
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)',
           borderRadius: '1rem',
@@ -833,7 +833,7 @@ export default function VideoInterview() {
             {videoEnabled ? <Video size={20} color="#4b5563" /> : <VideoOff size={20} color="white" />}
           </button>
         </div>
-        
+
         {/* System Audio Fallback */}
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <button
@@ -855,7 +855,7 @@ export default function VideoInterview() {
         {/* Action Button */}
         <button
           className="btn btn-primary"
-          style={{ 
+          style={{
             width: '100%',
             background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)'

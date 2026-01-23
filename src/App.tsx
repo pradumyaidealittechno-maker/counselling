@@ -12,6 +12,7 @@ import AITraining from './pages/AITraining';
 import InterviewBuilder from './pages/InterviewBuilder';
 import Candidates from './pages/Candidates';
 import SendInvitation from './pages/SendInvitation';
+import SendFeedback from './pages/SendFeedback';
 import VideoInterview from './pages/VideoInterview';
 import CandidateInterview from './pages/CandidateInterview';
 import InterviewComplete from './pages/InterviewComplete';
@@ -21,6 +22,7 @@ import FinalDecision from './pages/FinalDecision';
 import InterviewManagement from './pages/InterviewManagement';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
+import CandidateFeedback from './pages/CandidateFeedback';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLayout from './components/AdminLayout';
 import DashboardLayout from './components/DashboardLayout';
@@ -84,10 +86,12 @@ function App() {
           <Route path="jobs/interview-builder" element={<InterviewBuilder />} />
           <Route path="candidates" element={<Candidates />} />
           <Route path="candidates/invite" element={<SendInvitation />} />
+          <Route path="candidates/feedback" element={<SendFeedback />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/:id" element={<AnalysisReport />} />
           <Route path="reports/:id/decision" element={<FinalDecision />} />
           <Route path="candidates/:id/report" element={<AnalysisReport />} />
+          <Route path="candidates/:id/feedback" element={<CandidateFeedback />} />
           <Route path="candidates/:id/decision" element={<FinalDecision />} />
           <Route path="interviews" element={<InterviewManagement />} />
           <Route path="profile" element={<Profile />} />

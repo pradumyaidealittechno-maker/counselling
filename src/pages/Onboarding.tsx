@@ -87,7 +87,7 @@ export default function Onboarding() {
   };
 
   const handleComplete = () => {
-    navigate('/dashboard');
+    navigate('/login');
   };
 
   return (

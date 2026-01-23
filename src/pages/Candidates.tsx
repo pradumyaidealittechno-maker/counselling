@@ -94,14 +94,14 @@ export default function Candidates() {
       const data = await api.candidates.getAll();
       // Backend returns { candidates: [...], pagination: {...} }
       const candidatesList = data?.candidates || data || [];
-      
+
       // Debug: Check if experience field is present
       console.log('📊 Candidates loaded:', candidatesList.length);
       if (candidatesList.length > 0) {
         console.log('📋 First candidate:', candidatesList[0]);
         console.log('💼 Experience field:', candidatesList[0].experience);
       }
-      
+
       setCandidates(candidatesList);
     } catch (err) {
       console.error('Failed to load candidates:', err);
@@ -172,7 +172,7 @@ export default function Candidates() {
           showToast.success(`✅ Candidate created: ${candidateData.firstName} ${candidateData.lastName}`);
           await loadCandidates();
         } catch (error: any) {
-           throw new Error(error.message || 'Failed to create candidate');
+          throw new Error(error.message || 'Failed to create candidate');
         }
       } else {
         // Fallback if somehow triggered without job (though button prevents it now, nice to keep safety)
@@ -214,10 +214,10 @@ export default function Candidates() {
     const email = (c.email || '').toLowerCase();
 
     const matchesSearch = fullName.includes(term) || email.includes(term);
-    
+
     // Improved job matching to handle both populated objects and ID strings
-    const jobMatch = !selectedJobId || 
-      (c.jobId && typeof c.jobId === 'object' && (c.jobId as any)._id === selectedJobId) || 
+    const jobMatch = !selectedJobId ||
+      (c.jobId && typeof c.jobId === 'object' && (c.jobId as any)._id === selectedJobId) ||
       (c.jobId && typeof c.jobId === 'string' && c.jobId === selectedJobId) ||
       (c.job && c.job._id === selectedJobId);
 
@@ -275,12 +275,19 @@ export default function Candidates() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: '1rem',
+        gap: '1rem',
+        flexWrap: 'wrap'
+      }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--gray-900)' }}>Candidates</h1>
           <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>Manage and track all candidates in your pipeline</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setShowAddDialog(true)}
@@ -295,7 +302,12 @@ export default function Candidates() {
       </div>
 
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '0.75rem',
+        marginBottom: '1rem'
+      }}>
         <div className="card" style={{ padding: '0.875rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <Users size={16} color="#6366F1" />
@@ -332,29 +344,29 @@ export default function Candidates() {
 
       {/* Upload Area */}
       {/* Upload Area - Styled as per design */}
-      <div className="card" style={{ 
-        padding: '2rem', 
-        textAlign: 'center', 
+      <div className="card" style={{
+        padding: '2rem',
+        textAlign: 'center',
         marginBottom: '1.5rem',
         border: '1px dashed var(--gray-300)', // Subtle dashed border like the image might implies or just clean card
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--white)' 
+        background: 'var(--white)'
       }}>
         <Upload size={32} color="#9CA3AF" style={{ marginBottom: '1rem' }} />
         <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>Upload Resume</h3>
         <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem', maxWidth: '400px' }}>
           Select a job role and upload a resume to automatically parse details and create a candidate profile.
         </p>
-        
+
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', width: '100%', maxWidth: '500px' }}>
           <select
             className="input"
             value={uploadJobId}
             onChange={(e) => setUploadJobId(e.target.value)}
-            style={{ 
+            style={{
               flex: 1,
               padding: '0.75rem',
               borderColor: 'var(--gray-300)'
@@ -365,20 +377,20 @@ export default function Candidates() {
               <option key={job._id} value={job._id}>{job.title}</option>
             ))}
           </select>
-          
+
           <button
             onClick={() => {
               if (!uploadJobId) {
-                 showToast.error('Please select a job role first');
-                 return;
+                showToast.error('Please select a job role first');
+                return;
               }
               fileInputRef.current?.click();
             }}
             className="btn btn-primary"
-            style={{ 
+            style={{
               padding: '0.75rem 1.5rem',
-              display: 'flex', 
-              alignItems: 'center', 
+              display: 'flex',
+              alignItems: 'center',
               gap: '0.5rem',
               whiteSpace: 'nowrap',
               backgroundColor: '#E91E63', // Ensuring brand color
@@ -508,186 +520,217 @@ export default function Candidates() {
 
       {/* Candidates Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)', width: '25%' }}>Candidate</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Job Role</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Experience</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Date Added</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Status</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentCandidates.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-50)' }}>
-                  <Users size={40} color="var(--gray-300)" style={{ marginBottom: '0.75rem' }} />
-                  <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>No candidates found</p>
-                  <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
-                    <Mail size={14} /> Invite First Candidate
-                  </Link>
-                </td>
+        <div className="table-responsive">
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)', width: '25%' }}>Candidate</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Job Role</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Experience</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Date Added</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Status</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Actions</th>
               </tr>
-            ) : (
-              currentCandidates.map((candidate) => {
-                const statusConfig = getStatusConfig(candidate.status);
-                const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
-                const createdDate = (candidate as any).createdAt ? new Date((candidate as any).createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+            </thead>
+            <tbody>
+              {currentCandidates.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-50)' }}>
+                    <Users size={40} color="var(--gray-300)" style={{ marginBottom: '0.75rem' }} />
+                    <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>No candidates found</p>
+                    <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
+                      <Mail size={14} /> Invite First Candidate
+                    </Link>
+                  </td>
+                </tr>
+              ) : (
+                currentCandidates.map((candidate) => {
+                  const statusConfig = getStatusConfig(candidate.status);
+                  const initials = `${candidate.firstName?.[0] || ''}${candidate.lastName?.[0] || ''}`;
+                  const createdDate = (candidate as any).createdAt ? new Date((candidate as any).createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 
-                return (
-                  <tr key={candidate._id} style={{ borderBottom: '1px solid var(--gray-200)' }}>
-                    <td style={{ padding: '0.6rem 1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 600,
-                          fontSize: '0.85rem'
-                        }}>{initials}</div>
-                        <div>
-                          <p style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--gray-900)', marginBottom: '0.125rem' }}>{candidate.firstName} {candidate.lastName}</p>
-                          <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{candidate.email}</p>
+                  return (
+                    <tr key={candidate._id} style={{ borderBottom: '1px solid var(--gray-200)' }}>
+                      <td style={{ padding: '0.6rem 1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 600,
+                            fontSize: '0.85rem'
+                          }}>{initials}</div>
+                          <div>
+                            <p style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--gray-900)', marginBottom: '0.125rem' }}>{candidate.firstName} {candidate.lastName}</p>
+                            <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{candidate.email}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}</td>
-                    <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{candidate.experience || 'N/A'}</td>
-                    <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{createdDate}</td>
-                    <td style={{ padding: '0.6rem 1rem' }}>
-                      <span style={{
-                        padding: '0.25rem 0.625rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.9rem',
-                        fontWeight: 500,
-                        background: statusConfig.bg,
-                        color: statusConfig.text,
-                        border: `1px solid ${statusConfig.border}`,
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {statusConfig.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
-                        {(candidate.status === 'interview_complete' || candidate.status === 'ai_analysis_ready') ? (
-                          <Link
-                            to={`/dashboard/candidates/${candidate._id}/report`}
-                            className="btn btn-sm"
-                            style={{
-                              padding: '0.25rem 0.75rem',
-                              fontSize: '0.75rem',
-                              backgroundColor: '#E91E63',
-                              color: 'white',
-                              border: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            <FileText size={12} /> View Report
-                          </Link>
-                        ) : candidate.status === 'pending_interview' || candidate.status === 'invited' ? (
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            <button className="btn btn-sm btn-secondary" style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}>
-                              <Mail size={14} /> Resend Invite
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            {candidate.status === 'new' && (
-                              <Link
-                                to={`/dashboard/candidates/invite?candidateId=${candidate._id}`}
-                                className="btn btn-sm btn-primary"
-                                style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                              >
-                                <Mail size={14} /> Send Invitation
-                              </Link>
-                            )}
-                          </div>
-                        )}
-                        <div style={{ position: 'relative' }}>
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            style={{ padding: '0.25rem' }}
-                            onClick={(e) => {
-                              const menu = e.currentTarget.nextElementSibling;
-                              if (menu) {
-                                (menu as HTMLElement).style.display = (menu as HTMLElement).style.display === 'none' ? 'block' : 'none';
-                              }
-                            }}
-                            onBlur={(e) => {
-                              setTimeout(() => {
+                      </td>
+                      <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}</td>
+                      <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{candidate.experience || 'N/A'}</td>
+                      <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{createdDate}</td>
+                      <td style={{ padding: '0.6rem 1rem' }}>
+                        <span style={{
+                          padding: '0.25rem 0.625rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.9rem',
+                          fontWeight: 500,
+                          background: statusConfig.bg,
+                          color: statusConfig.text,
+                          border: `1px solid ${statusConfig.border}`,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {statusConfig.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.6rem 1rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
+                          {(candidate.status === 'interview_complete' || candidate.status === 'ai_analysis_ready') ? (
+                            <Link
+                              to={`/dashboard/candidates/${candidate._id}/report`}
+                              className="btn btn-sm"
+                              style={{
+                                padding: '0.25rem 0.75rem',
+                                fontSize: '0.75rem',
+                                backgroundColor: '#E91E63',
+                                color: 'white',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem'
+                              }}
+                            >
+                              <FileText size={12} /> View Report
+                            </Link>
+                          ) : candidate.status === 'pending_interview' || candidate.status === 'invited' ? (
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button className="btn btn-sm btn-secondary" style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem' }}>
+                                <Mail size={14} /> Resend Invite
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              {candidate.status === 'new' && (
+                                <Link
+                                  to={`/dashboard/candidates/invite?candidateId=${candidate._id}`}
+                                  className="btn btn-sm btn-primary"
+                                  style={{ padding: '0.25rem 0.625rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                >
+                                  <Mail size={14} /> Send Invitation
+                                </Link>
+                              )}
+                            </div>
+                          )}
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              style={{ padding: '0.25rem' }}
+                              onClick={(e) => {
                                 const menu = e.currentTarget.nextElementSibling;
                                 if (menu) {
-                                  (menu as HTMLElement).style.display = 'none';
+                                  (menu as HTMLElement).style.display = (menu as HTMLElement).style.display === 'none' ? 'block' : 'none';
                                 }
-                              }, 200);
-                            }}
-                          >
-                            <MoreVertical size={14} color="#6B7280" />
-                          </button>
-                          <div style={{
-                            display: 'none',
-                            position: 'absolute',
-                            right: 0,
-                            top: 'calc(100% + 4px)',
-                            background: 'var(--white)',
-                            border: '1px solid #E5E7EB',
-                            borderRadius: '0.375rem',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                            zIndex: 50,
-                            minWidth: '120px',
-                            overflow: 'hidden'
-                          }}>
-                            <button
-                              style={{
-                                display: 'block',
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '0.5rem 0.75rem',
-                                fontSize: '0.875rem',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                color: '#EF4444',
-                                transition: 'background-color 0.15s'
                               }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#FEE2E2';
+                              onBlur={(e) => {
+                                setTimeout(() => {
+                                  const menu = e.currentTarget.nextElementSibling;
+                                  if (menu) {
+                                    (menu as HTMLElement).style.display = 'none';
+                                  }
+                                }, 200);
                               }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                              onClick={() => handleDelete(candidate._id)}
                             >
-                              Delete
+                              <MoreVertical size={14} color="#6B7280" />
                             </button>
+                            <div style={{
+                              display: 'none',
+                              position: 'absolute',
+                              right: 0,
+                              bottom: '100%',
+                              marginBottom: '4px',
+                              background: 'var(--white)',
+                              border: '1px solid #E5E7EB',
+                              borderRadius: '0.5rem',
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                              zIndex: 1000,
+                              minWidth: '140px',
+                              overflow: 'visible'
+                            }}>
+                              {/* Show Send Feedback option if status is AI Analysis Ready or Interview Complete */}
+                              {(candidate.status === 'ai_analysis_ready' || candidate.status === 'interview_complete') && (
+                                <Link
+                                  to={`/dashboard/candidates/feedback?candidateId=${candidate._id}`}
+                                  style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    padding: '0.5rem 0.75rem',
+                                    fontSize: '0.875rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#059669',
+                                    textDecoration: 'none',
+                                    transition: 'background-color 0.15s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#ECFDF5';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                >
+                                  Send Feedback
+                                </Link>
+                              )}
+                              <button
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  padding: '0.5rem 0.75rem',
+                                  fontSize: '0.875rem',
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: '#EF4444',
+                                  transition: 'background-color 0.15s',
+                                  borderTop: (candidate.status === 'ai_analysis_ready' || candidate.status === 'interview_complete') ? '1px solid #E5E7EB' : 'none'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#FEE2E2';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                onClick={() => handleDelete(candidate._id)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination UI */}
         {totalPages > 1 && (
-          <div style={{ 
-            padding: '1rem', 
-            borderTop: '1px solid var(--gray-200)', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            padding: '1rem',
+            borderTop: '1px solid var(--gray-200)',
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             background: 'var(--gray-50)'
           }}>
@@ -695,7 +738,7 @@ export default function Candidates() {
               Showing <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{indexOfFirstItem + 1}</span> to <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{Math.min(indexOfLastItem, filteredCandidates.length)}</span> of <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{filteredCandidates.length}</span> candidates
             </div>
             <div style={{ display: 'flex', gap: '0.25rem' }}>
-              <button 
+              <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => paginate(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -708,9 +751,9 @@ export default function Candidates() {
                   key={i + 1}
                   className={`btn btn-sm ${currentPage === i + 1 ? 'btn-primary' : 'btn-ghost'}`}
                   onClick={() => paginate(i + 1)}
-                  style={{ 
-                    minWidth: '32px', 
-                    height: '32px', 
+                  style={{
+                    minWidth: '32px',
+                    height: '32px',
                     padding: 0,
                     display: 'flex',
                     alignItems: 'center',
@@ -720,7 +763,7 @@ export default function Candidates() {
                   {i + 1}
                 </button>
               ))}
-              <button 
+              <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => paginate(currentPage + 1)}
                 disabled={currentPage === totalPages}
