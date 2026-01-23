@@ -119,9 +119,7 @@ const connectDB = async () => {
     console.log(`   Host: ${mongoose.connection.host}`);
     console.log('─'.repeat(60) + '\n');
 
-    // Start watching candidate_result collection for auto-sync
-    const { startCandidateResultWatcher } = await import('./services/candidateResultWatcher.js');
-    startCandidateResultWatcher();
+
 
     // Seed admin
     await seedAdmin();

@@ -54,23 +54,15 @@ export default function SendFeedback() {
 
 Dear ${firstName || 'Candidate'},
 
-Thank you for participating in the interview for the position of ${jobTitle}.
+Thank you for attending the interview for the position of ${jobTitle} at Ideal IT Techno Pvt. Ltd.
 
-We are pleased to inform you that you have successfully cleared the interview round. Your technical skills, problem-solving approach, and overall performance met our expectations.
+We are pleased to inform you that you have successfully cleared the first round of the interview process. The details regarding the next stage of the interview process will be communicated to you shortly.
 
-Our team was particularly impressed with:
-  • Your understanding of full-stack concepts
-  • Your approach to real-world problem solving
-  • Your communication and clarity
+Thank you for your interest in the role and for your continued cooperation.
 
-The next steps regarding onboarding and further discussions will be shared with you shortly.
-
-If you have any questions in the meantime, feel free to reach out.
-
-Congratulations, and we look forward to working with you!
-
-Best regards,
+Regards,
 HR Team
+Ideal IT Techno Pvt. Ltd.
 `);
             } else {
                 setMessage(`Interview Feedback – Thank You
