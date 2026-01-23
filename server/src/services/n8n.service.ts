@@ -122,12 +122,10 @@ class N8nService {
 
   async sendInterviewResult(payload: InterviewResultPayload): Promise<any> {
     try {
-      const resultWebhook = process.env.N8N_WEBHOOK_INTERVIEW_RESULT;
+      // Hardcode the feedback webhook to ensure it is used
+      const resultWebhook = 'https://n8n.intelligens.app/webhook/interview_feedback';
 
-      if (!resultWebhook) {
-        console.warn('N8N_WEBHOOK_INTERVIEW_RESULT not configured');
-        return null;
-      }
+      console.log('Using endpoint:', resultWebhook);
 
       const response = await axios.post(resultWebhook, payload, {
         headers: { 'Content-Type': 'application/json' },

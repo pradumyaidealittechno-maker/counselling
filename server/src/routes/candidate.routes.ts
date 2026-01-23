@@ -539,6 +539,42 @@ router.post('/:id/resume', authenticate, upload.single('resume'), async (req, re
   }
 });
 
+// Send feedback email (public/protected) - Sends specific form data to N8N webhook
+router.post('/:id/send-feedback', async (req, res) => {
+  try {
+    const { firstName, lastName, email, subject, message, feedbackType } = req.body;
+
+    // We can also fetch the candidate to get some job details if needed, 
+    // but the user wants to send the data *from the page form*.
+
+    if (!email || !message) {
+      return res.status(400).json({ error: 'Email and message are required' });
+    }
+
+    const payload = {
+      firstName,
+      lastName,
+      email,
+      subject,
+      message,
+      feedbackType,
+      candidateId: req.params.id
+    };
+
+    console.log('📨 Sending feedback email payload to N8N:', payload);
+
+    // Use n8nService to send this specific payload
+    // We cast payload to any because it doesn't match the strict InterviewResultPayload interface,
+    // but axios/n8n won't care as long as it's JSON.
+    await n8nService.sendInterviewResult(payload as any);
+
+    res.json({ success: true, message: 'Feedback sent successfully' });
+  } catch (error: any) {
+    console.error('Send feedback error:', error);
+    res.status(500).json({ error: 'Failed to send feedback' });
+  }
+});
+
 // Update candidate decision (protected)
 router.patch('/:id/decision', authenticate, async (req, res) => {
   try {

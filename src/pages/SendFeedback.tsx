@@ -24,7 +24,7 @@ export default function SendFeedback() {
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 
     useEffect(() => {
         loadCandidates();
@@ -54,7 +54,7 @@ export default function SendFeedback() {
 
 Dear ${firstName || 'Candidate'},
 
-Thank you for participating in the AI-powered interview for the position of ${jobTitle}.
+Thank you for participating in the interview for the position of ${jobTitle}.
 
 We are pleased to inform you that you have successfully cleared the interview round. Your technical skills, problem-solving approach, and overall performance met our expectations.
 
@@ -77,7 +77,7 @@ HR Team
 
 Dear ${firstName || 'Candidate'},
 
-Thank you for taking the time to participate in the AI-powered interview for the position of ${jobTitle}.
+Thank you for taking the time to participate in the  interview for the position of ${jobTitle}.
 
 We appreciate your interest in joining our team and the effort you put into the interview process.
 
@@ -119,33 +119,21 @@ HR Team
 
         try {
             // Call backend API to send feedback via N8N webhook
-            const response = await fetch(`${API_URL}/api/candidates/${selectedCandidateId}/send-feedback`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    firstName,
-                    lastName,
-                    email,
-                    subject,
-                    message,
-                    feedbackType
-                })
+            await api.candidates.sendFeedback(selectedCandidateId, {
+                firstName,
+                lastName,
+                email,
+                subject,
+                message,
+                feedbackType
             });
 
-            if (response.ok) {
-                console.log('✅ Feedback sent successfully via N8N webhook');
-                setSent(true);
-                setTimeout(() => navigate('/dashboard/candidates'), 2000);
-            } else {
-                const error = await response.json();
-                showToast.error(`Failed to send feedback: ${error.error || 'Unknown error'}`);
-            }
-        } catch (error) {
+            console.log('✅ Feedback sent successfully via N8N webhook');
+            setSent(true);
+            setTimeout(() => navigate('/dashboard/candidates'), 2000);
+        } catch (error: any) {
             console.error('Failed to send feedback:', error);
-            showToast.error('Failed to send feedback. Please try again.');
+            showToast.error(error.message || 'Failed to send feedback. Please try again.');
         } finally {
             setSending(false);
         }

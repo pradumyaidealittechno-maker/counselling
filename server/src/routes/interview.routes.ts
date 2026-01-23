@@ -36,9 +36,9 @@ router.post('/validate-code', async (req, res) => {
 
     // Check if interview already completed
     if (candidate.hasAccessedInterview && candidate.interviewStatus === 'completed') {
-      return res.status(400).json({ 
-        valid: false, 
-        error: 'Interview already completed' 
+      return res.status(400).json({
+        valid: false,
+        error: 'Interview already completed'
       });
     }
 
@@ -75,16 +75,16 @@ router.post('/create-web-call', async (req, res) => {
     console.log('📞 Received request to create web call');
     console.log('   Agent ID:', req.body.agentId);
     console.log('   Retell API Key exists:', !!process.env.RETELL_API_KEY);
-    
+
     const { agentId } = req.body;
-    
+
     if (!agentId) {
       console.log('❌ No agent ID provided');
       return res.status(400).json({ error: 'Agent ID is required' });
     }
-    
+
     const callData = await retellService.createWebCall(agentId);
-    
+
     console.log('✅ Web call created successfully');
     res.json(callData);
   } catch (error: any) {
@@ -102,22 +102,30 @@ router.post('/save-recording', upload.single('file'), async (req, res) => {
     const file = req.file;
 
     if (!file) {
+      console.error('❌ Save recording failed: No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
     if (!uid) {
-      return res.status(400).json({ error: 'Candidate UID required' });
+      console.error('❌ Save recording failed: Candidate UID required');
+      return res.status(400).json({ error: 'Candidate UID required in body' });
     }
 
-    console.log(`Uploading recording for candidate ${uid}, size: ${file.size} bytes`);
+    console.log(`🎥 Uploading recording for candidate ${uid}, size: ${file.size} bytes`);
 
-    // Upload to S3
-    const uploadResult = await uploadToS3(
-      file.buffer,
-      process.env.AWS_S3_RECORDINGS_FOLDER || 'recordings',
-      file.originalname,
-      file.mimetype
-    );
+    let uploadResult;
+    try {
+      // Upload to S3
+      uploadResult = await uploadToS3(
+        file.buffer,
+        process.env.AWS_S3_RECORDINGS_FOLDER || 'recordings',
+        file.originalname,
+        file.mimetype
+      );
+    } catch (s3Error: any) {
+      console.error('❌ S3 Upload Error:', s3Error);
+      return res.status(500).json({ error: `S3 Upload Failed: ${s3Error.message}` });
+    }
 
     // Update candidate record
     const candidate = await Candidate.findById(uid);
@@ -125,8 +133,10 @@ router.post('/save-recording', upload.single('file'), async (req, res) => {
       candidate.recordingUrl = uploadResult.url;
       candidate.recordingS3Key = uploadResult.key;
       await candidate.save();
-      
-      console.log(`✅ Recording saved for candidate ${uid}`);
+
+      console.log(`✅ Recording saved DB update for candidate ${uid}`);
+    } else {
+      console.warn(`⚠️ Candidate ${uid} not found during recording save logic, but file was uploaded to S3.`);
     }
 
     res.json({
@@ -135,8 +145,8 @@ router.post('/save-recording', upload.single('file'), async (req, res) => {
       key: uploadResult.key,
     });
   } catch (error: any) {
-    console.error('Save recording error:', error);
-    res.status(500).json({ error: 'Failed to save recording' });
+    console.error('Save recording error generic:', error);
+    res.status(500).json({ error: `Failed to save recording: ${error.message}` });
   }
 });
 
@@ -306,7 +316,7 @@ router.post('/end-session', async (req, res) => {
     candidate.status = 'interview_complete';
     candidate.interviewStatus = 'completed';
     candidate.interviewCompletedAt = new Date();
-    
+
     if (duration) {
       candidate.interviewDuration = duration;
     } else if (candidate.interviewStartedAt) {

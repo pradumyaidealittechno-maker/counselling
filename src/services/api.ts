@@ -351,6 +351,13 @@ export const api = {
       });
     },
 
+    sendFeedback: async (id: string, data: any) => {
+      return authFetch(`/api/candidates/${id}/send-feedback`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
     delete: async (id: string) => {
       return authFetch(`/api/candidates/${id}`, {
         method: 'DELETE',
