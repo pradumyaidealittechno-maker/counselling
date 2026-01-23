@@ -23,10 +23,10 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
     }
 
     let text = '';
-    
+
     // Extract text based on file type
     if (file.mimetype === 'application/pdf') {
-       try {
+      try {
         const pdfParse = (pdfParseModule as any).default || pdfParseModule;
         const data = await pdfParse(file.buffer);
         text = data.text;
@@ -49,54 +49,54 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
         return res.status(500).json({ error: 'Failed to parse Word document' });
       }
     } else {
-        return res.status(400).json({ error: 'Unsupported file format. Please upload PDF or TXT.' });
+      return res.status(400).json({ error: 'Unsupported file format. Please upload PDF or TXT.' });
     }
 
     // Regex extraction logic
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
     const phoneRegex = /(\+\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}/;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    
+
     const emailMatch = text.match(emailRegex);
     const phoneMatch = text.match(phoneRegex);
-    
+
     // Refined heuristic for Experience: extract "X years" or "X.Y years"
     // Look for number (int/decimal) followed by "years", avoiding dates (often > 1900)
     console.log('--- Parsing Experience ---');
     const yearRegex = /(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?|yr)/gi;
     const yearMatches = Array.from(text.matchAll(yearRegex));
     let experienceString = '';
-    
+
     console.log(`Global year matches found: ${yearMatches.length}`);
 
     if (yearMatches.length > 0) {
-       // Filter out likely dates (e.g. 2020) or very high numbers
-       const validMatches = yearMatches.filter(m => {
-           const num = parseFloat(m[1]);
-           return num < 50 && num > 0;
-       });
+      // Filter out likely dates (e.g. 2020) or very high numbers
+      const validMatches = yearMatches.filter(m => {
+        const num = parseFloat(m[1]);
+        return num < 50 && num > 0;
+      });
 
-       if (validMatches.length > 0) {
-           // Find max experience mentioned
-           const maxExp = validMatches.reduce((max, current) => {
-               return parseFloat(current[1]) > parseFloat(max[1]) ? current : max;
-           }, validMatches[0]);
-           experienceString = `${maxExp[1]} years`;
-           console.log(`Selected max experience: ${experienceString}`);
-       }
+      if (validMatches.length > 0) {
+        // Find max experience mentioned
+        const maxExp = validMatches.reduce((max, current) => {
+          return parseFloat(current[1]) > parseFloat(max[1]) ? current : max;
+        }, validMatches[0]);
+        experienceString = `${maxExp[1]} years`;
+        console.log(`Selected max experience: ${experienceString}`);
+      }
     }
 
     // Fallback: If no explicit "years" pattern found, look for "Experience: X" or "Total Experience: X"
     if (!experienceString) {
-        console.log('Trying fallback experience extraction...');
-        const fallbackMatch = text.match(/(?:Total\s*)?(?:Experience|Exp|Work History)\s*[:\-\|]?\s*(\d+(?:\.\d+)?)(?!\d)/i);
-        if (fallbackMatch) {
-            const num = parseFloat(fallbackMatch[1]);
-            if (num < 50 && num > 0) {
-                experienceString = `${num} years`;
-                console.log(`Fallback match found: ${experienceString}`);
-            }
+      console.log('Trying fallback experience extraction...');
+      const fallbackMatch = text.match(/(?:Total\s*)?(?:Experience|Exp|Work History)\s*[:\-\|]?\s*(\d+(?:\.\d+)?)(?!\d)/i);
+      if (fallbackMatch) {
+        const num = parseFloat(fallbackMatch[1]);
+        if (num < 50 && num > 0) {
+          experienceString = `${num} years`;
+          console.log(`Fallback match found: ${experienceString}`);
         }
+      }
     }
     console.log(`Final extracted experience: "${experienceString}"`);
     console.log('--------------------------');
@@ -110,16 +110,16 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
     // Assume name is in the first 3 lines, look for a line with 2-3 words that doesn't look like an email/phone/address
     let potentialName = '';
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
-        const line = lines[i];
-        if (!line.includes('@') && !line.match(/\d/) && line.split(' ').length >= 2 && line.split(' ').length <= 4) {
-             potentialName = line;
-             break;
-        }
+      const line = lines[i];
+      if (!line.includes('@') && !line.match(/\d/) && line.split(' ').length >= 2 && line.split(' ').length <= 4) {
+        potentialName = line;
+        break;
+      }
     }
-    
+
     // Fallback to filename if no name found
     if (!potentialName) {
-        potentialName = file.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      potentialName = file.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
     }
 
     const nameParts = potentialName.split(' ');
@@ -210,23 +210,23 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
     let candidate;
     if (email) {
       candidate = await Candidate.findOne({ email, jobId });
-      
+
       if (candidate) {
         console.log(`📧 Existing candidate found: ${email}, updating resume`);
-        
+
         // Update existing candidate with new resume
         candidate.resumeUrl = resumeUrl;
         candidate.resumeS3Key = resumeS3Key;
         candidate.firstName = firstName;
         candidate.lastName = lastName;
-        
+
         // Update phone if parsed
         if (candidateData.phone) {
           candidate.phone = candidateData.phone;
         }
-        
+
         await candidate.save();
-        
+
         return res.status(200).json({
           success: true,
           candidate,
@@ -263,7 +263,7 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
     if (email) {
       try {
         const interviewLink = `${process.env.FRONTEND_URL}/interview?code=${interviewCode}`;
-        
+
         await n8nService.sendInvitationEmail(
           email,
           `${firstName} ${lastName}`,
@@ -271,7 +271,7 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
           interviewCode,
           job.title
         );
-        
+
         console.log(`✅ Email sent to ${email} via N8N webhook`);
       } catch (emailError) {
         console.error('⚠️  Failed to send email via N8N:', emailError);
@@ -306,9 +306,9 @@ router.get('/', authenticate, async (req, res) => {
     const candidatesWithResults = candidates.map((candidate) => {
       const candidateObj = candidate.toObject();
       const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
-      
+
       const candidateId = candidate._id.toString();
-      
+
       const result = results.find((r: any) => {
         // 1. Try strict ID match (Highest confidence as per user request)
         // User confirmed: candidate_result "candidate_id" (or "id") matches candidate "_id"
@@ -325,7 +325,7 @@ router.get('/', authenticate, async (req, res) => {
         const candidateEmail = candidate.email?.toLowerCase();
         // Check both root and nested data structure
         const rEmail = r.candidateInformation?.email?.toLowerCase() || r.data?.candidateInformation?.email?.toLowerCase();
-        
+
         if (candidateEmail && rEmail === candidateEmail) {
           return true;
         }
@@ -338,7 +338,7 @@ router.get('/', authenticate, async (req, res) => {
       if (result) {
         (candidateObj as any).interviewAnalysis = result;
         // Ensure status reflects readiness
-        (candidateObj as any).status = 'ai_analysis_ready'; 
+        (candidateObj as any).status = 'ai_analysis_ready';
       }
 
       return candidateObj;
@@ -366,12 +366,12 @@ router.get('/:id', authenticate, async (req, res) => {
     // Ensure we handle both populated object and direct ID (though it should be populated here)
     const creatorId = (candidate.createdBy as any)?._id?.toString() || (candidate.createdBy as any)?.toString();
     if (creatorId && creatorId !== (req as any).user.id) {
-        return res.status(403).json({ error: 'You do not have permission to view this candidate' });
+      return res.status(403).json({ error: 'You do not have permission to view this candidate' });
     }
 
     // Fetch matching result using fuzzy search on name
     const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
-    
+
     // Find matching result in candidate_result collection
     // We try to match by name since we might not have a direct link yet
     // Handle potentially double-quoted ID string in DB e.g., "\"abc\""
@@ -579,7 +579,7 @@ router.post('/:id/resend-invitation', async (req, res) => {
     if (firstName) candidate.firstName = firstName;
     if (lastName) candidate.lastName = lastName;
     if (email) candidate.email = email;
-    
+
     // Generate new code if expired
     if (candidate.interviewCodeExpiry && new Date() > candidate.interviewCodeExpiry) {
       candidate.interviewCode = generateInterviewCode();
@@ -587,7 +587,7 @@ router.post('/:id/resend-invitation', async (req, res) => {
       candidate.interviewCodeExpiry = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
       candidate.interviewStatus = 'invited';
     }
-    
+
     await candidate.save();
 
     const job = candidate.jobId as any;
@@ -642,11 +642,11 @@ router.post('/:id/analysis', authenticate, async (req, res) => {
 
     // Check ownership
     if (candidate.createdBy && candidate.createdBy.toString() !== (req as any).user.id) {
-        return res.status(403).json({ error: 'You do not have permission to update this candidate' });
+      return res.status(403).json({ error: 'You do not have permission to update this candidate' });
     }
 
     // Check if result exists, update or create
-    let result = await CandidateResult.findOne({ 
+    let result = await CandidateResult.findOne({
       $or: [
         { candidateId: candidateId },
         { id: candidateId },
@@ -669,36 +669,36 @@ router.post('/:id/analysis', authenticate, async (req, res) => {
 
     // Also update candidate status and analysis data
     candidate.status = 'ai_analysis_ready';
-    
+
     // Handle nested data for analysis update
     const source = (result as any).data || result;
     const assessment = source.competencyAssessment || source.overallAssessment || {};
     const rec = source.recommendation || source.overallAssessment || {};
 
     const parseScore = (val: any): number => {
-        if (typeof val === 'number') return val;
-        if (typeof val === 'string') {
-            if (val.includes('/')) {
-                const [actual, total] = val.split('/').map(s => parseFloat(s.trim()));
-                if (!isNaN(actual) && !isNaN(total) && total !== 0) {
-                    return Math.round((actual / total) * 100);
-                }
-            }
-            return parseFloat(val) || 0;
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') {
+        if (val.includes('/')) {
+          const [actual, total] = val.split('/').map(s => parseFloat(s.trim()));
+          if (!isNaN(actual) && !isNaN(total) && total !== 0) {
+            return Math.round((actual / total) * 100);
+          }
         }
-        return 0;
+        return parseFloat(val) || 0;
+      }
+      return 0;
     };
 
     candidate.analysis = {
-        overallScore: parseScore(assessment.overallScore || assessment.rating || source.overallScore),
-        technicalSkills: assessment.technicalSkills || source.technicalSkills || {},
-        communication: assessment.communication || source.communication || {},
-        problemSolving: assessment.problemSolving || source.problemSolving || {},
-        culturalFit: assessment.culturalFit || source.culturalFit || {},
-        recommendation: rec.hiringRecommendation || source.recommendation || '',
-        summary: source.executiveSummary || assessment.summary || source.summary || '',
-        keyInsights: source.keyInsights || [],
-        redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || []
+      overallScore: parseScore(assessment.overallScore || assessment.rating || source.overallScore),
+      technicalSkills: assessment.technicalSkills || source.technicalSkills || {},
+      communication: assessment.communication || source.communication || {},
+      problemSolving: assessment.problemSolving || source.problemSolving || {},
+      culturalFit: assessment.culturalFit || source.culturalFit || {},
+      recommendation: rec.hiringRecommendation || source.recommendation || '',
+      summary: source.executiveSummary || assessment.summary || source.summary || '',
+      keyInsights: source.keyInsights || [],
+      redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || []
     };
     await candidate.save();
 
@@ -827,10 +827,10 @@ router.post('/sync-analysis', authenticate, async (_req, res) => {
     for (const result of results) {
       try {
         const resultData = result as any;
-        
+
         // Get candidate_id from root level (snake_case as per user's data)
         const candidateId = resultData.candidate_id;
-        
+
         if (!candidateId) {
           console.log('⚠️ No candidate_id in result, skipping');
           continue;
@@ -840,7 +840,7 @@ router.post('/sync-analysis', authenticate, async (_req, res) => {
 
         // Find candidate by _id
         const candidate = await Candidate.findById(candidateId);
-        
+
         if (!candidate) {
           errors.push(`Candidate not found for ID: ${candidateId}`);
           failed++;
@@ -868,7 +868,7 @@ router.post('/sync-analysis', authenticate, async (_req, res) => {
 
         candidate.status = 'ai_analysis_ready';
         await candidate.save();
-        
+
         console.log(`✅ Synced analysis for: ${candidate.firstName} ${candidate.lastName}`);
         synced++;
       } catch (err: any) {

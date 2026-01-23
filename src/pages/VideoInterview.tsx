@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mic, MicOff, Video, VideoOff, Sparkles, Play, Square, Dna } from 'lucide-react';
 import { showToast } from '../utils/toast';
+import { getSupportedMimeType } from '../utils/recorderUtils';
 
 // Retell SDK will be loaded via CDN in index.html
 declare global {
@@ -163,10 +164,19 @@ export default function VideoInterview() {
       ]);
 
       // 5. Start recording with mixed stream
-      const mediaRecorder = new MediaRecorder(mixedStream, {
-        mimeType: 'video/webm;codecs=vp9',
+
+      const selectedMimeType = getSupportedMimeType();
+
+      // Use default if no specific type is found
+      const options: any = {
         videoBitsPerSecond: 1500000
-      });
+      };
+
+      if (selectedMimeType) {
+        options.mimeType = selectedMimeType;
+      }
+
+      const mediaRecorder = new MediaRecorder(mixedStream, options);
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {

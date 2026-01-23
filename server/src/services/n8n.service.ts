@@ -37,7 +37,7 @@ class N8nService {
   async sendEmail(payload: EmailPayload): Promise<boolean> {
     try {
       const emailWebhook = process.env.N8N_WEBHOOK_EMAIL;
-      
+
       if (!emailWebhook) {
         console.warn('⚠️  N8N_WEBHOOK_EMAIL not configured in .env');
         return false;
@@ -65,7 +65,7 @@ class N8nService {
   async generateInterviewQuestions(payload: InterviewQuestionsPayload): Promise<any> {
     try {
       const questionsWebhook = process.env.N8N_WEBHOOK_INTERVIEW_QUESTIONS;
-      
+
       if (!questionsWebhook) {
         throw new Error('N8N_WEBHOOK_INTERVIEW_QUESTIONS not configured in .env');
       }
@@ -123,7 +123,7 @@ class N8nService {
   async sendInterviewResult(payload: InterviewResultPayload): Promise<any> {
     try {
       const resultWebhook = process.env.N8N_WEBHOOK_INTERVIEW_RESULT;
-      
+
       if (!resultWebhook) {
         console.warn('N8N_WEBHOOK_INTERVIEW_RESULT not configured');
         return null;
