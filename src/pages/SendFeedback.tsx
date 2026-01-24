@@ -24,7 +24,7 @@ export default function SendFeedback() {
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
 
-
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
     useEffect(() => {
         loadCandidates();
@@ -54,22 +54,30 @@ export default function SendFeedback() {
 
 Dear ${firstName || 'Candidate'},
 
-Thank you for attending the interview for the position of ${jobTitle} at Ideal IT Techno Pvt. Ltd.
+Thank you for participating in the AI-powered interview for the position of ${jobTitle}.
 
-We are pleased to inform you that you have successfully cleared the first round of the interview process. The details regarding the next stage of the interview process will be communicated to you shortly.
+We are pleased to inform you that you have successfully cleared the interview round. Your technical skills, problem-solving approach, and overall performance met our expectations.
 
-Thank you for your interest in the role and for your continued cooperation.
+Our team was particularly impressed with:
+  • Your understanding of full-stack concepts
+  • Your approach to real-world problem solving
+  • Your communication and clarity
 
-Regards,
+The next steps regarding onboarding and further discussions will be shared with you shortly.
+
+If you have any questions in the meantime, feel free to reach out.
+
+Congratulations, and we look forward to working with you!
+
+Best regards,
 HR Team
-Ideal IT Techno Pvt. Ltd.
 `);
             } else {
                 setMessage(`Interview Feedback – Thank You
 
 Dear ${firstName || 'Candidate'},
 
-Thank you for taking the time to participate in the  interview for the position of ${jobTitle}.
+Thank you for taking the time to participate in the AI-powered interview for the position of ${jobTitle}.
 
 We appreciate your interest in joining our team and the effort you put into the interview process.
 
@@ -111,21 +119,33 @@ HR Team
 
         try {
             // Call backend API to send feedback via N8N webhook
-            await api.candidates.sendFeedback(selectedCandidateId, {
-                firstName,
-                lastName,
-                email,
-                subject,
-                message,
-                feedbackType
+            const response = await fetch(`${API_URL}/api/candidates/${selectedCandidateId}/send-feedback`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    firstName,
+                    lastName,
+                    email,
+                    subject,
+                    message,
+                    feedbackType
+                })
             });
 
-            console.log('✅ Feedback sent successfully via N8N webhook');
-            setSent(true);
-            setTimeout(() => navigate('/dashboard/candidates'), 2000);
-        } catch (error: any) {
+            if (response.ok) {
+                console.log('✅ Feedback sent successfully via N8N webhook');
+                setSent(true);
+                setTimeout(() => navigate('/dashboard/candidates'), 2000);
+            } else {
+                const error = await response.json();
+                showToast.error(`Failed to send feedback: ${error.error || 'Unknown error'}`);
+            }
+        } catch (error) {
             console.error('Failed to send feedback:', error);
-            showToast.error(error.message || 'Failed to send feedback. Please try again.');
+            showToast.error('Failed to send feedback. Please try again.');
         } finally {
             setSending(false);
         }
@@ -207,7 +227,7 @@ HR Team
                 <div className="card" style={{ padding: '1.25rem' }}>
                     {/* Feedback Type Selection */}
                     <div style={{ marginBottom: '1rem' }}>
-                        <label className="label" style={{ fontSize: '0.75rem' }}>Feedback Type</label>
+                        <label className="label" style={{ fontSize: '0.85rem' }}>Feedback Type</label>
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
                             <button
                                 onClick={() => {
@@ -231,10 +251,9 @@ HR Team
                             </button>
                         </div>
                     </div>
-
                     {/* Candidate Selection */}
                     <div style={{ marginBottom: '1rem' }}>
-                        <label className="label" style={{ fontSize: '0.75rem' }}>Select Candidate</label>
+                        <label className="label" style={{ fontSize: '0.85rem' }}>Select Candidate</label>
                         <div style={{ position: 'relative' }}>
                             <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }} />
                             <select
@@ -258,7 +277,7 @@ HR Team
                             {/* Candidate Details - Editable */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
-                                    <label className="label" style={{ fontSize: '0.75rem' }}>First Name</label>
+                                    <label className="label" style={{ fontSize: '0.85rem' }}>First Name</label>
                                     <div style={{ position: 'relative' }}>
                                         <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                                         <input
@@ -271,7 +290,7 @@ HR Team
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="label" style={{ fontSize: '0.75rem' }}>Last Name</label>
+                                    <label className="label" style={{ fontSize: '0.85rem' }}>Last Name</label>
                                     <div style={{ position: 'relative' }}>
                                         <User size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                                         <input
@@ -286,7 +305,7 @@ HR Team
                             </div>
 
                             <div style={{ marginBottom: '1rem' }}>
-                                <label className="label" style={{ fontSize: '0.75rem' }}>Email Address</label>
+                                <label className="label" style={{ fontSize: '0.85rem' }}>Email Address</label>
                                 <div style={{ position: 'relative' }}>
                                     <Mail size={16} color="#9ca3af" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                                     <input
@@ -301,7 +320,7 @@ HR Team
 
                             {/* Email Editor */}
                             <div>
-                                <label className="label" style={{ fontSize: '0.75rem' }}>Email Content</label>
+                                <label className="label" style={{ fontSize: '0.85rem' }}>Email Content</label>
                                 <div style={{
                                     background: 'var(--white)',
                                     borderRadius: '0.5rem',
@@ -310,7 +329,7 @@ HR Team
                                 }}>
                                     <div style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
                                         <div style={{ marginBottom: '0.5rem' }}>
-                                            <label style={{ fontSize: '0.625rem', color: 'var(--gray-500)', display: 'block', marginBottom: '0.125rem' }}>Subject:</label>
+                                            <label style={{ fontSize: '0.85rem', color: 'var(--gray-500)', display: 'block', marginBottom: '0.125rem' }}>Subject:</label>
                                             <input
                                                 type="text"
                                                 value={subject}
@@ -336,7 +355,7 @@ HR Team
                                         }}
                                         placeholder="Enter feedback email content here..."
                                     />
-                                    <div style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', borderTop: '1px solid #e5e7eb', fontSize: '0.625rem', color: 'var(--gray-500)' }}>
+                                    <div style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', borderTop: '1px solid #e5e7eb', fontSize: '0.75rem', color: 'var(--gray-500)' }}>
                                         Customize the feedback message as needed before sending.
                                     </div>
                                 </div>
