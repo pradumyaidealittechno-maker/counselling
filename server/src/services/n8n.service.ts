@@ -85,6 +85,7 @@ class N8nService {
 
   async syncInterviewQuestions(payload: {
     jobTitle: string;
+    jobId: string;
     jobDescription?: string;
     jobDNA?: any;
     questions: any[];

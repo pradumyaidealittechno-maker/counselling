@@ -6,6 +6,24 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Helper to generate JWT token
+const generateToken = (user: any) => {
+  const payload = {
+    id: user._id,
+    email: user.email,
+    jobTitle: user.jobTitle,
+    role: user.role
+  };
+
+  const secret = process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod';
+
+  const options: any = {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+  };
+
+  return jwt.sign(payload, secret, options);
+};
+
 // Register
 router.post('/register', async (req, res) => {
   console.log('\n🔐 AUTH: Register attempt');
@@ -57,18 +75,14 @@ router.post('/register', async (req, res) => {
       company: companyDoc.name,
       companyId: companyDoc._id,
       jobTitle,
-      isActive: false, // Default to inactive until approved by admin
+      isActive: true, // AUTO-ACTIVE since we removed OTP
     });
 
     await user.save();
     console.log(`   ✅ User created: ${user._id}`);
 
     // Generate token
-    const token = jwt.sign(
-      { id: user._id, email: user.email, jobTitle: user.jobTitle, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const token = generateToken(user);
     console.log('   ✅ Token generated');
 
     res.status(201).json({
@@ -129,11 +143,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate token
-    const token = jwt.sign(
-      { id: user._id, email: user.email, jobTitle: user.jobTitle, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const token = generateToken(user);
     console.log('   ✅ Token generated');
 
     res.json({

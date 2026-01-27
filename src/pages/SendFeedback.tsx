@@ -71,7 +71,11 @@ Congratulations, and we look forward to working with you!
 
 Best regards,
 HR Team
+<<<<<<< HEAD
 `);
+=======
+Ideal IT Techno Pvt. Ltd.`);
+>>>>>>> a8bc2a2 (fix-issue-jan27)
             } else {
                 setMessage(`Interview Feedback – Thank You
 

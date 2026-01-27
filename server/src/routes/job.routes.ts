@@ -255,6 +255,7 @@ router.post('/:id/sync-questions', authenticate, async (req, res) => {
 
     await n8nService.syncInterviewQuestions({
       jobTitle: job.title,
+      jobId: job.id,
       jobDescription: job.description,  // Added context
       jobDNA: job.jobDNA,               // Added context
       questions: cleanQuestions,
