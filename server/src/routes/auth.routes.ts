@@ -6,6 +6,7 @@ import { Company } from '../models/Company.js';
 import { PendingUser } from '../models/PendingUser.js';
 import { sendOtpEmail } from '../services/email.service.js';
 import { authenticate } from '../middleware/auth.js';
+import axios from 'axios';
 
 const router = express.Router();
 
@@ -147,6 +148,30 @@ router.post('/verify-otp', async (req, res) => {
 
     // Generate token
     const token = generateToken(user);
+
+    // Trigger N8N webhook to notify admin about new user registration
+    const adminWebhookUrl = process.env.N8N_WEBHOOK_EMAIL_Register_USER_TO_ADMIN;
+
+    console.log('   ℹ️ Admin webhook URL configured:', adminWebhookUrl || 'NO');
+
+    if (adminWebhookUrl) {
+      console.log('   🚀 Sending webhook to:', adminWebhookUrl);
+      try {
+        await axios.post(adminWebhookUrl, {
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          company: user.company,
+          jobTitle: user.jobTitle,
+          role: user.role,
+          registrationDate: new Date().toISOString()
+        });
+        console.log('   ✅ Admin notification webhook sent successfully');
+      } catch (webhookError: any) {
+        console.error('   ❌ Failed to send admin notification webhook:', webhookError.message);
+        // Continue execution - notification failure shouldn't block registration
+      }
+    }
 
     res.status(201).json({
       token,
