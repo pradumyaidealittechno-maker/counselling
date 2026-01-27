@@ -26,7 +26,8 @@ export interface IEvaluation extends Document {
   
   // AI Recommendation
   recommendation: {
-    decision: 'Hire' | 'Hold' | 'Reject';
+   
+    
     confidence: number;
     overallScore: number;
   };

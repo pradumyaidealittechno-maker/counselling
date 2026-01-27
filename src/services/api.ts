@@ -105,7 +105,7 @@ export const api = {
       company: string;
       jobTitle?: string;
     }) => {
-      logger.info('Registering new user...', { email: data.email });
+      logger.info('Initiating registration...', { email: data.email });
 
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
@@ -113,15 +113,39 @@ export const api = {
         body: JSON.stringify(data),
       });
 
+      return handleResponse(response);
+    },
+
+    verifyOtp: async (email: string, otp: string) => {
+      logger.info('Verifying OTP...', { email });
+
+      const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp }),
+      });
+
       const result = await handleResponse(response);
 
       if (result.token) {
         localStorage.setItem('auth_token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
-        logger.success('Registration successful', { userId: result.user.id });
+        logger.success('Verification successful', { userId: result.user.id });
       }
 
       return result;
+    },
+
+    resendOtp: async (email: string) => {
+      logger.info('Resending OTP...', { email });
+
+      const response = await fetch(`${API_URL}/api/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      return handleResponse(response);
     },
 
     login: async (email: string, password: string) => {

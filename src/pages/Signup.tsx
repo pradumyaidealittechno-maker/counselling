@@ -37,8 +37,8 @@ export default function Signup() {
     try {
       console.log('%c📡 Calling API...', 'color: #3B82F6;');
       const result = await api.auth.register(formData);
-      console.log('%c✅ Registration successful!', 'color: #10B981; font-weight: bold;', result);
-      navigate('/onboarding');
+      console.log('%c✅ OTP sent, redirecting to verification!', 'color: #10B981; font-weight: bold;', result);
+      navigate('/verify-otp', { state: { email: formData.email } });
     } catch (err: any) {
       console.error('%c❌ Registration failed:', 'color: #EF4444; font-weight: bold;', err.message);
       setError(err.message || 'Registration failed. Please try again.');
