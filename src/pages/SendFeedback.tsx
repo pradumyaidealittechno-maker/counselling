@@ -80,6 +80,7 @@ We wish you all the best in your job search and future endeavors.
 
 Best regards,
 HR Team
+Ideal IT Techno Pvt. Ltd.
 `);
             }
         }

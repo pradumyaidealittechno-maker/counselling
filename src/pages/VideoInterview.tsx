@@ -234,19 +234,22 @@ export default function VideoInterview() {
 
   const getRetellToken = async () => {
     try {
-      // Get agent ID from environment variable
+      // Get agent ID from environment variable (optional fallback)
       const agentId = import.meta.env.VITE_RETELL_AGENT_ID;
 
-      if (!agentId) {
-        throw new Error('VITE_RETELL_AGENT_ID not configured. Please add it to .env file');
-      }
+      // if (!agentId) {
+      //   throw new Error('VITE_RETELL_AGENT_ID not configured. Please add it to .env file');
+      // }
 
-      console.log('🔑 Requesting Retell token for agent:', agentId);
+      console.log('🔑 Requesting Retell token', { candidateId: candidateUid, defaultAgentId: agentId });
 
       const response = await fetch(`${API_URL}/api/interviews/create-web-call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId })
+        body: JSON.stringify({
+          agentId, // Optional, can be undefined
+          candidateId: candidateUid
+        })
       });
 
       if (!response.ok) {

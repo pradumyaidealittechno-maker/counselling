@@ -7,6 +7,7 @@ import aiService from '../services/ai.service.js';
 import notificationService from '../services/notification.service.js';
 import { upload } from '../middleware/upload.js';
 import { uploadToS3 } from '../config/s3.js';
+import RetellAgent from '../models/RetellAgent.js';
 
 const router = express.Router();
 
@@ -73,13 +74,70 @@ router.post('/validate-code', async (req, res) => {
 router.post('/create-web-call', async (req, res) => {
   try {
     console.log('📞 Received request to create web call');
-    console.log('   Agent ID:', req.body.agentId);
-    console.log('   Retell API Key exists:', !!process.env.RETELL_API_KEY);
+    console.log('   Body:', req.body);
 
-    const { agentId } = req.body;
+    let { agentId, candidateId } = req.body;
+
+    // If candidateId is provided, try to find the agent tailored for the job
+    if (candidateId) {
+      try {
+        console.log(`🔍 Looking up candidate: ${candidateId}`);
+        const candidate = await Candidate.findById(candidateId);
+
+        if (candidate) {
+          console.log(`   Candidate found. JobID: ${candidate.jobId}`);
+
+          if (candidate.jobId) {
+            // Strategy 1: Direct lookup with toString()
+            let retellAgent = await RetellAgent.findOne({ jobId: candidate.jobId.toString() });
+
+            // Strategy 2: Lookup with object ID (in case casting didn't work previously)
+            if (!retellAgent) {
+              retellAgent = await RetellAgent.findOne({ jobId: candidate.jobId });
+            }
+
+            // Strategy 3: Brute force (fetch all and compare strings) - infallible fallback
+            if (!retellAgent) {
+              console.log('   ⚠️ Direct lookup failed. Trying manual string match...');
+              const allAgents = await RetellAgent.find({});
+              retellAgent = allAgents.find(a => a.jobId.toString() === candidate.jobId.toString()) || null;
+            }
+
+            if (retellAgent) {
+              console.log(`✅ RetellAgent found in DB (via Strategy ${retellAgent ? 'Success' : 'Failed'}):`, retellAgent);
+              if (retellAgent.agent_id) {
+                console.log(`   Using custom agent_id from DB: ${retellAgent.agent_id}`);
+                agentId = retellAgent.agent_id;
+              }
+            } else {
+              console.log(`⚠️ RetellAgent NOT found for jobId: ${candidate.jobId}`);
+
+              // If we really can't find it, consider throwing an explicit error explaining WHY
+              // instead of falling through to the generic 400
+              if (!process.env.RETELL_AGENT_ID) {
+                return res.status(400).json({
+                  error: `No AI Agent configured for Job ID: ${candidate.jobId}. Please contact support.`
+                });
+              }
+            }
+          } else {
+            console.log('⚠️ Candidate has no jobId');
+          }
+        } else {
+          console.log('⚠️ Candidate not found in DB');
+        }
+      } catch (err) {
+        console.error('❌ Error fetching candidate/agent from DB:', err);
+      }
+    }
 
     if (!agentId) {
-      console.log('❌ No agent ID provided');
+      // Fallback to env var if no agentId from DB or request
+      agentId = process.env.RETELL_AGENT_ID;
+    }
+
+    if (!agentId) {
+      console.log('❌ No agent ID provided and no default configured');
       return res.status(400).json({ error: 'Agent ID is required' });
     }
 
@@ -94,6 +152,7 @@ router.post('/create-web-call', async (req, res) => {
     res.status(500).json({ error: error.message || 'Failed to create interview session' });
   }
 });
+
 
 // Save interview recording (public endpoint)
 router.post('/save-recording', upload.single('file'), async (req, res) => {
