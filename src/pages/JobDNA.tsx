@@ -42,15 +42,6 @@ export default function JobDNA() {
   const [editingTrait, setEditingTrait] = useState<string | null>(null);
   const [editedTraits, setEditedTraits] = useState<Record<string, DNATrait>>({});
 
-  // Confirmation Request State
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [pendingChange, setPendingChange] = useState<{
-    dimension: string;
-    traitId: string;
-    newValue: ImportanceLevel;
-    traitName: string;
-  } | null>(null);
-
   useEffect(() => {
     loadJob();
   }, [jobId]);
@@ -98,20 +89,9 @@ export default function JobDNA() {
     if (!job?._id) return;
     try {
       setLoading(true);
-
-      const updatedJobDNA = getUpdatedJobDNA();
-      console.log('🚀 Approving with DNA Payload:', updatedJobDNA);
-
       await api.jobs.update(job._id, {
-        status: 'active',
-        jobDNA: updatedJobDNA || undefined
+        status: 'active'
       });
-
-      // Also regenerate questions on approval for freshness
-      try {
-        await api.jobs.generateQuestions(job._id, { count: 5 });
-      } catch (e) { console.warn('Silent question gen fail', e); }
-
       navigate(`/dashboard/jobs/${job._id}/ai-training`);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to approve job';
@@ -121,117 +101,14 @@ export default function JobDNA() {
     }
   };
 
-  /* Shared helper to merge edits into jobDNA */
-  const getUpdatedJobDNA = (additionalTraits: Record<string, DNATrait> = {}) => {
-    if (!job?.jobDNA) return null;
-
-    // Deep clone to safely mutate
-    const updatedJobDNA = JSON.parse(JSON.stringify(job.jobDNA));
-
-    // Combine current state with any immediate updates (for auto-save)
-    const traitsToMerge = { ...editedTraits, ...additionalTraits };
-
-    Object.entries(traitsToMerge).forEach(([key, trait]) => {
-      // Key format: `${dimension}-${traitId}`
-      const firstDashIndex = key.indexOf('-');
-      if (firstDashIndex === -1) return;
-
-      const dimension = key.substring(0, firstDashIndex);
-      const traitId = key.substring(firstDashIndex + 1);
-
-      const dimensionKey = dimension as keyof typeof updatedJobDNA;
-      if (updatedJobDNA[dimensionKey]) {
-        const index = updatedJobDNA[dimensionKey].findIndex((t: DNATrait) => t.id === traitId);
-        if (index !== -1) {
-          updatedJobDNA[dimensionKey][index] = trait;
-        }
-      }
-    });
-
-    return updatedJobDNA;
-  };
-
   const handleUpdateTrait = (dimension: string, traitId: string, field: keyof DNATrait, value: string) => {
-    setEditedTraits(prev => {
-      const key = `${dimension}-${traitId}`;
-      const originalTrait = job?.jobDNA?.[dimension as keyof typeof job.jobDNA]?.find((t: DNATrait) => t.id === traitId);
-      const currentState = prev[key] || originalTrait;
-
-      if (!currentState) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        [key]: { ...currentState, [field]: value }
-      };
-    });
-  };
-
-  const initiateImportanceChange = (dimension: string, traitId: string, newValue: ImportanceLevel, traitName: string) => {
-    setPendingChange({
-      dimension,
-      traitId,
-      newValue,
-      traitName
-    });
-    setShowConfirmDialog(true);
-  };
-
-  const confirmImportanceChange = async () => {
-    if (!pendingChange || !job?.jobDNA) return;
-
-    const { dimension, traitId, newValue } = pendingChange;
     const key = `${dimension}-${traitId}`;
-
-    // Find original trait to verify persistence
-    const originalTrait = job.jobDNA[dimension as keyof typeof job.jobDNA]?.find((t: DNATrait) => t.id === traitId);
-    if (!originalTrait) return;
-
-    // Construct the new trait object
-    const previousState = editedTraits[key] || originalTrait;
-    const newTrait = { ...previousState, importance: newValue };
-
-    // 1. Optimistic UI Update
-    setEditedTraits(prev => ({
-      ...prev,
-      [key]: newTrait
-    }));
-    setShowConfirmDialog(false);
-    setPendingChange(null);
-
-    // 2. Auto-Save to Backend immediately
-    try {
-      setLoading(true);
-
-      // We pass the newTrait specifically because state 'editedTraits' might not be updated yet in this closure
-      const updatedJobDNA = getUpdatedJobDNA({ [key]: newTrait });
-      console.log('💾 Auto-saving importance change:', updatedJobDNA);
-
-      await api.jobs.update(job._id!, {
-        status: job.status, // Keep existing status
-        jobDNA: updatedJobDNA || undefined
+    const currentTrait = editedTraits[key] || job?.jobDNA?.[dimension as keyof typeof job.jobDNA]?.find((t: DNATrait) => t.id === traitId);
+    if (currentTrait) {
+      setEditedTraits({
+        ...editedTraits,
+        [key]: { ...currentTrait, [field]: value }
       });
-
-      // 3. Regenerate questions silently
-      try {
-        api.jobs.generateQuestions(job._id!, { count: 5 });
-      } catch (e) {
-        console.warn('Silent question regen failed', e);
-      }
-
-      // 4. Reload to sync
-      await loadJob();
-      // Note: We don't clear editedTraits here to prevent UI jumps, 
-      // but since loadJob updates 'job', the 'originalTrait' will now match 'newTrait' eventually.
-
-    } catch (err: unknown) {
-      console.error('Failed to auto-save importance:', err);
-      // Revert UI on failure? 
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save change';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -239,24 +116,24 @@ export default function JobDNA() {
     if (!job?._id) return;
     try {
       setLoading(true);
-
-      const updatedJobDNA = getUpdatedJobDNA();
-      console.log('📝 Saving Draft with DNA Payload:', updatedJobDNA);
+      // Apply edited traits to job DNA
+      const updatedJobDNA = { ...job.jobDNA };
+      Object.entries(editedTraits).forEach(([key, trait]) => {
+        const [dimension, traitId] = key.split('-');
+        const dimensionKey = dimension as keyof typeof updatedJobDNA;
+        if (updatedJobDNA[dimensionKey]) {
+          const index = updatedJobDNA[dimensionKey].findIndex((t: DNATrait) => t.id === traitId);
+          if (index !== -1) {
+            updatedJobDNA[dimensionKey][index] = trait;
+          }
+        }
+      });
 
       await api.jobs.update(job._id, {
         status: 'draft',
-        jobDNA: updatedJobDNA || undefined
+        jobDNA: updatedJobDNA
       });
-
-      try {
-        await api.jobs.generateQuestions(job._id, { count: 5 });
-      } catch (genErr) {
-        console.warn('Auto-generation of questions failed', genErr);
-      }
-
-      await loadJob();
-      setEditedTraits({});
-
+      navigate('/dashboard/jobs');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save draft';
       console.error('Failed to save draft:', err);
@@ -266,6 +143,8 @@ export default function JobDNA() {
   };
 
   const handleEditLater = () => {
+    // Simply navigate away, changes to DNA generation are usually saved when generated
+    // or we could trigger a save here too if we want to be safe
     navigate('/dashboard/jobs');
   };
 
@@ -477,10 +356,10 @@ export default function JobDNA() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={16} color="var(--gray-400)" /><span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>Created {new Date(job.createdAt).toLocaleDateString()} at {new Date(job.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-          <DNASection title="Skill DNA" dimension="skillDNA" traits={jobDNA.skillDNA} color="#6366F1" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onImportanceChange={initiateImportanceChange} editedTraits={editedTraits} />
-          <DNASection title="Experience DNA" dimension="experienceDNA" traits={jobDNA.experienceDNA} color="#10B981" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onImportanceChange={initiateImportanceChange} editedTraits={editedTraits} />
-          <DNASection title="Behavioral DNA" dimension="behavioralDNA" traits={jobDNA.behavioralDNA} color="#F59E0B" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onImportanceChange={initiateImportanceChange} editedTraits={editedTraits} />
-          <DNASection title="Communication DNA" dimension="communicationDNA" traits={jobDNA.communicationDNA} color="#3B82F6" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onImportanceChange={initiateImportanceChange} editedTraits={editedTraits} />
+          <DNASection title="Skill DNA" dimension="skillDNA" traits={jobDNA.skillDNA} color="#6366F1" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
+          <DNASection title="Experience DNA" dimension="experienceDNA" traits={jobDNA.experienceDNA} color="#10B981" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
+          <DNASection title="Behavioral DNA" dimension="behavioralDNA" traits={jobDNA.behavioralDNA} color="#F59E0B" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
+          <DNASection title="Communication DNA" dimension="communicationDNA" traits={jobDNA.communicationDNA} color="#3B82F6" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'var(--gray-50)', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
@@ -489,7 +368,7 @@ export default function JobDNA() {
               <div style={{ width: '20px', height: '20px', background: 'var(--white)', borderRadius: '50%', position: 'absolute', top: '2px', left: culturalDNAEnabled ? '22px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
             </button>
           </div>
-          {culturalDNAEnabled && jobDNA.culturalDNA.length > 0 && <div style={{ marginTop: '0.75rem' }}><DNASection title="Cultural DNA" dimension="culturalDNA" traits={jobDNA.culturalDNA} color="#E91E63" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onImportanceChange={initiateImportanceChange} editedTraits={editedTraits} /></div>}
+          {culturalDNAEnabled && jobDNA.culturalDNA.length > 0 && <div style={{ marginTop: '0.75rem' }}><DNASection title="Cultural DNA" dimension="culturalDNA" traits={jobDNA.culturalDNA} color="#E91E63" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} /></div>}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -515,73 +394,11 @@ export default function JobDNA() {
           <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Shield size={12} />AI training blocked until Job DNA is approved</p>
         </div>
       </div>
-
-      {/* Confirmation Modal */}
-      {showConfirmDialog && pendingChange && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '1rem',
-            maxWidth: '500px',
-            width: '90%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-          }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', color: '#111827' }}>
-              Confirm Importance Change
-            </h3>
-            <p style={{ color: '#6B7280', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-              Are you sure you want to change the importance of <strong>{pendingChange.traitName}</strong> to <strong style={{ textTransform: 'capitalize' }}>{pendingChange.newValue}</strong>?
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button
-                onClick={() => { setShowConfirmDialog(false); setPendingChange(null); }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #D1D5DB',
-                  background: 'white',
-                  color: '#374151',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmImportanceChange}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  background: '#E91E63',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-              >
-                Confirm Change
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function DNASection({ title, dimension, traits, color, editingTrait, setEditingTrait, onUpdate, onImportanceChange, editedTraits }: {
+function DNASection({ title, dimension, traits, color, editingTrait, setEditingTrait, onUpdate, editedTraits }: {
   title: string;
   dimension: string;
   traits: DNATrait[];
@@ -589,7 +406,6 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
   editingTrait: string | null;
   setEditingTrait: (id: string | null) => void;
   onUpdate: (dimension: string, traitId: string, field: keyof DNATrait, value: string) => void;
-  onImportanceChange: (dimension: string, traitId: string, newValue: ImportanceLevel, traitName: string) => void;
   editedTraits: Record<string, DNATrait>;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -652,10 +468,7 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                   )}
                   <select
                     value={currentTrait.importance}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      onImportanceChange(dimension, trait.id, e.target.value as ImportanceLevel, currentTrait.name);
-                    }}
+                    onChange={(e) => onUpdate(dimension, trait.id, 'importance', e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     style={{
                       fontSize: '0.85rem',

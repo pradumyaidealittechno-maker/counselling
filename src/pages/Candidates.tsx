@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Upload, Search, Mail, MoreVertical, FileText, Dna, TrendingUp, Users, Plus, Loader } from 'lucide-react';
 import api from '../services/api';
 import AddCandidateDialog from '../components/AddCandidateDialog';
@@ -48,6 +48,7 @@ const getStatusConfig = (status: string) => {
 };
 
 export default function Candidates() {
+  const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +63,13 @@ export default function Candidates() {
   const [parsedCandidateData, setParsedCandidateData] = useState<any>(null);
   const [uploadJobId, setUploadJobId] = useState<string>(''); // Dedicated state for upload section
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jobSelectorRef = useRef<HTMLSelectElement>(null);
@@ -147,21 +155,22 @@ export default function Candidates() {
       if (uploadJobId) {
         // Step 2: Create candidate with extracted data + selected job
         try {
+          const createFormData = new FormData();
+          createFormData.append('firstName', candidateData.firstName || 'Unknown');
+          createFormData.append('lastName', candidateData.lastName || 'Candidate');
+          createFormData.append('email', candidateData.email || '');
+          createFormData.append('phone', candidateData.phone || '');
+          createFormData.append('experience', candidateData.experience || '');
+          createFormData.append('linkedInUrl', candidateData.linkedIn || '');
+          createFormData.append('jobId', uploadJobId);
+          createFormData.append('resume', file); // Send the file for S3 upload
+
           const createResponse = await fetch(`${API_URL}/api/candidates`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
               'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
             },
-            body: JSON.stringify({
-              firstName: candidateData.firstName || 'Unknown',
-              lastName: candidateData.lastName || 'Candidate',
-              email: candidateData.email || '',
-              phone: candidateData.phone || '',
-              experience: candidateData.experience || '',
-              linkedIn: candidateData.linkedIn || '',
-              jobId: uploadJobId, // Use the upload section's job ID
-            })
+            body: createFormData
           });
 
           if (!createResponse.ok) {
@@ -551,7 +560,10 @@ export default function Candidates() {
 
                   return (
                     <tr key={candidate._id} style={{ borderBottom: '1px solid var(--gray-200)' }}>
-                      <td style={{ padding: '0.6rem 1rem' }}>
+                      <td
+                        onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}
+                        style={{ padding: '0.6rem 1rem', cursor: 'pointer' }}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{
                             width: '36px',
@@ -571,9 +583,24 @@ export default function Candidates() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}</td>
-                      <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{candidate.experience || 'N/A'}</td>
-                      <td style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)' }}>{createdDate}</td>
+                      <td
+                        onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}
+                        style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)', cursor: 'pointer' }}
+                      >
+                        {(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}
+                      </td>
+                      <td
+                        onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}
+                        style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)', cursor: 'pointer' }}
+                      >
+                        {candidate.experience || 'N/A'}
+                      </td>
+                      <td
+                        onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}
+                        style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)', cursor: 'pointer' }}
+                      >
+                        {createdDate}
+                      </td>
                       <td style={{ padding: '0.6rem 1rem' }}>
                         <span style={{
                           padding: '0.25rem 0.625rem',
@@ -631,24 +658,14 @@ export default function Candidates() {
                               className="btn btn-sm btn-ghost"
                               style={{ padding: '0.25rem' }}
                               onClick={(e) => {
-                                const menu = e.currentTarget.nextElementSibling;
-                                if (menu) {
-                                  (menu as HTMLElement).style.display = (menu as HTMLElement).style.display === 'none' ? 'block' : 'none';
-                                }
-                              }}
-                              onBlur={(e) => {
-                                setTimeout(() => {
-                                  const menu = e.currentTarget.nextElementSibling;
-                                  if (menu) {
-                                    (menu as HTMLElement).style.display = 'none';
-                                  }
-                                }, 200);
+                                e.stopPropagation();
+                                setActiveMenuId(activeMenuId === candidate._id ? null : candidate._id);
                               }}
                             >
                               <MoreVertical size={14} color="#6B7280" />
                             </button>
                             <div style={{
-                              display: 'none',
+                              display: activeMenuId === candidate._id ? 'block' : 'none',
                               position: 'absolute',
                               right: 0,
                               bottom: '100%',
@@ -661,6 +678,58 @@ export default function Candidates() {
                               minWidth: '140px',
                               overflow: 'visible'
                             }}>
+                              {/* View Resume Option */}
+                              {(candidate.resumeUrl || candidate.resume?.url) && (
+                                <button
+                                  style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    padding: '0.5rem 0.75rem',
+                                    fontSize: '0.875rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--gray-700)',
+                                    transition: 'background-color 0.15s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'var(--gray-100)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                  onClick={() => window.open(candidate.resumeUrl || candidate.resume?.url, '_blank')}
+                                >
+                                  View Resume
+                                </button>
+                              )}
+
+                              {/* Edit Option */}
+                              <button
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  padding: '0.5rem 0.75rem',
+                                  fontSize: '0.875rem',
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--gray-700)',
+                                  transition: 'background-color 0.15s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'var(--gray-100)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}
+                              >
+                                Edit
+                              </button>
+
                               {/* Show Send Feedback option if status is AI Analysis Ready or Interview Complete */}
                               {(candidate.status === 'ai_analysis_ready' || candidate.status === 'interview_complete') && (
                                 <Link

@@ -51,6 +51,7 @@ export interface ICandidate extends Document {
     notes?: string;
   };
   notes?: string;
+  additionalNotes?: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -156,6 +157,7 @@ const candidateSchema = new Schema<ICandidate>(
       notes: String,
     },
     notes: String,
+    additionalNotes: String,
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',

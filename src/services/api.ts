@@ -382,6 +382,13 @@ export const api = {
       });
     },
 
+    update: async (id: string, data: any) => {
+      return authFetch(`/api/candidates/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+
     delete: async (id: string) => {
       return authFetch(`/api/candidates/${id}`, {
         method: 'DELETE',

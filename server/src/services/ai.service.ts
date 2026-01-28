@@ -743,11 +743,11 @@ Return a JSON object with a "questions" array:
       jobDNA?: any;
       candidateScore?: number;
       recommendation?: string;
-      conversationHistory?: Array<{role: string; content: string}>;
+      conversationHistory?: Array<{ role: string; content: string }>;
     }
   ): Promise<string> {
     const apiKey = this.getApiKey();
-    
+
     if (this.shouldUseMock()) {
       return `This is a mock AI response. To use real AI assistant, please configure your OpenAI API key.
       
@@ -846,28 +846,28 @@ ${resumeText}
 
 Return a JSON object with the following fields:
 {
-  "firstName": "First name of the candidate",
-  "lastName": "Last name of the candidate",
+  "firstName": "First name",
+  "lastName": "Last name",
   "email": "Email address",
-  "phone": "Phone number (optional)",
-  "experience": "Years of experience as a string (e.g., '5 years', '2-3 years', 'Fresher')",
-  "linkedIn": "LinkedIn profile URL (optional)"
+  "phone": "Phone number",
+  "experience": "Total years of experience found (e.g. '5 years'). If not found, estimating from work history is okay.",
+  "linkedIn": "LinkedIn profile URL"
 }
 
-Important:
-- Extract only the information that is clearly present in the resume
-- For missing fields, use empty string ""
-- For experience, try to calculate total years from work history or use what's stated
-- Return valid JSON only`;
+CRITICAL RULES:
+1. **NAME EXTRACTION**: The candidate's name is usually at the very top. However, DO NOT mistake University names (e.g. "IES IPS Academy"), Company names, or Headers ("Curriculum Vitae") for the candidate's name. Look for a name that looks like a person's name.
+2. **MISSING DATA**: If a field is not found, return an empty string "".
+3. **FORMAT**: Return strictly valid JSON.
+`;
 
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4',
+          model: 'gpt-4o',
           messages: [
             {
               role: 'system',
-              content: 'You are an expert resume parser. Extract structured candidate information from resume text.',
+              content: 'You are an expert resume parser. You are extremely accurate at identifying a person\'s name, distinguishing it from headers, titles, or institution names.',
             },
             {
               role: 'user',

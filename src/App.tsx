@@ -24,6 +24,7 @@ import InterviewManagement from './pages/InterviewManagement';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
 import CandidateFeedback from './pages/CandidateFeedback';
+import CandidateDetails from './pages/CandidateDetails';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLayout from './components/AdminLayout';
 import DashboardLayout from './components/DashboardLayout';
@@ -88,6 +89,7 @@ function App() {
           <Route path="jobs/interview-builder" element={<InterviewBuilder />} />
           <Route path="candidates" element={<Candidates />} />
           <Route path="candidates/invite" element={<SendInvitation />} />
+          <Route path="candidates/:id" element={<CandidateDetails />} />
           <Route path="candidates/feedback" element={<SendFeedback />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/:id" element={<AnalysisReport />} />

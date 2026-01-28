@@ -5,8 +5,9 @@ import Candidate from '../models/Candidate.js';
 import Job from '../models/Job.js';
 import { authenticate } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
-import { uploadToS3 } from '../config/s3.js';
+import { uploadToS3, getSignedDownloadUrl } from '../config/s3.js';
 import n8nService from '../services/n8n.service.js';
+import aiService from '../services/ai.service.js';
 
 import * as pdfParseModule from 'pdf-parse';
 import WordExtractor from 'word-extractor';
@@ -52,7 +53,35 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
       return res.status(400).json({ error: 'Unsupported file format. Please upload PDF or TXT.' });
     }
 
-    // Regex extraction logic
+    // AI Extraction
+    console.log('🤖 Parsing Resume with AI...');
+    try {
+      // Limit text length to avoid token limits (approx 15k chars is safe for gpt-4)
+      const truncatedText = text.substring(0, 15000);
+
+      const aiData = await aiService.parseResume(truncatedText);
+      console.log('✅ AI Parse Result:', aiData);
+
+      if (aiData) {
+        // Map AI result to our structure
+        const extractedData = {
+          firstName: aiData.firstName || 'Candidate',
+          lastName: aiData.lastName || 'Unknown',
+          email: aiData.email || '',
+          phone: aiData.phone || '',
+          linkedIn: aiData.linkedIn || '',
+          experience: aiData.experience || '',
+          summary: text.substring(0, 500) // First 500 chars as summary preview
+        };
+
+        return res.json({ success: true, data: extractedData });
+      }
+    } catch (aiError) {
+      console.error('⚠️ AI Parsing failed, falling back to basic extraction:', aiError);
+      // Fallback logic continues below if AI fails...
+    }
+
+    // --- FALLBACK REGEX LOGIC (Original Implementation) ---
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/;
     const phoneRegex = /(\+\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}/;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -60,54 +89,33 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
     const emailMatch = text.match(emailRegex);
     const phoneMatch = text.match(phoneRegex);
 
+    // ... (rest of the original regex logic for experience, etc.) ...
+
     // Refined heuristic for Experience: extract "X years" or "X.Y years"
-    // Look for number (int/decimal) followed by "years", avoiding dates (often > 1900)
-    console.log('--- Parsing Experience ---');
+    console.log('--- Parsing Experience (Fallback) ---');
     const yearRegex = /(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?|yr)/gi;
     const yearMatches = Array.from(text.matchAll(yearRegex));
     let experienceString = '';
 
-    console.log(`Global year matches found: ${yearMatches.length}`);
-
     if (yearMatches.length > 0) {
-      // Filter out likely dates (e.g. 2020) or very high numbers
       const validMatches = yearMatches.filter(m => {
         const num = parseFloat(m[1]);
         return num < 50 && num > 0;
       });
-
       if (validMatches.length > 0) {
-        // Find max experience mentioned
         const maxExp = validMatches.reduce((max, current) => {
           return parseFloat(current[1]) > parseFloat(max[1]) ? current : max;
         }, validMatches[0]);
         experienceString = `${maxExp[1]} years`;
-        console.log(`Selected max experience: ${experienceString}`);
       }
     }
-
-    // Fallback: If no explicit "years" pattern found, look for "Experience: X" or "Total Experience: X"
-    if (!experienceString) {
-      console.log('Trying fallback experience extraction...');
-      const fallbackMatch = text.match(/(?:Total\s*)?(?:Experience|Exp|Work History)\s*[:\-\|]?\s*(\d+(?:\.\d+)?)(?!\d)/i);
-      if (fallbackMatch) {
-        const num = parseFloat(fallbackMatch[1]);
-        if (num < 50 && num > 0) {
-          experienceString = `${num} years`;
-          console.log(`Fallback match found: ${experienceString}`);
-        }
-      }
-    }
-    console.log(`Final extracted experience: "${experienceString}"`);
-    console.log('--------------------------');
 
     // Find LinkedIn URL
     const urls = text.match(urlRegex) || [];
     const linkedInUrl = urls.find(url => url.toLowerCase().includes('linkedin.com'));
 
-    // Name Extraction Heuristic (First non-empty lines usually contains name)
+    // Name Extraction Heuristic
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    // Assume name is in the first 3 lines, look for a line with 2-3 words that doesn't look like an email/phone/address
     let potentialName = '';
     for (let i = 0; i < Math.min(lines.length, 5); i++) {
       const line = lines[i];
@@ -116,15 +124,13 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
         break;
       }
     }
-
-    // Fallback to filename if no name found
     if (!potentialName) {
       potentialName = file.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
     }
 
     const nameParts = potentialName.split(' ');
     const firstName = nameParts[0] || 'Candidate';
-    const lastName = nameParts.slice(1).join(' ') || (nameParts[0] ? '' : 'Unknown');
+    const lastName = nameParts.slice(1).join(' ') || '';
 
     const extractedData = {
       firstName,
@@ -133,7 +139,7 @@ router.post('/parse-resume', authenticate, upload.single('resume'), async (req, 
       phone: phoneMatch ? phoneMatch[0] : '',
       linkedIn: linkedInUrl || '',
       experience: experienceString || '',
-      summary: text.substring(0, 500) // First 500 chars as summary preview
+      summary: text.substring(0, 500)
     };
 
     res.json({ success: true, data: extractedData });
@@ -190,21 +196,69 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
       resumeS3Key = `local_${Date.now()}_${file.originalname}`;
     }
 
-    // TODO: Parse resume using AI service to extract candidate info
-    // For now, extract name from filename (basic parsing)
-    const fileName = file.originalname.replace(/\.[^/.]+$/, '');
-    const nameParts = fileName.split(/[-_\s]+/);
-    const candidateData = {
-      firstName: nameParts[0] || 'Unknown',
-      lastName: nameParts.slice(1).join(' ') || 'Candidate',
-      email: null, // TODO: Extract email from resume text
-      phone: null,
-      experience: null,
+    // Extract text for AI parsing
+    let text = '';
+    try {
+      if (file.mimetype === 'application/pdf') {
+        const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+        const data = await pdfParse(file.buffer);
+        text = data.text;
+      } else if (file.mimetype === 'text/plain') {
+        text = file.buffer.toString('utf-8');
+      } else if (
+        file.mimetype === 'application/msword' ||
+        file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ) {
+        try {
+          const doc = await extractor.extract(file.buffer);
+          text = doc.getBody();
+        } catch (e) {
+          console.error('Word parse error in upload:', e);
+        }
+      }
+    } catch (err) {
+      console.error('Text extraction failed:', err);
+    }
+
+    // Parse resume using AI service
+    let candidateData = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      experience: '',
     };
 
-    const firstName = candidateData.firstName || 'Unknown';
-    const lastName = candidateData.lastName || 'Candidate';
-    const email = candidateData.email;
+    if (text) {
+      try {
+        console.log('🤖 Parsing uploaded resume with AI...');
+        const aiData = await aiService.parseResume(text.substring(0, 15000));
+        if (aiData) {
+          candidateData = {
+            firstName: aiData.firstName || '',
+            lastName: aiData.lastName || '',
+            email: aiData.email || '',
+            phone: aiData.phone || '',
+            experience: aiData.experience || '',
+          };
+          console.log('✅ AI Extract for Upload:', candidateData);
+        }
+      } catch (aiError) {
+        console.error('AI parsing in upload failed:', aiError);
+      }
+    }
+
+    // Fallback: extract name from filename if AI failed to get name
+    if (!candidateData.firstName) {
+      const fileName = file.originalname.replace(/\.[^/.]+$/, '');
+      const nameParts = fileName.split(/[-_\s]+/);
+      candidateData.firstName = nameParts[0] || 'Unknown';
+      candidateData.lastName = nameParts.slice(1).join(' ') || 'Candidate';
+    }
+
+    const firstName = candidateData.firstName;
+    const lastName = candidateData.lastName;
+    const email = candidateData.email; // Now populated from AI!
 
     // Check if candidate already exists by email (if email was extracted)
     let candidate;
@@ -303,9 +357,19 @@ router.get('/', authenticate, async (req, res) => {
     const results = await CandidateResult.find({});
 
     // Map results to candidates (fuzzy match by name)
-    const candidatesWithResults = candidates.map((candidate) => {
+    const candidatesWithResults = await Promise.all(candidates.map(async (candidate) => {
       const candidateObj = candidate.toObject();
       const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
+
+      // Generate signed URL for resume if present
+      if (candidate.resumeS3Key) {
+        try {
+          const signedUrl = await getSignedDownloadUrl(candidate.resumeS3Key);
+          (candidateObj as any).resumeUrl = signedUrl;
+        } catch (err) {
+          console.error('Failed to generate signed URL for resume:', err);
+        }
+      }
 
       const candidateId = candidate._id.toString();
 
@@ -342,7 +406,7 @@ router.get('/', authenticate, async (req, res) => {
       }
 
       return candidateObj;
-    });
+    }));
 
     res.json(candidatesWithResults);
   } catch (error: any) {
@@ -415,6 +479,16 @@ router.get('/:id', authenticate, async (req, res) => {
       return rName && (rName.includes(fullName) || fullName.includes(rName));
     });
 
+    // Generate signed URL for resume if present
+    if (candidate.resumeS3Key) {
+      try {
+        const signedUrl = await getSignedDownloadUrl(candidate.resumeS3Key);
+        candidate.resumeUrl = signedUrl;
+      } catch (err) {
+        console.error('Failed to generate signed URL for resume:', err);
+      }
+    }
+
     const candidateObj = candidate.toObject();
     if (result) {
       (candidateObj as any).interviewAnalysis = result;
@@ -428,7 +502,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // Create candidate and send invitation (protected)
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, upload.single('resume'), async (req, res) => {
   try {
     const { firstName, lastName, email, phone, experience, jobId, linkedInUrl } = req.body;
 
@@ -449,6 +523,27 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Candidate already invited for this job' });
     }
 
+    // Handle Resume Upload to S3 if file is present
+    let resumeUrl = '';
+    let resumeS3Key = '';
+
+    if (req.file) {
+      try {
+        const uploadResult = await uploadToS3(
+          req.file.buffer,
+          process.env.AWS_S3_RESUMES_FOLDER || 'resumes',
+          `${firstName}_${lastName}_${req.file.originalname}`.replace(/\s+/g, '_'),
+          req.file.mimetype
+        );
+        resumeUrl = uploadResult.url;
+        resumeS3Key = uploadResult.key;
+      } catch (uploadError) {
+        console.error('Failed to upload resume to S3 during creation:', uploadError);
+        // We continue even if upload fails, but warn? Or fail? 
+        // Let's decide to continue but log it.
+      }
+    }
+
     // Generate interview code
     const interviewCode = generateInterviewCode();
     const expiryHours = parseInt(process.env.INTERVIEW_CODE_EXPIRY_HOURS || '168');
@@ -463,6 +558,8 @@ router.post('/', authenticate, async (req, res) => {
       experience: experience || '',
       jobId,
       linkedInUrl,
+      resumeUrl,
+      resumeS3Key,
       interviewCode,
       interviewCodeExpiry,
       interviewStatus: 'invited',
@@ -572,6 +669,46 @@ router.post('/:id/send-feedback', async (req, res) => {
   } catch (error: any) {
     console.error('Send feedback error:', error);
     res.status(500).json({ error: 'Failed to send feedback' });
+  }
+});
+
+// Update candidate details (protected)
+router.patch('/:id', authenticate, async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, experience, linkedInUrl, additionalNotes } = req.body;
+
+    // Find candidate to ensure ownership and existence
+    const candidate = await Candidate.findById(req.params.id);
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Check ownership
+    if (candidate.createdBy && candidate.createdBy.toString() !== (req as any).user.id) {
+      return res.status(403).json({ error: 'You do not have permission to update this candidate' });
+    }
+
+    // If email is changing, check uniqueness for this job
+    if (email && email !== candidate.email) {
+      const existing = await Candidate.findOne({ email, jobId: candidate.jobId, _id: { $ne: candidate._id } });
+      if (existing) {
+        return res.status(400).json({ error: 'Another candidate with this email already exists for this job' });
+      }
+      candidate.email = email;
+    }
+
+    if (firstName) candidate.firstName = firstName;
+    if (lastName) candidate.lastName = lastName;
+    if (phone !== undefined) candidate.phone = phone;
+    if (experience !== undefined) candidate.experience = experience;
+    if (linkedInUrl !== undefined) candidate.linkedInUrl = linkedInUrl;
+    if (additionalNotes !== undefined) candidate.additionalNotes = additionalNotes;
+
+    await candidate.save();
+    res.json(candidate);
+  } catch (error: any) {
+    console.error('Update candidate error:', error);
+    res.status(500).json({ error: 'Failed to update candidate' });
   }
 });
 
