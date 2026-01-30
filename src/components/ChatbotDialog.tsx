@@ -56,7 +56,7 @@ What would you like to know about your hiring process?`
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/ai/chat', {
+      const response = await fetch('https://hrapi.intelligens.app/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
