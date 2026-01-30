@@ -526,6 +526,7 @@ router.post('/', authenticate, upload.single('resume'), async (req, res) => {
     // Handle Resume Upload to S3 if file is present
     let resumeUrl = '';
     let resumeS3Key = '';
+    let resumeText = '';
 
     if (req.file) {
       try {
@@ -537,10 +538,47 @@ router.post('/', authenticate, upload.single('resume'), async (req, res) => {
         );
         resumeUrl = uploadResult.url;
         resumeS3Key = uploadResult.key;
+
+        // Extract Text for DNA Matching
+        try {
+          if (req.file.mimetype === 'application/pdf') {
+            const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+            const data = await pdfParse(req.file.buffer);
+            resumeText = data.text;
+          } else if (req.file.mimetype === 'text/plain') {
+            resumeText = req.file.buffer.toString('utf-8');
+          } else if (
+            req.file.mimetype === 'application/msword' ||
+            req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          ) {
+            const doc = await extractor.extract(req.file.buffer);
+            resumeText = doc.getBody();
+          }
+        } catch (extractErr) {
+          console.error('Failed to extract text for DNA matching:', extractErr);
+        }
+
       } catch (uploadError) {
         console.error('Failed to upload resume to S3 during creation:', uploadError);
-        // We continue even if upload fails, but warn? Or fail? 
-        // Let's decide to continue but log it.
+      }
+    }
+
+    // DNA Matching
+    let resumeMatchScore = 0;
+    let resumeMatchAnalysis = undefined;
+
+    if (resumeText && job.description) {
+      try {
+        console.log('🧬 Calculating Resume DNA Match...');
+        const matchResult = await aiService.calculateResumeMatch(
+          resumeText,
+          job.description,
+          job.jobDNA // Assuming jobDNA is stored on Job model
+        );
+        resumeMatchScore = matchResult.score;
+        resumeMatchAnalysis = matchResult;
+      } catch (matchErr) {
+        console.error('DNA Matching failed:', matchErr);
       }
     }
 
@@ -564,6 +602,8 @@ router.post('/', authenticate, upload.single('resume'), async (req, res) => {
       interviewCodeExpiry,
       interviewStatus: 'invited',
       createdBy: (req as any).user.id,
+      resumeMatchScore,
+      resumeMatchAnalysis
     });
 
     await candidate.save();
@@ -571,6 +611,7 @@ router.post('/', authenticate, upload.single('resume'), async (req, res) => {
     // Generate interview link
     const interviewLink = `${process.env.FRONTEND_URL}/interview?code=${interviewCode}`;
 
+    // Auto-update status if match is high? (Optional, maybe keep as invited)
 
     if (!req.body.skipInvite) {
       // Send invitation email via n8n

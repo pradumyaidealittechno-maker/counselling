@@ -21,7 +21,9 @@ interface Candidate {
   interviewResult?: {
     overallScore?: number;
     recommendation?: string;
+    // recommendation?: string;
   };
+  resumeMatchScore?: number;
   jobId: {
     _id: string;
     title: string;
@@ -267,9 +269,9 @@ export default function Candidates() {
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-  const candidatesWithAnalysis = candidates.filter(c => c.interviewResult?.overallScore);
-  const avgScore = candidatesWithAnalysis.length > 0
-    ? Math.round(candidatesWithAnalysis.reduce((acc, c) => acc + (c.interviewResult?.overallScore || 0), 0) / candidatesWithAnalysis.length)
+  const candidatesWithScore = candidates.filter(c => c.interviewResult?.overallScore || c.resumeMatchScore);
+  const avgScore = candidatesWithScore.length > 0
+    ? Math.round(candidatesWithScore.reduce((acc, c) => acc + (c.interviewResult?.overallScore || c.resumeMatchScore || 0), 0) / candidatesWithScore.length)
     : 0;
 
   if (loading) {
@@ -535,6 +537,7 @@ export default function Candidates() {
               <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)', width: '25%' }}>Candidate</th>
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Job Role</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Match</th>
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Experience</th>
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Date Added</th>
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, fontSize: '1rem', color: 'var(--gray-700)' }}>Status</th>
@@ -544,7 +547,7 @@ export default function Candidates() {
             <tbody>
               {currentCandidates.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-50)' }}>
+                  <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-50)' }}>
                     <Users size={40} color="var(--gray-300)" style={{ marginBottom: '0.75rem' }} />
                     <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>No candidates found</p>
                     <Link to="/dashboard/candidates/invite" className="btn btn-primary btn-sm">
@@ -588,6 +591,22 @@ export default function Candidates() {
                         style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)', cursor: 'pointer' }}
                       >
                         {(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}
+                      </td>
+                      <td style={{ padding: '0.6rem 1rem' }}>
+                        {(candidate.interviewResult?.overallScore || candidate.resumeMatchScore) ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.25rem 0.625rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            background: (candidate.interviewResult?.overallScore || candidate.resumeMatchScore || 0) >= 80 ? '#ECFDF5' : (candidate.interviewResult?.overallScore || candidate.resumeMatchScore || 0) >= 60 ? '#FFFBEB' : '#FEF2F2',
+                            color: (candidate.interviewResult?.overallScore || candidate.resumeMatchScore || 0) >= 80 ? '#059669' : (candidate.interviewResult?.overallScore || candidate.resumeMatchScore || 0) >= 60 ? '#D97706' : '#EF4444',
+                          }}>
+                            {(candidate.interviewResult?.overallScore || candidate.resumeMatchScore)}%
+                          </span>
+                        ) : <span style={{ color: 'var(--gray-400)', fontSize: '0.875rem' }}>-</span>}
                       </td>
                       <td
                         onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}
@@ -679,7 +698,7 @@ export default function Candidates() {
                               overflow: 'visible'
                             }}>
                               {/* View Resume Option */}
-                              {(candidate.resumeUrl || candidate.resume?.url) && (
+                              {/*{(candidate.resumeUrl || candidate.resume?.url) && (
                                 <button
                                   style={{
                                     display: 'block',
@@ -703,7 +722,7 @@ export default function Candidates() {
                                 >
                                   View Resume
                                 </button>
-                              )}
+                              )}*/}
 
                               {/* Edit Option */}
                               <button

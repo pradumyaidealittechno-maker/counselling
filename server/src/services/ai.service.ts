@@ -894,6 +894,104 @@ CRITICAL RULES:
       throw new Error('Failed to parse resume with AI');
     }
   }
+
+  /**
+   * Calculate exact match between Resume and Job DNA
+   */
+  async calculateResumeMatch(
+    resumeText: string,
+    jobDescription: string,
+    jobDNA?: any
+  ): Promise<{
+    score: number;
+    matchExplanation: string;
+    missingSkills: string[];
+    matchingSkills: string[];
+    recommendation: 'strong_match' | 'match' | 'potential_match' | 'no_match';
+  }> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      // Mock logic for development without API key
+      return {
+        score: 75,
+        matchExplanation: 'Mock analysis: Candidate matches most requirements.',
+        missingSkills: ['Advanced Pattern Matching'],
+        matchingSkills: ['Communication', 'Development'],
+        recommendation: 'match'
+      };
+    }
+
+    try {
+      const prompt = `Compare the following Resume against the Job Description and Job DNA.
+
+JOB DESCRIPTION:
+${jobDescription.substring(0, 2000)}
+
+${jobDNA ? `JOB DNA (Critical Attributes):
+${JSON.stringify(jobDNA, null, 2)}` : ''}
+
+RESUME:
+${resumeText.substring(0, 5000)}
+
+Analyze the match and return a JSON object with:
+{
+  "score": <number 0-100 based on fit>,
+  "matchExplanation": "<single sentence summary>",
+  "missingSkills": ["<skill 1>", "<skill 2>"],
+  "matchingSkills": ["<skill 1>", "<skill 2>"],
+  "recommendation": "strong_match|match|potential_match|no_match"
+}
+
+SCORING CRITERIA:
+- 90-100: Exceptional match, has all critical and nice-to-have skills.
+- 75-89: Good match, has all critical skills.
+- 60-74: Potential match, has most critical skills but some gaps.
+- <60: Poor match, missing critical skills.
+`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert recruitment AI. You accurately match candidates to job requirements based on deep semantic analysis.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2, // Low temp for consistent scoring
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 45000,
+        }
+      );
+
+      const result = JSON.parse(response.data.choices[0].message.content);
+      console.log('🧬 Resume Job Dictionary Match:', result);
+      return result;
+
+    } catch (error: any) {
+      console.error('❌ Failed to calculate resume match:', error.response?.data || error.message);
+      // Fallback
+      return {
+        score: 0,
+        matchExplanation: 'Failed to analyze resume.',
+        missingSkills: [],
+        matchingSkills: [],
+        recommendation: 'no_match'
+      };
+    }
+  }
 }
 
 export default new AIService();

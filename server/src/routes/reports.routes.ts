@@ -10,9 +10,9 @@ router.get('/', authenticate, async (req, res) => {
   try {
     // 1. Fetch candidates created by the logged-in user
     const userCandidates = await Candidate.find({ createdBy: (req as any).user.id });
-    
+
     if (userCandidates.length === 0) {
-        return res.json([]);
+      return res.json([]);
     }
 
     const candidateIds = userCandidates.map(c => c._id.toString());
@@ -28,18 +28,18 @@ router.get('/', authenticate, async (req, res) => {
     // or we construct a comprehensive query. Given the fuzzy nature, in-memory filtering 
     // after a broad DB fetch (or just fetching all if not too many) might be safer for consistency.
     // However, for performance, let's try a broad OR query.
-    
+
     const results = await CandidateResult.find({
-        $or: [
-            { candidateId: { $in: allCandidateIds } },
-            { id: { $in: allCandidateIds } },
-            { candidate_id: { $in: allCandidateIds } },
-            // For emails and names, since we need case-insensitive matching and structure varies,
-            // we might miss some if we rely solely on DB query without regex.
-            // But let's include exact matches at least.
-             { 'candidateInformation.email': { $in: candidateEmails } },
-             { 'data.candidateInformation.email': { $in: candidateEmails } }
-        ]
+      $or: [
+        { candidateId: { $in: allCandidateIds } },
+        { id: { $in: allCandidateIds } },
+        { candidate_id: { $in: allCandidateIds } },
+        // For emails and names, since we need case-insensitive matching and structure varies,
+        // we might miss some if we rely solely on DB query without regex.
+        // But let's include exact matches at least.
+        { 'candidateInformation.email': { $in: candidateEmails } },
+        { 'data.candidateInformation.email': { $in: candidateEmails } }
+      ]
     }).sort({ 'metadata.reportGenerated': -1 });
 
     res.json(results);
@@ -53,7 +53,7 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/candidate/:candidateId', authenticate, async (req, res) => {
   try {
     const { candidateId } = req.params;
-    
+
     // Verify candidate ownership
     const candidate = await Candidate.findById(candidateId);
     if (!candidate) {
@@ -98,51 +98,51 @@ router.get('/:id', authenticate, async (req, res) => {
     // Try to find the candidate strictly first
     // Check root and nested data for candidate ID
     // CRITICAL: Check specific candidate fields BEFORE generic 'id', as 'id' might be the Report's own ID
-    const rawCandidateId = result.candidateId || (result as any).candidate_id || 
-                          (result as any).data?.candidateId || (result as any).data?.candidate_id ||
-                          result.id;
-    
+    const rawCandidateId = result.candidateId || (result as any).candidate_id ||
+      (result as any).data?.candidateId || (result as any).data?.candidate_id ||
+      result.id;
+
     const candidateId = rawCandidateId ? String(rawCandidateId).replace(/^"|"$/g, '') : null;
-    
+
     let candidate = null;
 
     if (candidateId) {
-       candidate = await Candidate.findById(candidateId);
+      candidate = await Candidate.findById(candidateId);
     }
 
     // Fallback to email match
     if (!candidate) {
-        // Handle nested data robustly
-        const info = result.candidateInformation || (result as any).data?.candidateInformation || {};
-        const reportEmail = info.email?.toLowerCase();
-        
-        console.log('🔍 Report Lookup Debug:', {
-             reportId: result._id,
-             rawCandidateId,
-             cleanedCandidateId: candidateId,
-             extractedEmail: reportEmail,
-             hasCandidateInfo: !!result.candidateInformation,
-             hasDataInfo: !!(result as any).data?.candidateInformation
-        });
+      // Handle nested data robustly
+      const info = result.candidateInformation || (result as any).data?.candidateInformation || {};
+      const reportEmail = info.email?.toLowerCase();
 
-        if (reportEmail) {
-            candidate = await Candidate.findOne({ email: { $regex: new RegExp(`^${reportEmail}$`, 'i') } }); // Case insensitive exact match just in case
-            console.log('🔍 Candidate Email Match:', candidate ? 'Found' : 'Not Found', candidate?._id);
-        }
+      console.log('🔍 Report Lookup Debug:', {
+        reportId: result._id,
+        rawCandidateId,
+        cleanedCandidateId: candidateId,
+        extractedEmail: reportEmail,
+        hasCandidateInfo: !!result.candidateInformation,
+        hasDataInfo: !!(result as any).data?.candidateInformation
+      });
+
+      if (reportEmail) {
+        candidate = await Candidate.findOne({ email: { $regex: new RegExp(`^${reportEmail}$`, 'i') } }); // Case insensitive exact match just in case
+        console.log('🔍 Candidate Email Match:', candidate ? 'Found' : 'Not Found', candidate?._id);
+      }
     }
 
     // If candidate found, check creator
     if (candidate) {
-        if (candidate.createdBy && candidate.createdBy.toString() !== (req as any).user.id) {
-             return res.status(403).json({ error: 'You do not have permission to view this report' });
-        }
+      if (candidate.createdBy && candidate.createdBy.toString() !== (req as any).user.id) {
+        return res.status(403).json({ error: 'You do not have permission to view this report' });
+      }
     } else {
-        // If not linked to any candidate, strictly deny for now to be safe, 
-        // effectively hiding "orphaned" reports from standard view if they don't match user's candidates.
-        // But if it's truly orphaned, maybe no one sees it? 
-        // Let's assume strict: if we can't verify you own the candidate, you can't see the report.
-        // This aligns with "jo login hai uska hi data show ho".
-        return res.status(403).json({ error: 'Report not explicitly linked to your candidates' });
+      // If not linked to any candidate, strictly deny for now to be safe, 
+      // effectively hiding "orphaned" reports from standard view if they don't match user's candidates.
+      // But if it's truly orphaned, maybe no one sees it? 
+      // Let's assume strict: if we can't verify you own the candidate, you can't see the report.
+      // This aligns with "jo login hai uska hi data show ho".
+      return res.status(403).json({ error: 'Report not explicitly linked to your candidates' });
     }
 
     res.json(result);
@@ -172,23 +172,41 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
       email: result.candidateInformation?.email
     });
 
-    // Try to find matching candidate by email first (most reliable)
+    // 0. PRIORITY: Try to match by explicit candidateId in the report
+    const rawCandidateId = result.candidateId || (result as any).candidate_id ||
+      (result as any).data?.candidateId || (result as any).data?.candidate_id;
+
+    let matchedCandidate = null;
+
+    if (rawCandidateId) {
+      const cleanId = String(rawCandidateId).replace(/^"|"$/g, '');
+      try {
+        matchedCandidate = await Candidate.findById(cleanId);
+        if (matchedCandidate) {
+          console.log('✅ Found candidate by ID:', cleanId);
+        }
+      } catch (err) {
+        console.warn('Invalid candidate ID in report:', cleanId);
+      }
+    }
+
+    // 1. Fallback: Try to find matching candidate by email first (most reliable)
     // Handle nested data structure
     const info = result.candidateInformation || (result as any).data?.candidateInformation || {};
     const email = info.email?.toLowerCase();
-    
-    let matchedCandidate = null;
 
-    if (email) {
+    if (!matchedCandidate && email) {
       matchedCandidate = await Candidate.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
       console.log('🔍 Email match result:', matchedCandidate ? 'Found' : 'Not found');
     }
 
-    // If email match fails, try name matching
+    // 2. Fallback: Name matching
     if (!matchedCandidate) {
       const fullName = info.fullName?.toLowerCase();
-      if (!fullName && !email) { // Ensure at least one identifier is present
-        return res.status(400).json({ error: 'Report missing candidate name and email' });
+      // Only error if we haven't found a candidate AND we don't have name/email to search
+      if (!fullName && !email) {
+        console.error('Report missing candidate name and email, and no candidateId linked.');
+        return res.status(400).json({ error: 'Report missing candidate identity' });
       }
 
       const candidates = await Candidate.find({});
@@ -197,16 +215,16 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
       matchedCandidate = candidates.find((c: any) => {
         const cName = `${c.firstName} ${c.lastName}`.toLowerCase();
         const cEmail = c.email?.toLowerCase();
-        
+
         // Try exact name match first
         if (fullName && cName === fullName) return true;
-        
+
         // Try partial name match
         if (fullName && (cName.includes(fullName) || fullName.includes(cName))) return true;
-        
+
         // Try email match as fallback if email was provided in report
         if (email && cEmail === email) return true;
-        
+
         return false;
       });
 
@@ -229,7 +247,7 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
     // Update the candidate using findByIdAndUpdate
     const updatedCandidate = await Candidate.findByIdAndUpdate(
       matchedCandidate._id,
-      { 
+      {
         finalDecision: {
           decision: finalDecision === 'hired' ? 'Hire' : finalDecision === 'rejected' ? 'Reject' : 'Hold',
           decidedAt: new Date(),

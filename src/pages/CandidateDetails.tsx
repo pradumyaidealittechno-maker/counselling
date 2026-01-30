@@ -465,18 +465,18 @@ export default function CandidateDetails() {
 
             {/* PDF Viewer - Toggled by button */}
             {showPdf && resumeUrl && (
-                <div style={{ position: 'relative', padding: '0', marginTop: '1.5rem', overflow: 'hidden', height: '1200px', width: '100%', boxShadow: 'none', border: 'none', background: 'transparent' }}>
+                <div style={{ position: 'relative', padding: '0', marginTop: '1.5rem', overflow: 'hidden', width: '100%', aspectRatio: '1/1.414', maxHeight: '1200px', boxShadow: 'none', border: 'none', background: '#ffffff' }}>
                     {resumeUrl.toLowerCase().includes('.pdf') ? (
                         <iframe
-                            src={`${resumeUrl}#view=FitH`}
+                            src={`${resumeUrl}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
                             title="Resume PDF"
                             scrolling="no"
                             style={{
                                 position: 'absolute',
-                                top: '-60px',
+                                top: '0',
                                 left: '0',
                                 width: '100%',
-                                height: 'calc(100% + 60px)',
+                                height: '100%',
                                 border: 'none'
                             }}
                         />
@@ -490,7 +490,7 @@ export default function CandidateDetails() {
                 </div>
             )}
 
-            {candidate.interviewResult && (
+            {candidate.interviewResult && (candidate.interviewResult.overallScore !== undefined || candidate.interviewResult.recommendation) && (
                 <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem', borderLeft: '4px solid #8B5CF6' }}>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--gray-800)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <CheckCircle size={20} color="#8B5CF6" /> Interview Result

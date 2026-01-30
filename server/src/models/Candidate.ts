@@ -44,6 +44,14 @@ export interface ICandidate extends Document {
     keyInsights: string[];
     redFlags: string[];
   };
+  resumeMatchScore?: number;
+  resumeMatchAnalysis?: {
+    score: number;
+    matchExplanation: string;
+    missingSkills: string[];
+    matchingSkills: string[];
+    recommendation: string;
+  };
   finalDecision?: {
     decision: 'Hire' | 'Hold' | 'Reject';
     decidedBy?: string;
@@ -146,6 +154,14 @@ const candidateSchema = new Schema<ICandidate>(
       summary: String,
       keyInsights: [String],
       redFlags: [String],
+    },
+    resumeMatchScore: Number,
+    resumeMatchAnalysis: {
+      score: Number,
+      matchExplanation: String,
+      missingSkills: [String],
+      matchingSkills: [String],
+      recommendation: String
     },
     finalDecision: {
       decision: {

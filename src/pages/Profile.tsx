@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Mail, Building, Briefcase, Calendar } from 'lucide-react';
 
+
 export default function Profile() {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
+  const API_URL = import.meta.env.VITE_API_URL;
   useEffect(() => {
     fetchUserData();
   }, []);
@@ -12,7 +13,7 @@ export default function Profile() {
   const fetchUserData = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:3001/api/auth/me', {
+      const response = await fetch(`${API_URL}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

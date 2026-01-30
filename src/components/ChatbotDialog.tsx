@@ -22,22 +22,23 @@ export default function ChatbotDialog({ isOpen, onClose, context }: ChatbotDialo
     {
       role: 'assistant',
       content: `Hi! 👋 I'm your AI hiring assistant specialized in recruitment and candidate evaluation.
-
-I can help you with:
-• Understanding DNA match scores
-• Explaining hiring recommendations  
-• Comparing candidates
-• Interview analysis insights
-• Recruitment best practices
-
-⚠️ **Note:** I only answer questions related to hiring and recruitment. For other topics, please use appropriate resources.
-
-What would you like to know about your hiring process?`
+      
+      I can help you with:
+      • Understanding DNA match scores
+      • Explaining hiring recommendations  
+      • Comparing candidates
+      • Interview analysis insights
+      • Recruitment best practices
+      
+      ⚠️ **Note:** I only answer questions related to hiring and recruitment. For other topics, please use appropriate resources.
+      
+      What would you like to know about your hiring process?`
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,7 +57,8 @@ What would you like to know about your hiring process?`
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/ai/chat', {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${API_URL}/api/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,9 +81,9 @@ What would you like to know about your hiring process?`
       setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again or check your OpenAI API key in settings.' 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again or check your OpenAI API key in settings.'
       }]);
     } finally {
       setLoading(false);
@@ -192,7 +194,7 @@ What would you like to know about your hiring process?`
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: msg.role === 'user' 
+                background: msg.role === 'user'
                   ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                   : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                 display: 'flex',
@@ -218,7 +220,7 @@ What would you like to know about your hiring process?`
                 fontSize: '0.9375rem',
                 lineHeight: 1.6,
                 whiteSpace: 'pre-wrap',
-                boxShadow: msg.role === 'user' 
+                boxShadow: msg.role === 'user'
                   ? '0 4px 6px -1px rgba(102, 126, 234, 0.3)'
                   : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                 border: msg.role === 'user' ? 'none' : '1px solid rgba(0, 0, 0, 0.05)'
@@ -227,9 +229,9 @@ What would you like to know about your hiring process?`
               </div>
             </div>
           ))}
-          
+
           {loading && (
-            <div style={{ 
+            <div style={{
               display: 'flex',
               alignItems: 'flex-start',
               gap: '0.75rem',
@@ -280,7 +282,7 @@ What would you like to know about your hiring process?`
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
               disabled={loading}
-              style={{ 
+              style={{
                 flex: 1,
                 padding: '0.875rem 1.25rem',
                 borderRadius: '12px',
@@ -295,7 +297,7 @@ What would you like to know about your hiring process?`
               className="btn"
               onClick={handleSend}
               disabled={!input.trim() || loading}
-              style={{ 
+              style={{
                 padding: '0.875rem 1.5rem',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: '#fff',
