@@ -80,10 +80,10 @@ export default function Profile() {
             {userData.firstName?.[0]}{userData.lastName?.[0]}
           </div>
           <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1F2937', marginBottom: '0.25rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
               {userData.firstName} {userData.lastName}
             </h2>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{userData.jobTitle || userData.role || 'User'}</p>
+            <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>{userData.jobTitle || userData.role || 'User'}</p>
           </div>
         </div>
 
@@ -101,8 +101,8 @@ export default function Profile() {
               <Mail size={20} color="#6366F1" />
             </div>
             <div>
-              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Email</p>
-              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.email}</p>
+              <p style={{ fontSize: '1rem', color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Email</p>
+              <p style={{ fontSize: '1.1rem', color: 'var(--gray-900)', fontWeight: 500 }}>{userData.email}</p>
             </div>
           </div>
 
@@ -119,8 +119,8 @@ export default function Profile() {
               <Building size={20} color="#E91E63" />
             </div>
             <div>
-              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Company</p>
-              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.company}</p>
+              <p style={{ fontSize: '1rem', color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Company</p>
+              <p style={{ fontSize: '1.1rem', color: 'var(--gray-900)', fontWeight: 500 }}>{userData.company}</p>
             </div>
           </div>
 
@@ -137,8 +137,8 @@ export default function Profile() {
               <Briefcase size={20} color="#10B981" />
             </div>
             <div>
-              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Role</p>
-              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>{userData.jobTitle || userData.role || 'Not set'}</p>
+              <p style={{ fontSize: '1rem', color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Role</p>
+              <p style={{ fontSize: '1.1rem', color: 'var(--gray-900)', fontWeight: 500 }}>{userData.jobTitle || userData.role || 'Not set'}</p>
             </div>
           </div>
 
@@ -155,8 +155,8 @@ export default function Profile() {
               <Calendar size={20} color="#F97316" />
             </div>
             <div>
-              <p style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.25rem' }}>Member Since</p>
-              <p style={{ fontSize: '1.1rem', color: '#1F2937', fontWeight: 500 }}>
+              <p style={{ fontSize: '1rem', color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Member Since</p>
+              <p style={{ fontSize: '1.1rem', color: 'var(--gray-900)', fontWeight: 500 }}>
                 {new Date(userData.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',

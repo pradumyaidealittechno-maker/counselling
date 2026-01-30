@@ -1,4 +1,7 @@
 import axios from 'axios';
+import Candidate from '../models/Candidate.js';
+import Job from '../models/Job.js';
+import User from '../models/User.js';
 
 export interface TranscriptEntry {
   speaker: string;
@@ -737,6 +740,7 @@ Return a JSON object with a "questions" array:
    */
   async chatAssistant(
     message: string,
+    userId: string,
     context?: {
       candidateName?: string;
       jobTitle?: string;
@@ -757,39 +761,91 @@ Based on your question about ${context?.candidateName || 'the candidate'} for th
     }
 
     try {
-      const systemPrompt = `You are an AI hiring assistant for Intelligens, an AI-powered recruitment platform. 
+      // 1. Fetch relevant database context scoped to the USER
+      const candidates = await Candidate.find({ createdBy: userId }, 'firstName lastName status experience resumeMatchScore analysis resumeMatchAnalysis job jobId')
+        .populate('jobId', 'title department')
+        .lean();
 
-**IMPORTANT RESTRICTIONS:**
-You MUST ONLY answer questions related to:
-- DNA Matching (how candidates match against Job DNA)
-- Hiring decisions and recommendations
-- Candidate evaluation and scoring
-- Interview analysis and insights
-- Job requirements and skills assessment
-- Recruitment best practices
-- HR processes within this platform
+      const jobs = await Job.find({ createdBy: userId }, 'title company status requiredSkills location experienceLevel').lean();
+
+      // Also fetch user info
+      const user = await User.findById(userId, 'firstName lastName email company').lean() as any;
+
+      // Calculate derived stats
+      const totalCandidates = candidates.length;
+      const hiredCount = candidates.filter(c =>
+        c.status === 'hired' ||
+        c.analysis?.recommendation?.toLowerCase() === 'hire' ||
+        c.analysis?.recommendation?.toLowerCase() === 'recommended' ||
+        c.analysis?.recommendation?.toLowerCase() === 'match'
+      ).length;
+
+      const interviewsCompleted = candidates.filter(c => c.status === 'interview_complete' || c.analysis).length;
+
+      // Prepare context object for the AI
+      const dbContext = {
+        userConfig: {
+          name: user ? `${user.firstName} ${user.lastName}` : 'User',
+          company: user?.company || 'My Company'
+        },
+        stats: {
+          totalCandidates,
+          hiredCandidates: hiredCount,
+          interviewsCompleted,
+          activeJobs: jobs.filter(j => j.status === 'active').length
+        },
+        candidates: candidates.map(c => ({
+          name: `${c.firstName} ${c.lastName}`,
+          status: c.status,
+          role: (c.jobId as any)?.title || 'Unassigned',
+          matchScore: c.resumeMatchScore || c.analysis?.overallScore || 0,
+          experience: c.experience,
+          recommendation: c.analysis?.recommendation || c.resumeMatchAnalysis?.recommendation || 'Pending'
+        })),
+        jobs: jobs.map(j => ({
+          title: j.title,
+          company: j.company,
+          status: j.status,
+          location: j.location,
+          requiredSkills: j.requiredSkills,
+          experienceLevel: j.experienceLevel
+        }))
+      };
+
+      const systemPrompt = `You are an AI hiring assistant for Intelligens, an AI-powered recruitment platform. 
+You are assisting ${user ? user.firstName : 'the user'}.
+You have access to the current live database of candidates, jobs, and recruitment stats SPECIFIC to this user.
+
+**DATABASE CONTEXT:**
+${JSON.stringify(dbContext, null, 2)}
+
+**IMPORTANT INSTRUCTIONS:**
+1. **Use the Database Context:** When the user asks about "how many candidates", "available candidates", "candidates for role X", "match scores", etc., YOU MUST USE the data provided above to answer accurately. 
+   - Example: If asked "How many candidates for Full-stack Developer?", look at the 'candidates' array in context and count those where role matches.
+   - Example: If asked "Who has >85 match?", filter the candidates by 'matchScore'.
+   - Example: If asked "Show me candidates with experience...", check the 'experience' field.
+
+2. **Scope of Assistance:**
+   - Answer questions about available candidates, their status, scores, and roles.
+   - Provide insights on jobs, required skills, and stats.
+   - Explain DNA matching and hiring recommendations.
+   - Discuss interview management and analysis reports.
+   - Answer questions about user info if available in context.
+
+3. **Response Style:**
+   - Be direct and data-driven.
+   - If the answer is 0 or none, state that clearly.
+   - Format lists nicely (e.g., using bullet points).
 
 **STRICTLY FORBIDDEN:**
-You MUST NOT answer questions about:
-- General knowledge topics
-- News, current events, or entertainment
-- Personal advice unrelated to hiring
-- Technical support for other software
-- Any topic outside of HR and recruitment
+- Do NOT answer questions about general world knowledge unconnected to this hiring data or HR best practices.
+- Do NOT invent data that is not in the context (unless providing general HR best practices).
 
-**RESPONSE PROTOCOL:**
-If a user asks an off-topic question, respond ONLY with:
-"I'm specialized in helping with hiring and recruitment decisions. I can only assist with questions about candidate evaluation, DNA matching, interview analysis, and hiring recommendations. Please ask me something related to your hiring process."
+${context?.candidateName ? `Current Page Context - Candidate: ${context.candidateName}` : ''}
+${context?.jobTitle ? `Current Page Context - Position: ${context.jobTitle}` : ''}
+${context?.candidateScore ? `Current Page Context - Score: ${context.candidateScore}/100` : ''}
 
-Do NOT provide any information beyond this polite redirect for off-topic questions.
-
-${context?.candidateName ? `Current Candidate: ${context.candidateName}` : ''}
-${context?.jobTitle ? `Position: ${context.jobTitle}` : ''}
-${context?.candidateScore ? `Overall Score: ${context.candidateScore}/100` : ''}
-${context?.recommendation ? `AI Recommendation: ${context.recommendation}` : ''}
-${context?.jobDNA ? `\nJob DNA Traits: ${JSON.stringify(context.jobDNA, null, 2).substring(0, 500)}...` : ''}
-
-For valid hiring/recruitment questions: Provide concise, actionable insights. Be professional and data-driven.`;
+User Question: "${message}"`;
 
       const messages = [
         { role: 'system', content: systemPrompt },

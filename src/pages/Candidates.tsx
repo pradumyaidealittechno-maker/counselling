@@ -592,7 +592,10 @@ export default function Candidates() {
                       >
                         {(candidate.jobId as any)?.title || candidate.job?.title || 'Not assigned'}
                       </td>
-                      <td style={{ padding: '0.6rem 1rem' }}>
+                      <td
+                        onClick={() => navigate(`/dashboard/candidates/${candidate._id}?scrollTo=ai-analysis`)}
+                        style={{ padding: '0.6rem 1rem', cursor: 'pointer' }}
+                      >
                         {(candidate.interviewResult?.overallScore || candidate.resumeMatchScore) ? (
                           <span style={{
                             display: 'inline-flex',

@@ -201,6 +201,7 @@ a:hover {
 .btn-primary:hover:not(:disabled) {
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+  color: white;
 }
 
 .btn-primary:active:not(:disabled) {

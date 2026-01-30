@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
     User, Mail, Phone, Linkedin, Briefcase, Calendar,
-    FileText, Download, ChevronLeft, Save, CheckCircle
+    FileText, Download, ChevronLeft, Save, CheckCircle, Sparkles, AlertCircle
 } from 'lucide-react';
 import api from '../services/api';
 import { showToast } from '../utils/toast';
@@ -37,6 +37,13 @@ interface Candidate {
         summary?: string;
     };
     additionalNotes?: string;
+    resumeMatchAnalysis?: {
+        score: number;
+        matchExplanation: string;
+        missingSkills: string[];
+        matchingSkills: string[];
+        recommendation: string;
+    };
 }
 
 export default function CandidateDetails() {
@@ -48,6 +55,21 @@ export default function CandidateDetails() {
     const [saving, setSaving] = useState(false);
     const [fullName, setFullName] = useState('');
     const [showPdf, setShowPdf] = useState(false);
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        if (!loading && candidate) {
+            const scrollTo = searchParams.get('scrollTo');
+            if (scrollTo) {
+                setTimeout(() => {
+                    const element = document.getElementById(scrollTo);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            }
+        }
+    }, [loading, candidate, searchParams]);
 
     useEffect(() => {
         if (id) {
@@ -126,6 +148,12 @@ export default function CandidateDetails() {
             case 'new': return { bg: '#EFF6FF', text: '#3B82F6', border: '#60A5FA' };
             default: return { bg: '#F3F4F6', text: '#6B7280', border: '#9CA3AF' };
         }
+    };
+
+    const getAnalysisColor = (score: number) => {
+        if (score >= 75) return { main: '#10B981', bg: '#ECFDF5', border: '#A7F3D0', text: '#065F46' }; // Green
+        if (score >= 50) return { main: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', text: '#92400E' }; // Yellow
+        return { main: '#EF4444', bg: '#FEF2F2', border: '#FECACA', text: '#991B1B' }; // Red
     };
 
     if (loading) {
@@ -462,6 +490,89 @@ export default function CandidateDetails() {
                 </div>
 
             </div>
+
+            {/* Resume Analysis */}
+            {candidate.resumeMatchAnalysis && (() => {
+                const colors = getAnalysisColor(candidate.resumeMatchAnalysis.score);
+                return (
+                    <div id="ai-analysis" className="card" style={{ padding: '1.5rem', marginTop: '1.5rem', borderLeft: `4px solid ${colors.main}` }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--gray-800)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Sparkles size={20} color={colors.main} /> AI Resume Analysis
+                        </h3>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                            {/* Score & Explanation */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                    <div style={{
+                                        width: '80px', height: '80px', borderRadius: '50%',
+                                        background: `conic-gradient(${colors.main} ${candidate.resumeMatchAnalysis.score}%, #F3F4F6 0)`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        position: 'relative'
+                                    }}>
+                                        <div style={{
+                                            width: '68px', height: '68px', borderRadius: '50%',
+                                            background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            flexDirection: 'column'
+                                        }}>
+                                            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: colors.main }}>{candidate.resumeMatchAnalysis.score}%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--gray-500)' }}>Match Score</div>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--gray-900)', textTransform: 'capitalize' }}>
+                                            {candidate.resumeMatchAnalysis.recommendation ? candidate.resumeMatchAnalysis.recommendation.replace('_', ' ') : 'Analysis Ready'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ background: colors.bg, padding: '1rem', borderRadius: '8px', border: `1px solid ${colors.border}` }}>
+                                    <p style={{ color: colors.text, fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                        {candidate.resumeMatchAnalysis.matchExplanation}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Skills */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                {/* Matching Skills */}
+                                <div>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#059669', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <CheckCircle size={16} /> Matching Skills
+                                    </h4>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                        {candidate.resumeMatchAnalysis.matchingSkills.map((skill, idx) => (
+                                            <span key={idx} style={{
+                                                background: '#ECFDF5', color: '#059669', padding: '0.3rem 0.8rem',
+                                                borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 500, border: '1px solid #A7F3D0'
+                                            }}>
+                                                {skill}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Missing Skills */}
+                                <div>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#DC2626', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <AlertCircle size={16} /> Missing Skills
+                                    </h4>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                        {candidate.resumeMatchAnalysis.missingSkills.map((skill, idx) => (
+                                            <span key={idx} style={{
+                                                background: '#FEF2F2', color: '#DC2626', padding: '0.3rem 0.8rem',
+                                                borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 500, border: '1px solid #FECACA'
+                                            }}>
+                                                {skill}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* PDF Viewer - Toggled by button */}
             {showPdf && resumeUrl && (

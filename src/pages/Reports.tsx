@@ -126,7 +126,7 @@ export default function Reports() {
     const getDate = (report: Report) => {
       const info = report.candidateInformation || report.data?.candidateInformation;
       const meta = report.metadata || report.data?.metadata;
-      
+
       // Try multiple sources for the date
       // @ts-ignore - createdAt might exist on the object even if not in interface
       const dateStr = info?.interviewDate || meta?.reportGenerated || report.createdAt;
@@ -529,14 +529,14 @@ export default function Reports() {
                       key={pageNum}
                       onClick={() => setCurrentPage(pageNum)}
                       className={`btn btn-sm ${currentPage === pageNum ? 'btn-primary' : 'btn-ghost'}`}
-                      style={{ 
-                        width: '32px', 
-                        height: '32px', 
-                        padding: 0, 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '0.875rem' 
+                        fontSize: '0.875rem'
                       }}
                     >
                       {pageNum}
