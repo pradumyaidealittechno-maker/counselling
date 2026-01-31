@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Dna, Edit3, Trash2, Plus, Video, Mic, CheckCircle, GripVertical,
-  Info, ChevronDown, ChevronUp, Target, Loader
+  Info, ChevronDown, ChevronUp, Target, Loader, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import api from '../services/api';
 import { confirmToast } from '../utils/toast';
@@ -48,6 +48,11 @@ export default function InterviewBuilder() {
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination & Finalize Input State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [askQuestionCount, setAskQuestionCount] = useState<string>('');
+  const itemsPerPage = 5;
 
   useEffect(() => {
     loadJob();
@@ -165,7 +170,7 @@ export default function InterviewBuilder() {
     try {
       setSyncing(true);
       // Sync questions to n8n
-      await api.jobs.syncQuestions(job._id);
+      await api.jobs.syncQuestions(job._id, parseInt(askQuestionCount));
 
       // Navigate to candidates page
       navigate(`/dashboard/candidates?jobId=${jobId}`);
@@ -189,6 +194,13 @@ export default function InterviewBuilder() {
 
   const questions = job?.interviewQuestions || [];
 
+  // Pagination Logic
+  const totalPages = Math.ceil(questions.length / itemsPerPage);
+  const paginatedQuestions = questions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const getDNACoverage = () => {
     const coverage = { skill: 0, experience: 0, behavioral: 0, communication: 0, cultural: 0, total: 0 };
     questions.forEach(q => {
@@ -207,10 +219,10 @@ export default function InterviewBuilder() {
   const coverage = getDNACoverage();
 
   const questionsByCategory = {
-    technical: questions.filter(q => q.category === 'technical'),
-    behavioral: questions.filter(q => q.category === 'behavioral'),
-    situational: questions.filter(q => q.category === 'situational'),
-    communication: questions.filter(q => q.category === 'communication')
+    technical: paginatedQuestions.filter(q => q.category === 'technical'),
+    behavioral: paginatedQuestions.filter(q => q.category === 'behavioral'),
+    situational: paginatedQuestions.filter(q => q.category === 'situational'),
+    communication: paginatedQuestions.filter(q => q.category === 'communication')
   };
 
   if (loading) {
@@ -536,27 +548,96 @@ export default function InterviewBuilder() {
         )
       ))}
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem', marginBottom: '2rem' }}>
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="btn btn-ghost btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <ChevronLeft size={16} /> Previous
+          </button>
 
-        <button
-          className="btn btn-primary"
-          onClick={handleFinalizeInterview}
-          disabled={syncing}
-          style={{ paddingLeft: '2rem', paddingRight: '2rem' }}
-        >
-          {syncing ? (
-            <>
-              <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
-              Finalizing...
-            </>
-          ) : (
-            <>
-              <CheckCircle size={18} /> Finalize Interview
-            </>
-          )}
-        </button>
-        <button className="btn btn-ghost">Save as Draft</button>
+          <span style={{ fontSize: '0.875rem', color: 'var(--gray-600)', fontWeight: 500 }}>
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="btn btn-ghost btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            Next <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Finalize Input & Actions */}
+      <div style={{ marginTop: '1.5rem', background: 'var(--white)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--gray-200)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--gray-900)' }}>Finalize Interview</h3>
+
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
+              How many questions do you want to ask? <span style={{ color: '#EF4444' }}>*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max={questions.length}
+              value={askQuestionCount}
+              onChange={(e) => setAskQuestionCount(e.target.value)}
+              className="input"
+              placeholder={`Max: ${questions.length}`}
+              style={{ width: '100%' }}
+            />
+            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
+              Enter the number of questions to be selected for the actual interview.
+            </p>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
+              Estimated Duration (approx. 2 min/question)
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                readOnly
+                value={askQuestionCount ? `${parseInt(askQuestionCount) * 2} minutes` : '0 minutes'}
+                className="input"
+                style={{ width: '100%', background: 'var(--gray-50)', color: 'var(--gray-600)' }}
+              />
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
+              Total time allocated for the candidate to complete the interview.
+            </p>
+          </div>
+          <div style={{ flex: 1 }}></div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button
+            className="btn btn-primary"
+            onClick={handleFinalizeInterview}
+            disabled={syncing || !askQuestionCount || parseInt(askQuestionCount) <= 0 || parseInt(askQuestionCount) > questions.length}
+            style={{ paddingLeft: '2rem', paddingRight: '2rem' }}
+          >
+            {syncing ? (
+              <>
+                <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                Finalizing...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={18} /> Finalize Interview
+              </>
+            )}
+          </button>
+          <button className="btn btn-ghost">Save as Draft</button>
+        </div>
       </div>
     </div>
   );

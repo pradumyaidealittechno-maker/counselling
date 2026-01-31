@@ -259,7 +259,8 @@ router.post('/:id/sync-questions', authenticate, async (req, res) => {
       jobDescription: job.description,  // Added context
       jobDNA: job.jobDNA,               // Added context
       questions: cleanQuestions,
-      questionsText: questionsText      // Added formatted text
+      questionsText: questionsText,      // Added formatted text
+      count: req.body.count              // Added questions count to ask
     });
 
     res.json({ message: 'Questions synced successfully to n8n' });

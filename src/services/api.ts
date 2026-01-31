@@ -260,9 +260,10 @@ export const api = {
       });
     },
 
-    syncQuestions: async (id: string) => {
+    syncQuestions: async (id: string, count?: number) => {
       return authFetch(`/api/jobs/${id}/sync-questions`, {
         method: 'POST',
+        body: JSON.stringify({ count }),
       });
     },
 

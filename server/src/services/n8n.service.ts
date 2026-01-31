@@ -90,6 +90,7 @@ class N8nService {
     jobDNA?: any;
     questions: any[];
     questionsText?: string;
+    count?: number;
   }): Promise<{ success: true }> {
     try {
       console.log('🔄 Attempting to sync questions to n8n');
