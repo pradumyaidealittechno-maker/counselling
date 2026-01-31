@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Dna, AlertTriangle, Save, Shield, FileText, Clock, Loader, Plus, Sparkles } from 'lucide-react';
+import { Dna, AlertTriangle, Save, Shield, FileText, Clock, Loader, Plus, Sparkles, X } from 'lucide-react';
 import api from '../services/api';
 
 type ImportanceLevel = 'critical' | 'high' | 'medium' | 'low';
@@ -41,6 +41,15 @@ export default function JobDNA() {
   const [culturalDNAEnabled, setCulturalDNAEnabled] = useState(false);
   const [editingTrait, setEditingTrait] = useState<string | null>(null);
   const [editedTraits, setEditedTraits] = useState<Record<string, DNATrait>>({});
+  const [updatingImportance, setUpdatingImportance] = useState(false);
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    isOpen: boolean;
+    dimension: string;
+    traitId: string;
+    newValue: string;
+    traitName: string;
+    currentValue: string;
+  } | null>(null);
 
   useEffect(() => {
     loadJob();
@@ -102,6 +111,24 @@ export default function JobDNA() {
   };
 
   const handleUpdateTrait = (dimension: string, traitId: string, field: keyof DNATrait, value: string) => {
+    // Intercept importance changes for confirmation
+    if (field === 'importance') {
+      const key = `${dimension}-${traitId}`;
+      const currentTrait = editedTraits[key] || job?.jobDNA?.[dimension as keyof typeof job.jobDNA]?.find((t: DNATrait) => t.id === traitId);
+
+      if (currentTrait) {
+        setConfirmationDialog({
+          isOpen: true,
+          dimension,
+          traitId,
+          newValue: value,
+          traitName: currentTrait.name,
+          currentValue: currentTrait.importance
+        });
+      }
+      return;
+    }
+
     const key = `${dimension}-${traitId}`;
     const currentTrait = editedTraits[key] || job?.jobDNA?.[dimension as keyof typeof job.jobDNA]?.find((t: DNATrait) => t.id === traitId);
     if (currentTrait) {
@@ -109,6 +136,56 @@ export default function JobDNA() {
         ...editedTraits,
         [key]: { ...currentTrait, [field]: value }
       });
+    }
+  };
+
+  const handleConfirmImportanceUpdate = async () => {
+    if (!confirmationDialog || !job?._id) return;
+
+    try {
+      setUpdatingImportance(true);
+      const { dimension, traitId, newValue } = confirmationDialog;
+
+      // Construct the new jobDNA object
+      const updatedJobDNA = { ...job.jobDNA } as any;
+      const traits = [...updatedJobDNA[dimension]];
+      const index = traits.findIndex((t: any) => t.id === traitId);
+
+      if (index !== -1) {
+        // Merge with any existing edits
+        const key = `${dimension}-${traitId}`;
+        const existingEdits = editedTraits[key] || {};
+
+        traits[index] = {
+          ...traits[index],
+          ...existingEdits,
+          importance: newValue
+        };
+
+        updatedJobDNA[dimension] = traits;
+
+        await api.jobs.update(job._id, {
+          jobDNA: updatedJobDNA
+        });
+
+        // Update local state
+        setJob(prev => prev ? { ...prev, jobDNA: updatedJobDNA } : null);
+
+        // Remove from edited traits since it is saved
+        if (editedTraits[key]) {
+          const newEdited = { ...editedTraits };
+          delete newEdited[key];
+          setEditedTraits(newEdited);
+        }
+
+        setConfirmationDialog(null);
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update importance';
+      console.error('Failed to update importance:', err);
+      setError(errorMessage);
+    } finally {
+      setUpdatingImportance(false);
     }
   };
 
@@ -394,6 +471,98 @@ export default function JobDNA() {
           <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Shield size={12} />AI training blocked until Job DNA is approved</p>
         </div>
       </div>
+      {/* Confirmation Dialog */}
+      {confirmationDialog && confirmationDialog.isOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="card" style={{
+            width: '100%',
+            maxWidth: '450px',
+            background: 'var(--white)',
+            padding: '0',
+            overflow: 'hidden',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid var(--gray-100)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)' }}>Update Importance Level</h3>
+              <button
+                onClick={() => setConfirmationDialog(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-400)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ color: 'var(--gray-600)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                Are you sure you want to change the importance of <strong style={{ color: 'var(--gray-900)' }}>{confirmationDialog?.traitName}</strong> from <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{confirmationDialog?.currentValue}</span> to <span style={{ textTransform: 'capitalize', fontWeight: 600, color: '#E91E63' }}>{confirmationDialog?.newValue}</span>?
+              </p>
+
+              {/* <div style={{
+                padding: '1rem',
+                background: 'rgba(239, 68, 68, 0.05)',
+                border: '1px solid rgba(239, 68, 68, 0.1)',
+                borderRadius: '0.5rem',
+                display: 'flex',
+                gap: '0.75rem'
+              }}>
+                <AlertTriangle size={20} color="#EF4444" style={{ flexShrink: 0 }} />
+                <p style={{ fontSize: '0.875rem', color: '#B91C1C' }}>
+                  This change will be saved immediately to the server.
+                </p>
+              </div> */}
+            </div>
+
+            <div style={{
+              padding: '1rem 1.5rem',
+              background: 'var(--gray-50)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem'
+            }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setConfirmationDialog(null)}
+                disabled={updatingImportance}
+                style={{ border: '1px solid var(--gray-300)' }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleConfirmImportanceUpdate}
+                disabled={updatingImportance}
+              >
+                {updatingImportance ? (
+                  <>
+                    <Loader size={16} className="animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Yes, Update'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
