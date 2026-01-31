@@ -380,101 +380,139 @@ Guidelines:
     });
 
     try {
-      const prompt = `Generate interview questions for the following job:
+      console.log('DEBUG: Received count from request:', jobData.count);
+      // Ensure count is a number
+      const requestedCount = Number(jobData.count) || 100;
+      const BATCH_SIZE = 10; // Reduced to 10 to prevent JSON truncation (Unterminated string errors)
+      const batches = Math.ceil(requestedCount / BATCH_SIZE);
+      let allQuestions: any[] = [];
 
-Job Title: ${jobData.jobTitle}
-Job Description: ${jobData.jobDescription}
+      console.log(`🚀 Starting generation of ${requestedCount} questions in ${batches} batches (Batch Size: ${BATCH_SIZE})...`);
+
+      for (let i = 0; i < batches; i++) {
+        // Add small delay between batches to respect rate limits
+        if (i > 0) {
+          console.log(`⏳ Pausing 3s before Batch ${i + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
+        try {
+          const currentBatchCount = (i === batches - 1) ? (requestedCount % BATCH_SIZE) || BATCH_SIZE : BATCH_SIZE;
+          const countStr = currentBatchCount.toString();
+
+          console.log(`🔹 [Batch ${i + 1}/${batches}] Requesting ${countStr} questions...`);
+
+          const prompt = `You are an expert technical interviewer creating a comprehensive interview script.
+
+Job Context:
+Title: ${jobData.jobTitle}
+Description: ${jobData.jobDescription}
 Required Skills: ${jobData.requiredSkills?.join(', ') || 'Not specified'}
 Experience Level: ${jobData.experienceLevel || 'Not specified'}
 
-${jobData.jobDNA ? `Job DNA Traits:
-- Skill DNA: ${jobData.jobDNA.skillDNA?.map((t: any) => t.name).join(', ')}
-- Experience DNA: ${jobData.jobDNA.experienceDNA?.map((t: any) => t.name).join(', ')}
-- Behavioral DNA: ${jobData.jobDNA.behavioralDNA?.map((t: any) => t.name).join(', ')}
-- Communication DNA: ${jobData.jobDNA.communicationDNA?.map((t: any) => t.name).join(', ')}
+${jobData.jobDNA ? `Job DNA Framework (Map questions to these traits):
+- Skill DNA: ${jobData.jobDNA.skillDNA?.map((t: any) => t?.name || '').join(', ')}
+- Experience DNA: ${jobData.jobDNA.experienceDNA?.map((t: any) => t?.name || '').join(', ')}
+- Behavioral DNA: ${jobData.jobDNA.behavioralDNA?.map((t: any) => t?.name || '').join(', ')}
+- Communication DNA: ${jobData.jobDNA.communicationDNA?.map((t: any) => t?.name || '').join(', ')}
 ` : ''}
 
-${jobData.customPrompt ? `Configuration Prompt:
+${jobData.customPrompt ? `Custom User Instructions:
 ${jobData.customPrompt}
 ` : ''}
 
-Generate EXACTLY ${jobData.count || '8'} interview questions that:
-1. Map to the Job DNA traits (if provided)
-2. Cover technical, behavioral, situational, and communication aspects
-3. Include evaluation criteria for each question
-4. Provide follow-up questions
+TASK Checklist:
+1. Generate EXACTLY ${countStr} distinct interview questions.
+2. Ensure strict sequential numbering in IDs (e.g., "q-1", "q-2", ... "q-${countStr}").
+3. Cover diversified categories: technical, behavioral, situational, and communication.
+4. Directly assess the specific Skills and Job DNA traits provided above.
+5. Provide clear evaluation criteria for each question.
 
-Return a JSON object with a "questions" array:
+Output JSON Format:
 {
   "questions": [
     {
-      "id": "unique-id",
-      "text": "Question text",
+      "id": "q-1",
+      "text": "Question text...",
       "category": "technical|behavioral|situational|communication",
       "estimatedDuration": 5,
       "dnaMapping": [
         {
           "dimension": "skillDNA|experienceDNA|behavioralDNA|communicationDNA",
-          "trait": "trait name from Job DNA",
+          "trait": "Mapped Trait Name",
           "importance": "critical|high|medium|low",
-          "signalsToEvaluate": ["signal 1", "signal 2"]
+          "signalsToEvaluate": ["signal1", "signal2"]
         }
       ],
       "evaluationCriteria": {
-        "excellent": "What makes an excellent answer",
-        "good": "What makes a good answer",
-        "average": "What makes an average answer",
-        "poor": "What makes a poor answer"
+        "excellent": "...",
+        "good": "...",
+        "average": "...",
+        "poor": "..."
       },
-      "followUpQuestions": ["Follow-up question 1", "Follow-up question 2"]
+      "followUpQuestions": ["follow-up 1", "follow-up 2"]
     }
   ]
-}`;
+}`; // Prompt End
 
-      const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: 'gpt-4-turbo-preview',
-          messages: [
+          const response = await axios.post(
+            `${this.baseUrl}/chat/completions`,
             {
-              role: 'system',
-              content: 'You are an expert interview designer specializing in creating structured, DNA-mapped interview questions.',
+              model: 'gpt-4-turbo-preview',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are an expert interview designer specializing in creating structured, DNA-mapped interview questions.',
+                },
+                {
+                  role: 'user',
+                  content: prompt,
+                },
+              ],
+              response_format: { type: 'json_object' },
+              temperature: 0.7,
             },
             {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.7,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 90000, // 90s timeout for question generation
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              timeout: 300000,
+            }
+          );
+
+          const result = JSON.parse(response.data.choices[0].message.content);
+
+          let batchQs: any[] = [];
+          if (Array.isArray(result)) {
+            batchQs = result;
+          } else if (result.questions && Array.isArray(result.questions)) {
+            batchQs = result.questions;
+          } else {
+            console.warn(`⚠️ Batch ${i + 1} returned unexpected format.`);
+          }
+
+          if (batchQs.length > 0) {
+            allQuestions = [...allQuestions, ...batchQs];
+          }
+
+        } catch (batchErr: any) {
+          console.error(`❌ Batch ${i + 1} failed:`, batchErr.message);
+          // Continue to next batch to get partial results
         }
-      );
+      } // End of batch loop
 
-      const result = JSON.parse(response.data.choices[0].message.content);
-      console.log('📦 OpenAI Response:', JSON.stringify(result).substring(0, 200));
-      console.log('✅ Generated questions:', result.questions?.length || 0);
-      console.log('🔍 Result type:', Array.isArray(result) ? 'array' : typeof result);
-      console.log('🔍 Result keys:', Object.keys(result));
+      console.log(`✅ Total Generated across batches: ${allQuestions.length}`);
 
-      // Handle different response formats
-      if (Array.isArray(result)) {
-        console.log('✅ Returning array directly');
-        return result;
-      } else if (result.questions && Array.isArray(result.questions)) {
-        console.log('✅ Returning result.questions');
-        return result.questions;
-      } else {
-        console.warn('⚠️  Unexpected response format, using mock questions');
-        console.warn('Response structure:', JSON.stringify(result, null, 2).substring(0, 500));
+      if (allQuestions.length === 0) {
         return this.generateMockQuestions(jobData);
       }
+
+      // Enforce sequential numbering on TOTAL set
+      return allQuestions.map((q, index) => ({
+        ...q,
+        id: `q-${index + 1}`
+      }));
     } catch (error: any) {
       console.error('❌ Failed to generate interview questions:', error.response?.data || error.message);
 

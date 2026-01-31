@@ -166,7 +166,7 @@ export default function InterviewBuilder() {
       setSyncing(true);
       // Sync questions to n8n
       await api.jobs.syncQuestions(job._id);
-      
+
       // Navigate to candidates page
       navigate(`/dashboard/candidates?jobId=${jobId}`);
     } catch (err: any) {
@@ -174,7 +174,7 @@ export default function InterviewBuilder() {
       // Even if sync fails, we might want to let them proceed, but warning is better
       const errorMessage = err.message || 'Failed to sync to n8n';
       setError(errorMessage);
-      
+
       // Optional: Confirm with user if they want to proceed despite error
       const confirmed = await confirmToast(`Failed to sync questions to n8n: ${errorMessage}. Proceed anyway?`);
       if (confirmed) {
@@ -285,7 +285,7 @@ export default function InterviewBuilder() {
                 <input
                   type="number"
                   min="1"
-                  max="20"
+                  max="100"
                   value={questionCount}
                   onChange={(e) => setQuestionCount(parseInt(e.target.value) || 8)}
                   className="input"
