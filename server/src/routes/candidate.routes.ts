@@ -18,6 +18,7 @@ const router = express.Router();
 // Parse Resume (protected) - New Endpoint
 router.post('/parse-resume', authenticate, upload.single('resume'), async (req, res) => {
   try {
+    console.log('⚡ [CandidateRoutes] Parsing resume request received');
     const file = req.file;
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -158,6 +159,7 @@ const generateInterviewCode = (): string => {
 // Upload resume and create candidate (protected)
 router.post('/upload-resume', authenticate, upload.single('resume'), async (req, res) => {
   try {
+    console.log('⚡ [CandidateRoutes] Upload resume request received');
     const file = req.file;
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -504,6 +506,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create candidate and send invitation (protected)
 router.post('/', authenticate, upload.single('resume'), async (req, res) => {
   try {
+    console.log('⚡ [CandidateRoutes] Creating new candidate...');
     const { firstName, lastName, email, phone, experience, jobId, linkedInUrl } = req.body;
 
     // Validate required fields

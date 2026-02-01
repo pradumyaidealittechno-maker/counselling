@@ -118,6 +118,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create job (protected)
 router.post('/', authenticate, async (req, res) => {
   try {
+    console.log('⚡ [JobRoutes] Creating new job for user:', (req as any).user.email);
     // Fetch the user to get their company information
     const user = await User.findById((req as any).user.id);
     if (!user) {
@@ -148,6 +149,7 @@ router.post('/', authenticate, async (req, res) => {
 // Update job (protected)
 router.patch('/:id', authenticate, async (req, res) => {
   try {
+    console.log(`⚡ [JobRoutes] Updating job: ${req.params.id}`);
     const job = await Job.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -371,6 +373,7 @@ router.delete('/:id/questions/:questionId', authenticate, async (req, res) => {
 // Delete job (protected)
 router.delete('/:id', authenticate, async (req, res) => {
   try {
+    console.log(`⚡ [JobRoutes] Deleting job: ${req.params.id}`);
     const job = await Job.findById(req.params.id);
 
     if (!job) {

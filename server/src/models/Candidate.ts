@@ -28,6 +28,7 @@ export interface ICandidate extends Document {
   browserInfo?: Record<string, unknown>;
   recordingUrl?: string;
   recordingS3Key?: string;
+  recordingUrls?: string[];
   transcript: Array<{
     speaker: string;
     text: string;
@@ -137,6 +138,7 @@ const candidateSchema = new Schema<ICandidate>(
     browserInfo: Schema.Types.Mixed,
     recordingUrl: String,
     recordingS3Key: String,
+    recordingUrls: [String], // Array to store multiple recording chunks
     transcript: [
       {
         speaker: String,

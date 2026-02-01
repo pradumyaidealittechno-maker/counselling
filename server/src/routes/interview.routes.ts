@@ -157,7 +157,7 @@ router.post('/create-web-call', async (req, res) => {
 // Save interview recording (public endpoint)
 router.post('/save-recording', upload.single('file'), async (req, res) => {
   try {
-    const { uid } = req.body;
+    const { uid, isChunk } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -170,15 +170,19 @@ router.post('/save-recording', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Candidate UID required in body' });
     }
 
-    console.log(`🎥 Uploading recording for candidate ${uid}, size: ${file.size} bytes`);
+    console.log(`🎥 Uploading recording for candidate ${uid}, size: ${file.size} bytes${isChunk ? ' (Chunk)' : ''}`);
+
+    const s3Folder = process.env.AWS_S3_RECORDINGS_FOLDER || 'recordings';
+    // Create a folder structure: recordings/{uid}/filename
+    const s3KeyName = `${uid}/${file.originalname}`;
 
     let uploadResult;
     try {
       // Upload to S3
       uploadResult = await uploadToS3(
         file.buffer,
-        process.env.AWS_S3_RECORDINGS_FOLDER || 'recordings',
-        file.originalname,
+        s3Folder,
+        s3KeyName, // Pass the partial path, uploadToS3 joins it with folder
         file.mimetype
       );
     } catch (s3Error: any) {
@@ -189,11 +193,16 @@ router.post('/save-recording', upload.single('file'), async (req, res) => {
     // Update candidate record
     const candidate = await Candidate.findById(uid);
     if (candidate) {
+      // Add to list of chunks
+      if (!candidate.recordingUrls) candidate.recordingUrls = [];
+      candidate.recordingUrls.push(uploadResult.url);
+
+      // Update latest URL as fallback
       candidate.recordingUrl = uploadResult.url;
       candidate.recordingS3Key = uploadResult.key;
       await candidate.save();
 
-      console.log(`✅ Recording saved DB update for candidate ${uid}`);
+      console.log(`✅ Recording chunk saved for candidate ${uid}. Total chunks: ${candidate.recordingUrls.length}`);
     } else {
       console.warn(`⚠️ Candidate ${uid} not found during recording save logic, but file was uploaded to S3.`);
     }

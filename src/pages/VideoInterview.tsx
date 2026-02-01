@@ -31,11 +31,21 @@ export default function VideoInterview() {
 
   // Refs
   const retellClientRef = useRef<any>(null);
-  const webcamVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  // Video Ref needs to be a callback to handle conditional rendering
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const setVideoRef = (node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node && webcamStreamRef.current) {
+      console.log('🔄 Video element mounted, attaching stream');
+      node.srcObject = webcamStreamRef.current;
+      node.play().catch(e => console.error('Error playing video:', e));
+    }
+  };
 
   // Audio Mixing Refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -53,15 +63,6 @@ export default function VideoInterview() {
     }
     return () => clearInterval(interval);
   }, [isRecording]);
-
-  // Ensure video stream is attached when component updates or view changes
-  useEffect(() => {
-    if (started && webcamVideoRef.current && webcamStreamRef.current) {
-      console.log('🔄 Re-attaching video stream to element');
-      webcamVideoRef.current.srcObject = webcamStreamRef.current;
-      webcamVideoRef.current.play().catch(e => console.error('Error playing video:', e));
-    }
-  }, [started, webcamVideoRef.current]);
 
   // Validate code on mount
   useEffect(() => {
@@ -126,9 +127,15 @@ export default function VideoInterview() {
       });
 
       webcamStreamRef.current = stream;
-      if (webcamVideoRef.current) {
-        webcamVideoRef.current.srcObject = stream;
-        webcamVideoRef.current.play().catch(err => {
+
+      // Force enable tracks (fix for black screen issues)
+      stream.getVideoTracks().forEach(track => track.enabled = true);
+      stream.getAudioTracks().forEach(track => track.enabled = true);
+      console.log('✅ Tracks enabled explicitly');
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(err => {
           console.error('Error playing video:', err);
         });
       }
@@ -163,8 +170,7 @@ export default function VideoInterview() {
         ...destination.stream.getAudioTracks()
       ]);
 
-      // 5. Start recording with mixed stream
-
+      // 7. Start recording with mixed stream
       const selectedMimeType = getSupportedMimeType();
 
       // Use default if no specific type is found
@@ -236,10 +242,6 @@ export default function VideoInterview() {
     try {
       // Get agent ID from environment variable (optional fallback)
       const agentId = import.meta.env.VITE_RETELL_AGENT_ID;
-
-      // if (!agentId) {
-      //   throw new Error('VITE_RETELL_AGENT_ID not configured. Please add it to .env file');
-      // }
 
       console.log('🔑 Requesting Retell token', { candidateId: candidateUid, defaultAgentId: agentId });
 
@@ -416,30 +418,75 @@ export default function VideoInterview() {
       if (audioContextRef.current && audioDestinationRef.current) {
         const systemSource = audioContextRef.current.createMediaStreamSource(new MediaStream([audioTrack]));
         systemSource.connect(audioDestinationRef.current);
-        // Note: Do NOT connect to destination here as it will cause feedback loop if it captures speakers
-        // But since we are capturing TAB audio, it's already playing.
       }
 
-      // Disable the button or show success
       showToast.success("System audio enabled! The AI voice will now be recorded.");
-
     } catch (err) {
       console.error('Failed to get system audio:', err);
     }
   };
 
-  const uploadRecording = async () => {
+  const toggleVideo = () => {
+    const newState = !videoEnabled;
+    setVideoEnabled(newState);
+    if (webcamStreamRef.current) {
+      webcamStreamRef.current.getVideoTracks().forEach(track => {
+        track.enabled = newState;
+        console.log(`🎥 Video track ${newState ? 'enabled' : 'disabled'}`);
+      });
+    }
+  };
+
+  const toggleMic = () => {
+    const newState = !micEnabled;
+    setMicEnabled(newState);
+    if (webcamStreamRef.current) {
+      // Toggle original mic stream
+      webcamStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = newState;
+        console.log(`🎤 Mic track ${newState ? 'enabled' : 'disabled'}`);
+      });
+    }
+  };
+
+  // Periodic upload effect (Every 5 minutes)
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const interval = setInterval(() => {
+      console.log('⏰ Triggering periodic recording upload...');
+      uploadRecording(true);
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [isRecording, candidateUid]);
+
+  const uploadRecording = async (isChunk = false) => {
     if (recordedChunksRef.current.length === 0) {
-      console.warn('No recording to upload');
+      if (!isChunk) console.warn('No recording to upload');
       return;
     }
 
+    const chunksToUpload = isChunk ? [...recordedChunksRef.current] : recordedChunksRef.current;
+
+    if (isChunk) {
+      recordedChunksRef.current = []; // Clear buffer
+    }
+
     try {
-      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      const blob = new Blob(chunksToUpload, { type: 'video/webm' });
+      const timestamp = Date.now();
+      const filename = `interview_${candidateUid}_${timestamp}${isChunk ? '_part' : '_final'}.webm`;
+
       const formData = new FormData();
-      formData.append('file', blob, `interview_${candidateUid}_${Date.now()}.webm`);
+      formData.append('file', blob, filename);
       formData.append('candidate_name', candidateName);
       formData.append('uid', candidateUid);
+      if (isChunk) {
+        formData.append('isChunk', 'true');
+      }
+
+      console.log(`📤 Uploading ${isChunk ? 'chunk' : 'final'} recording (${(blob.size / 1024 / 1024).toFixed(2)} MB)...`);
 
       const response = await fetch(`${API_URL}/api/interviews/save-recording`, {
         method: 'POST',
@@ -447,7 +494,7 @@ export default function VideoInterview() {
       });
 
       if (response.ok) {
-        console.log('✅ Recording uploaded successfully');
+        console.log(`✅ ${isChunk ? 'Chunk' : 'Final'} recording uploaded successfully`);
       } else {
         console.error('Failed to upload recording');
       }
@@ -492,7 +539,7 @@ export default function VideoInterview() {
         console.warn('End session notification failed:', err);
       }
 
-      // Navigate to completion page with job details
+      // Navigate to completion page
       navigate('/interview-complete', {
         state: {
           jobTitle,
@@ -580,7 +627,6 @@ export default function VideoInterview() {
               <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: '#E91E63' }}>✓</span> Find a quiet, well-lit environment
               </li>
-
               <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: '#E91E63' }}>✓</span> Take your time to provide thoughtful answers
               </li>
@@ -773,7 +819,7 @@ export default function VideoInterview() {
           minHeight: '280px'
         }}>
           <video
-            ref={webcamVideoRef}
+            ref={setVideoRef}
             autoPlay
             playsInline
             muted
@@ -810,7 +856,7 @@ export default function VideoInterview() {
         {/* Controls */}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '1rem' }}>
           <button
-            onClick={() => setMicEnabled(!micEnabled)}
+            onClick={toggleMic}
             style={{
               width: '48px',
               height: '48px',
@@ -828,7 +874,7 @@ export default function VideoInterview() {
             {micEnabled ? <Mic size={20} color="#4b5563" /> : <MicOff size={20} color="white" />}
           </button>
           <button
-            onClick={() => setVideoEnabled(!videoEnabled)}
+            onClick={toggleVideo}
             style={{
               width: '48px',
               height: '48px',
