@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Dna, Clock, Video, Loader, Users, X, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Dna, Clock, Video, Loader, Users, X, MessageSquare, Download } from 'lucide-react';
 import api from '../services/api';
 
 interface Candidate {
@@ -67,7 +67,7 @@ export default function AnalysisReport() {
     try {
       setIsDownloading(true);
       const canvas = await html2canvas(reportRef.current, {
-        scale: 2, // Higher scale for better quality
+        scale: 1.5, // Reduced scale to optimize size
         useCORS: true,
         logging: false,
         backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--white').trim() || '#ffffff',
@@ -95,6 +95,79 @@ export default function AnalysisReport() {
               htmlEl.style.fontSize = `${fontSize * 1.15}px`; // Increase by only 15%
             }
           });
+
+          // --- INJECT TRANSCRIPT ---
+          let transcript = reportData?.transcript || reportData?.data?.transcript || [];
+          // Parse string transcript if needed
+          if (typeof transcript === 'string') {
+            transcript = transcript.split('\n').map((line: string) => {
+              const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
+              return match ? { speaker: match[1], text: match[2] } : null;
+            }).filter(Boolean);
+          } else if (reportData?.body?.call?.transcript && typeof reportData.body.call.transcript === 'string') {
+            // Fallback to body.call.transcript
+            transcript = reportData.body.call.transcript.split('\n').map((line: string) => {
+              const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
+              return match ? { speaker: match[1], text: match[2] } : null;
+            }).filter(Boolean);
+          }
+
+          if (transcript && Array.isArray(transcript) && transcript.length > 0) {
+            const tContainer = clonedDoc.createElement('div');
+            tContainer.className = 'card'; // Use card class for consistency
+            tContainer.style.padding = '1rem';
+            tContainer.style.marginBottom = '1rem';
+            tContainer.style.background = 'var(--white)';
+            tContainer.style.marginTop = '1rem';
+            tContainer.style.borderTop = '2px solid #e5e7eb';
+
+            const h2 = clonedDoc.createElement('h3');
+            h2.innerText = 'Interview Transcript';
+            h2.style.fontWeight = '600';
+            h2.style.fontSize = '1.25rem'; // Larger for PDF
+            h2.style.marginBottom = '1rem';
+            h2.style.color = '#111827';
+            tContainer.appendChild(h2);
+
+            const contentDiv = clonedDoc.createElement('div');
+            contentDiv.style.display = 'flex';
+            contentDiv.style.flexDirection = 'column';
+            contentDiv.style.gap = '1rem';
+
+            transcript.forEach((entry: any) => {
+              const speakerLower = (entry.speaker || '').toLowerCase();
+              const isAI = speakerLower.includes('ai') || speakerLower.includes('agent') || speakerLower.includes('emma');
+
+              const bubble = clonedDoc.createElement('div');
+              bubble.style.alignSelf = isAI ? 'flex-start' : 'flex-end';
+              bubble.style.maxWidth = '90%';
+              bubble.style.padding = '0.75rem';
+              bubble.style.borderRadius = '0.5rem';
+              bubble.style.background = isAI ? '#f3f4f6' : '#eef2ff';
+              bubble.style.border = '1px solid';
+              bubble.style.borderColor = isAI ? '#e5e7eb' : '#c7d2fe';
+
+              const name = clonedDoc.createElement('div');
+              name.innerText = entry.speaker || (isAI ? 'AI Agent' : 'Candidate');
+              name.style.fontSize = '0.7rem';
+              name.style.fontWeight = 'bold';
+              name.style.marginBottom = '0.25rem';
+              name.style.color = isAI ? '#4b5563' : '#4338ca';
+
+              const text = clonedDoc.createElement('div');
+              text.innerText = entry.text || '';
+              text.style.fontSize = '0.85rem';
+              text.style.lineHeight = '1.5';
+              text.style.color = '#1f2937';
+
+              bubble.appendChild(name);
+              bubble.appendChild(text);
+              contentDiv.appendChild(bubble);
+            });
+
+            tContainer.appendChild(contentDiv);
+            element.appendChild(tContainer);
+          }
 
           // --- PAGE BREAK LOGIC ---
           // Calculate page height in pixels based on aspect ratio
@@ -139,7 +212,7 @@ export default function AnalysisReport() {
         }
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.75);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -152,13 +225,13 @@ export default function AnalysisReport() {
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
 
@@ -952,21 +1025,43 @@ export default function AnalysisReport() {
                   <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--gray-900)' }}>Interview Transcript</h2>
                   <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>{displayCandidate.firstName} {displayCandidate.lastName}</p>
                 </div>
-                <button
-                  onClick={() => setShowTranscript(false)}
-                  style={{
-                    padding: '0.5rem',
-                    borderRadius: '50%',
-                    background: 'var(--gray-100)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <X size={20} color="var(--gray-500)" />
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    onClick={handleDownloadPDF}
+                    disabled={isDownloading}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '0.5rem',
+                      background: 'var(--primary)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      color: 'white',
+                      fontSize: '0.875rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    <Download size={16} />
+                    {isDownloading ? 'Downloading...' : 'Download PDF'}
+                  </button>
+                  <button
+                    onClick={() => setShowTranscript(false)}
+                    style={{
+                      padding: '0.5rem',
+                      borderRadius: '50%',
+                      background: 'var(--gray-100)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <X size={20} color="var(--gray-500)" />
+                  </button>
+                </div>
               </div>
 
               {/* Modal Content */}

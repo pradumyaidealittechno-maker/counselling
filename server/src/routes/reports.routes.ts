@@ -82,6 +82,39 @@ router.get('/candidate/:candidateId', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Report not found for this candidate' });
     }
 
+    // Auto-sync: Update Candidate 'analysis' field if missing or empty
+    if (result && (!candidate.analysis || Object.keys(candidate.analysis).length === 0)) {
+      console.log(`🔄 Auto-syncing analysis for candidate ${candidate._id} from found report...`);
+
+      try {
+        // Extract analysis data - accommodate various N8N/JSON structures
+        // Usually CandidateResult.data holds the analysis, or the root object sans metadata
+        const analysisData = (result as any).data || result;
+
+        // Extract transcript if available and missing in candidate
+        const transcript = (result as any).transcript || (result as any).body?.call?.transcript;
+
+        // Update fields
+        candidate.analysis = analysisData;
+        if (transcript && (!candidate.transcript || candidate.transcript.length === 0)) {
+          // Ensure format compatibility if possible, otherwise save as is
+          candidate.transcript = transcript;
+        }
+
+        // Ensure status reflects completion
+        if (candidate.status !== 'hired' && candidate.status !== 'rejected') {
+          candidate.status = 'interview_complete';
+        }
+        candidate.interviewStatus = 'completed';
+
+        await candidate.save();
+        console.log('✅ Candidate analysis synced successfully');
+      } catch (syncErr) {
+        console.error('⚠️ Failed to auto-sync candidate analysis:', syncErr);
+        // Don't fail the request, just log
+      }
+    }
+
     res.json(result);
   } catch (error: any) {
     console.error('Get report by candidate ID error:', error);

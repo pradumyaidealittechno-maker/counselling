@@ -40,22 +40,27 @@ const candidateResultSchema = new mongoose.Schema({
     duration: String,
     questionCount: Number
   }
-}, { 
+}, {
   collection: 'candidate_result',
   strict: false,
-  timestamps: true 
+  timestamps: true
 });
 
 // Post-save hook to sync analysis to Candidate
-candidateResultSchema.post('save', async function(doc) {
+candidateResultSchema.post('save', async function (doc) {
   try {
     console.log('🔄 Syncing CandidateResult to Candidate...');
     console.log('📄 CandidateResult Doc:', JSON.stringify(doc.toObject(), null, 2));
     const result = doc as any;
-    
+
     // Resolve candidateId (handle various field names used in the past)
-    const candidateId = result.candidateId || result.candidate_id || result.id;
-    
+    let candidateId = result.candidateId || result.candidate_id || result.id;
+
+    // Clean quoted strings if present (N8N issue)
+    if (candidateId && typeof candidateId === 'string') {
+      candidateId = candidateId.replace(/^"|"$/g, '');
+    }
+
     if (!candidateId) {
       console.log('⚠️ No candidateId found in result, skipping sync');
       return;
@@ -85,10 +90,10 @@ candidateResultSchema.post('save', async function(doc) {
     // Extract data
     const dataObj = result.data || result; // Handle if data is wrapped in 'data' prop or at root
     console.log('🔍 Extracted dataObj keys:', Object.keys(dataObj));
-    
+
     const assessment = dataObj.competencyAssessment || dataObj.overallAssessment || {};
     console.log('📊 Assessment object found:', !!(dataObj.competencyAssessment || dataObj.overallAssessment), Object.keys(assessment));
-    
+
     const rec = dataObj.recommendation || dataObj.overallAssessment || {};
     console.log('📝 Recommendation object found:', !!(dataObj.recommendation || dataObj.overallAssessment));
 
