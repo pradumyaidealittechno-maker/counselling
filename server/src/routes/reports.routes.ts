@@ -70,6 +70,9 @@ router.get('/candidate/:candidateId', authenticate, async (req, res) => {
         { candidateId: candidateId },
         { id: candidateId },
         { candidate_id: candidateId },
+        // Handle quoted IDs (common from N8N/JSON issues)
+        { candidateId: `"${candidateId}"` },
+        { candidate_id: `"${candidateId}"` },
         { 'candidateInformation.email': { $regex: new RegExp(`^${candidate.email}$`, 'i') } },
         { 'data.candidateInformation.email': { $regex: new RegExp(`^${candidate.email}$`, 'i') } }
       ]

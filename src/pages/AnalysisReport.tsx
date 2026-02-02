@@ -74,16 +74,67 @@ export default function AnalysisReport() {
         onclone: (clonedDoc) => {
           // Increase font sizes in the cloned document for the PDF
           const element = clonedDoc.querySelector('[data-report-container]') as HTMLElement;
+          // Reduce padding for PDF to fit more content
           if (element) {
-            // Scale up base font size and specific elements
-            const allElements = element.querySelectorAll('*');
-            allElements.forEach((el) => {
-              const style = window.getComputedStyle(el as Element);
-              const fontSize = parseFloat(style.fontSize);
-              if (fontSize) {
-                (el as HTMLElement).style.fontSize = `${fontSize * 1.3}px`; // Increase by 30%
+            element.style.padding = '10px';
+          }
+
+          // Scale up base font size and specific elements (Reduced scale to avoid large gaps)
+          const allElements = element.querySelectorAll('*');
+          allElements.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            const style = window.getComputedStyle(el as Element);
+
+            // Reduce card padding
+            if (style.padding === '16px' || style.padding.includes('1rem')) {
+              htmlEl.style.padding = '0.75rem';
+            }
+
+            const fontSize = parseFloat(style.fontSize);
+            if (fontSize) {
+              htmlEl.style.fontSize = `${fontSize * 1.15}px`; // Increase by only 15%
+            }
+          });
+
+          // --- PAGE BREAK LOGIC ---
+          // Calculate page height in pixels based on aspect ratio
+          const contentWidth = element.scrollWidth;
+          const pageHeight = contentWidth * 1.4142; // A4 Ratio (297/210)
+
+          // Get container padding to start accumulator correctly
+          const containerStyle = window.getComputedStyle(element);
+          let currentHeight = parseFloat(containerStyle.paddingTop) || 0;
+
+          const children = Array.from(element.children) as HTMLElement[];
+
+          for (const child of children) {
+            const style = window.getComputedStyle(child);
+            const mt = parseFloat(style.marginTop) || 0;
+            const mb = parseFloat(style.marginBottom) || 0;
+            const h = child.offsetHeight + mt + mb;
+
+            // If adding this child exceeds the page height
+            if (currentHeight + h > pageHeight) {
+              // Determine how much space is left on current page
+              const spaceRemaining = pageHeight - currentHeight;
+
+              // Only insert break if it's not the very first element (which would overlap)
+              // and if there's actually space to fill
+              if (currentHeight > 0 && spaceRemaining > 0) {
+                const spacer = clonedDoc.createElement('div');
+                spacer.style.height = `${spaceRemaining}px`;
+                spacer.style.width = '100%';
+                spacer.style.display = 'block';
+                spacer.setAttribute('data-pdf-spacer', 'true');
+
+                child.parentNode?.insertBefore(spacer, child);
               }
-            });
+
+              // Reset height for the new page (starts with this child)
+              currentHeight = h;
+            } else {
+              currentHeight += h;
+            }
           }
         }
       });
@@ -195,10 +246,43 @@ export default function AnalysisReport() {
     const rootInfo = reportData.candidateInformation;
     const dataInfo = reportData.data?.candidateInformation;
     const info = rootInfo || dataInfo || {};
-    
+
     // Try to find transcript and recording
-    const transcript = reportData.transcript || reportData.data?.transcript || [];
+    let transcript = reportData.transcript || reportData.data?.transcript || [];
     const recordingUrl = reportData.recordingUrl || reportData.data?.recordingUrl;
+
+    // Helper to parse string transcript
+    if (typeof transcript === 'string') {
+      transcript = transcript.split('\n').map((line: string) => {
+        const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
+        if (match) {
+          return {
+            speaker: match[1],
+            text: match[2],
+            timestamp: '' // Timestamp not available in string format
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    }
+
+    // Also check deep nested body.call.transcript if from N8N raw
+    if ((!transcript || transcript.length === 0) && reportData.body?.call?.transcript) {
+      const rawTrans = reportData.body.call.transcript;
+      if (typeof rawTrans === 'string') {
+        transcript = rawTrans.split('\n').map((line: string) => {
+          const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
+          if (match) {
+            return {
+              speaker: match[1],
+              text: match[2],
+              timestamp: ''
+            };
+          }
+          return null;
+        }).filter(Boolean);
+      }
+    }
 
     displayCandidate = {
       firstName: info.fullName?.split(' ')[0] || 'Unknown',
@@ -210,12 +294,12 @@ export default function AnalysisReport() {
       transcript,
       recordingUrl,
     };
-    
+
     // Determine the source of analysis data
     // If 'data' exists and has candidateInformation/competencyAssessment, use it.
     // Otherwise use root.
     interviewAnalysis = (reportData.data && reportData.data.competencyAssessment) ? reportData.data : reportData;
-    
+
     console.log('Using Report Data - displayCandidate:', displayCandidate);
     console.log('Using Report Data - interviewAnalysis:', interviewAnalysis);
   } else {
@@ -224,13 +308,13 @@ export default function AnalysisReport() {
     // Fix: Handle nested data structure (interviewAnalysis might contain 'data' wrapper)
     const analysisRaw = (candidate as any)?.interviewAnalysis;
     interviewAnalysis = analysisRaw?.data || analysisRaw;
-    
+
     // Also ensure displayCandidate properties that might be in analysis are populated if missing in candidate
     if (!displayCandidate.transcript && interviewAnalysis?.transcript) {
-        displayCandidate.transcript = interviewAnalysis.transcript;
+      displayCandidate.transcript = interviewAnalysis.transcript;
     }
     if (!displayCandidate.recordingUrl && interviewAnalysis?.recordingUrl) {
-         displayCandidate.recordingUrl = interviewAnalysis.recordingUrl;
+      displayCandidate.recordingUrl = interviewAnalysis.recordingUrl;
     }
     console.log('Using Candidate Data - displayCandidate:', displayCandidate);
     console.log('Using Candidate Data - interviewAnalysis:', interviewAnalysis);
@@ -244,27 +328,27 @@ export default function AnalysisReport() {
       // Helper to parse pipe-formatted score string: "| Title | 4/10 | Description |"
       const parsePipeScore = (str: string) => {
         if (!str) return { score: 0, rawScore: '0', text: '' };
-        
+
         // Handle case where str is just a number or "X/Y" without pipes
         if (!str.includes('|')) {
-           const [e, t] = str.split('/').map(s => parseFloat(s.trim()));
-           const validE = !isNaN(e) ? e : 0;
-           const validT = !isNaN(t) && t > 0 ? t : 10;
-           return {
-             score: (validE / validT) * 100,
-             rawScore: validE.toString(),
-             text: ''
-           };
+          const [e, t] = str.split('/').map(s => parseFloat(s.trim()));
+          const validE = !isNaN(e) ? e : 0;
+          const validT = !isNaN(t) && t > 0 ? t : 10;
+          return {
+            score: (validE / validT) * 100,
+            rawScore: validE.toString(),
+            text: ''
+          };
         }
 
         const parts = str.split('|').map(s => s.trim()).filter(Boolean);
         // parts[0] = Title, parts[1] = Score (4/10), parts[2] = Description
         const scorePart = parts[1] || '0/10';
         let [earned, total] = scorePart.split('/').map(Number);
-        
+
         // Fallback: If total is missing but earned is a number (e.g. "7"), assume out of 10
         if (isNaN(total) && !isNaN(earned)) {
-            total = 10;
+          total = 10;
         }
 
         const normalizedScore = (!isNaN(earned) && !isNaN(total) && total > 0) ? (earned / total) * 100 : 0;
@@ -282,12 +366,12 @@ export default function AnalysisReport() {
 
       // Helper to parse Overall Score string like "18/50" or "7/10"
       const parseOverallScore = (str: string) => {
-          if (!str) return 0;
-          const [earned, total] = str.split('/').map(Number);
-          if (!isNaN(earned) && !isNaN(total) && total > 0) {
-              return Math.round((earned / total) * 100);
-          }
-          return 0;
+        if (!str) return 0;
+        const [earned, total] = str.split('/').map(Number);
+        if (!isNaN(earned) && !isNaN(total) && total > 0) {
+          return Math.round((earned / total) * 100);
+        }
+        return 0;
       };
 
       const tech = parsePipeScore(interviewAnalysis.competencyAssessment?.technicalSkills);
@@ -307,13 +391,13 @@ export default function AnalysisReport() {
       // Calculate overall score: Prioritize backend score, fallback to average
       let finalOverallScore = 0;
       const backendOverallStr = interviewAnalysis.competencyAssessment?.overallScore;
-      
+
       if (backendOverallStr && backendOverallStr.includes('/')) {
-         finalOverallScore = parseOverallScore(backendOverallStr);
+        finalOverallScore = parseOverallScore(backendOverallStr);
       } else {
-         finalOverallScore = Math.round(
+        finalOverallScore = Math.round(
           (tech.score + exp.score + cult.score + comm.score + prob.score) / 5
-         );
+        );
       }
 
       return {
@@ -548,12 +632,12 @@ export default function AnalysisReport() {
                     transition: 'width 0.5s ease'
                   }} />
                 </div>
-                <span style={{ 
-                  width: '32px', 
-                  textAlign: 'right', 
-                  fontSize: '0.875rem', 
-                  fontWeight: 700, 
-                  color: scoreColor 
+                <span style={{
+                  width: '32px',
+                  textAlign: 'right',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: scoreColor
                 }}>
                   {rawScore}
                 </span>
@@ -777,7 +861,7 @@ export default function AnalysisReport() {
               style={{ width: '100%', justifyContent: 'center' }}
               onClick={() => setShowTranscript(true)}
             >
-              View Video Recording
+              View Transcript
             </button>
             <button
               className="btn btn-ghost"
@@ -865,7 +949,7 @@ export default function AnalysisReport() {
                 alignItems: 'center'
               }}>
                 <div>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--gray-900)' }}>Interview Recording & Transcript</h2>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--gray-900)' }}>Interview Transcript</h2>
                   <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>{displayCandidate.firstName} {displayCandidate.lastName}</p>
                 </div>
                 <button
@@ -886,82 +970,59 @@ export default function AnalysisReport() {
               </div>
 
               {/* Modal Content */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
-                {/* Video Player Section */}
-                {displayCandidate.recordingUrl ? (
-                  <div style={{ marginBottom: '2rem', borderRadius: '0.75rem', overflow: 'hidden', background: '#000' }}>
-                    <video
-                      controls
-                      src={displayCandidate.recordingUrl}
-                      style={{ width: '100%', display: 'block' }}
-                    />
-                  </div>
-                ) : (
-                  <div style={{
-                    padding: '3rem',
-                    background: 'var(--gray-50)',
-                    borderRadius: '0.75rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '2rem',
-                    border: '2px dashed var(--gray-200)'
-                  }}>
-                    <Video size={48} color="var(--gray-300)" style={{ marginBottom: '1rem' }} />
-                    <p style={{ color: 'var(--gray-500)', fontWeight: 500 }}>No video recording available</p>
-                  </div>
-                )}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: '#f8fafc' }}>
+                {displayCandidate.transcript && displayCandidate.transcript.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {displayCandidate.transcript.map((entry: any, i: number) => {
+                      const speakerLower = entry.speaker?.toLowerCase() || '';
+                      const isAI = speakerLower === 'ai' || speakerLower === 'agent' || speakerLower === 'interviewer' || speakerLower.includes('emma');
 
-                {/* Transcript Section */}
-                <div style={{ paddingBottom: '1rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <MessageSquare size={18} />
-                    Transcript
-                  </h3>
+                      return (
+                        <div key={i} style={{
+                          alignSelf: isAI ? 'flex-start' : 'flex-end',
+                          maxWidth: '85%',
+                          display: 'flex',
+                          flexDirection: isAI ? 'row' : 'row-reverse',
+                          gap: '0.75rem',
+                          alignItems: 'flex-start'
+                        }}>
 
-                  {displayCandidate.transcript && displayCandidate.transcript.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {displayCandidate.transcript.map((entry: any, i: number) => {
-                        const isAI = entry.speaker === 'ai' || entry.speaker === 'AI' || entry.speaker === 'Interviewer';
-                        return (
-                          <div key={i} style={{
-                            alignSelf: isAI ? 'flex-start' : 'flex-end',
-                            maxWidth: '80%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: isAI ? 'flex-start' : 'flex-end'
-                          }}>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginBottom: '0.25rem' }}>
-                              {isAI ? 'AI Interviewer' : 'Candidate'}
+
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: isAI ? 'flex-start' : 'flex-end' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', fontWeight: 500, marginLeft: isAI ? '0.25rem' : 0, marginRight: isAI ? 0 : '0.25rem' }}>
+                              {entry.speaker}
                             </span>
                             <div style={{
                               padding: '1rem',
-                              background: isAI ? 'var(--gray-100)' : '#EEF2FF',
-                              color: isAI ? 'var(--gray-800)' : '#3730A3',
+                              background: isAI ? 'white' : '#EEF2FF',
+                              color: 'var(--gray-800)',
                               borderRadius: '1rem',
                               borderTopLeftRadius: isAI ? '0.25rem' : '1rem',
                               borderTopRightRadius: isAI ? '1rem' : '0.25rem',
                               fontSize: '0.9375rem',
-                              lineHeight: 1.5
+                              lineHeight: 1.6,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              border: '1px solid',
+                              borderColor: isAI ? '#e2e8f0' : '#c7d2fe'
                             }}>
                               {entry.text}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)', background: 'var(--gray-50)', borderRadius: '0.5rem' }}>
-                      No transcript available for this interview.
-                    </div>
-                  )}
-                </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                    <MessageSquare size={48} color="#cbd5e1" style={{ marginBottom: '1rem' }} />
+                    <p style={{ fontWeight: 500 }}>No transcript available for this interview.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }
