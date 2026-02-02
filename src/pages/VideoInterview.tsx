@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mic, MicOff, Video, VideoOff, Sparkles, Play, Square, Dna } from 'lucide-react';
 import { showToast } from '../utils/toast';
@@ -38,14 +38,16 @@ export default function VideoInterview() {
 
   // Video Ref needs to be a callback to handle conditional rendering
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const setVideoRef = (node: HTMLVideoElement | null) => {
-    videoRef.current = node;
-    if (node && webcamStreamRef.current) {
-      console.log('🔄 Video element mounted, attaching stream');
-      node.srcObject = webcamStreamRef.current;
-      node.play().catch(e => console.error('Error playing video:', e));
+  const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    if (node) {
+      videoRef.current = node;
+      if (webcamStreamRef.current && node.srcObject !== webcamStreamRef.current) {
+        console.log('🔄 Video element mounted, attaching stream');
+        node.srcObject = webcamStreamRef.current;
+        node.play().catch(e => console.error('Error playing video:', e));
+      }
     }
-  };
+  }, []);
 
   // Audio Mixing Refs
   const audioContextRef = useRef<AudioContext | null>(null);
