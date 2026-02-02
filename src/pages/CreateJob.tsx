@@ -27,7 +27,7 @@ export default function CreateJob() {
     setUploadedFile(file);
 
     // Extract filename and show details form
-    const fileName = file.name.replace(/\.[^/.]+$/, '');
+    const fileName = file.name.replace(/\.[^/.]+$/, '').replace(/-/g, ' ');
 
     // Initialize with loading state
     setJobDetails(prev => ({
@@ -190,7 +190,7 @@ export default function CreateJob() {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-900)' }}>
                 Upload Job Description
               </h3>
-                Upload a PDF, DOC, or TXT file to generate Job DNA
+              Upload a PDF, DOC, or TXT file to generate Job DNA
               <div style={{
                 display: 'flex',
                 alignItems: 'center',

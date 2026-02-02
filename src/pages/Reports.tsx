@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Search, Loader, AlertCircle } from 'lucide-react';
+import { FileText, Search, Loader, AlertCircle, Trash2, X } from 'lucide-react';
+import { showToast } from '../utils/toast';
 import api from '../services/api';
 
 interface Report {
   _id: string;
+  candidateId?: string;
   data?: {
+    candidateId?: string;
     candidateInformation?: {
       fullName: string;
       email?: string;
@@ -48,6 +51,9 @@ export default function Reports() {
   const [dateFilter, setDateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -69,6 +75,43 @@ export default function Reports() {
       setError('Failed to load reports. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (report: Report, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setReportToDelete(report);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!reportToDelete) return;
+
+    // Try to get candidateId from various possible locations in the object structure
+    const candidateId = reportToDelete.candidateId ||
+      reportToDelete.data?.candidateId;
+
+    if (!candidateId) {
+      showToast.error('Could not identify candidate record to delete');
+      setDeleteModalOpen(false);
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await api.candidates.delete(candidateId);
+
+      // Update local state to remove the deleted report
+      setReports(prev => prev.filter(r => r._id !== reportToDelete._id));
+
+      showToast.success('Candidate and report deleted successfully');
+      setDeleteModalOpen(false);
+      setReportToDelete(null);
+    } catch (error: any) {
+      console.error('Delete failed:', error);
+      showToast.error('Failed to delete candidate');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -304,7 +347,7 @@ export default function Reports() {
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Score</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Interview Date</th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Recommendation</th>
-                <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Action</th>
+                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -453,38 +496,55 @@ export default function Reports() {
                         {recommendation === 'Hold' ? 'Further Review' : recommendation === 'Reject' ? 'No' : isRecommended ? 'Recommended' : recommendation}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/dashboard/reports/${report._id}`);
-                        }}
-                        className="btn btn-sm"
-                        style={{
-                          backgroundColor: '#E91E63',
-                          color: 'white',
-                          border: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.375rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          fontWeight: 600,
-                          padding: '0.375rem 0.75rem',
-                          borderRadius: '0.375rem',
-                          fontSize: '0.75rem'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.15)';
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.08)';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                      >
-                        <FileText size={14} /> View Report
-                      </button>
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/reports/${report._id}`);
+                          }}
+                          className="btn btn-sm"
+                          style={{
+                            backgroundColor: '#E91E63',
+                            color: 'white',
+                            border: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.375rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontWeight: 600,
+                            padding: '0.375rem 0.75rem',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.75rem'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.15)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.08)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                          }}
+                        >
+                          <FileText size={14} /> View Report
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteClick(report, e)}
+                          className="btn btn-sm btn-ghost"
+                          style={{
+                            color: '#EF4444',
+                            padding: '0.375rem',
+                            height: 'auto',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Delete Candidate"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -556,6 +616,92 @@ export default function Reports() {
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && reportToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            width: '100%',
+            maxWidth: '400px',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--gray-400)'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#FEF2F2',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+                color: '#EF4444'
+              }}>
+                <Trash2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
+                Delete Candidate?
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+                Are you sure you want to delete <span style={{ fontWeight: 600 }}>{reportToDelete.candidateInformation?.fullName || reportToDelete.data?.candidateInformation?.fullName || 'this candidate'}</span>? This action cannot be undone.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="btn btn-outline"
+                style={{ flex: 1 }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="btn btn-primary"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#EF4444',
+                  borderColor: '#EF4444'
+                }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

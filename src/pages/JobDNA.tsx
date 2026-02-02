@@ -279,7 +279,7 @@ export default function JobDNA() {
             marginBottom: '0.5rem',
             letterSpacing: '-0.5px'
           }}>
-            {job.title}
+            {job.title.replace(/-/g, ' ')}
           </h1>
           <p style={{ fontSize: '1rem', color: 'var(--gray-500)', maxWidth: '600px', margin: '0 auto' }}>
             {job.department || 'General'} • Created on {new Date(job.createdAt).toLocaleDateString()}
@@ -417,7 +417,7 @@ export default function JobDNA() {
               <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.75rem' }}>Job DNA</span>
               <span style={{ padding: '0.125rem 0.5rem', borderRadius: '9999px', fontSize: '0.625rem', fontWeight: 500, background: job.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: job.status === 'active' ? '#059669' : '#D97706' }}>{job.status}</span>
             </div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>{job.title}</h1>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.25rem' }}>{job.title.replace(/-/g, ' ')}</h1>
             <p style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{job.department || 'No department'} - Last updated {new Date(job.updatedAt).toLocaleDateString()}</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>

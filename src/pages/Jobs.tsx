@@ -146,7 +146,7 @@ export default function Jobs() {
                             currentJobs.map((job) => (
                                 <tr key={job._id} style={{ borderBottom: '1px solid var(--gray-200)' }}>
                                     <td style={{ padding: '0.6rem 1rem', width: '30%' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--gray-900)' }}>{job.title}</div>
+                                        <div style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--gray-900)' }}>{job.title.replace(/-/g, ' ')}</div>
                                         <div style={{ fontSize: '0.95rem', color: 'var(--gray-500)' }}>{job.department}</div>
                                     </td>
                                     <td style={{ padding: '0.6rem 1rem', fontSize: '1.05rem', color: 'var(--gray-500)' }}>{job.company}</td>
@@ -161,30 +161,30 @@ export default function Jobs() {
                                     </td>
                                     <td style={{ padding: '0.6rem 1rem', textAlign: 'left' }}>
                                         <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '0.5rem' }}>
-                                            <Link 
-                                                to={`/dashboard/jobs/${job._id}/job-dna`} 
-                                                className="btn btn-icon btn-ghost" 
-                                                style={{ 
-                                                    width: '36px', 
-                                                    height: '36px', 
-                                                    padding: 0, 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
+                                            <Link
+                                                to={`/dashboard/jobs/${job._id}/job-dna`}
+                                                className="btn btn-icon btn-ghost"
+                                                style={{
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    padding: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
                                                     justifyContent: 'center',
                                                     borderRadius: '8px'
-                                                }} 
+                                                }}
                                                 title="Edit Job DNA"
                                             >
                                                 <Edit size={20} color="var(--gray-500)" />
                                             </Link>
                                             <button
                                                 className="btn btn-icon btn-ghost"
-                                                style={{ 
-                                                    width: '36px', 
-                                                    height: '36px', 
-                                                    padding: 0, 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
+                                                style={{
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    padding: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
                                                     justifyContent: 'center',
                                                     borderRadius: '8px'
                                                 }}
@@ -236,14 +236,14 @@ export default function Jobs() {
                                             key={pageNum}
                                             onClick={() => setCurrentPage(pageNum)}
                                             className={`btn btn-sm ${currentPage === pageNum ? 'btn-primary' : 'btn-ghost'}`}
-                                            style={{ 
-                                                width: '32px', 
-                                                height: '32px', 
-                                                padding: 0, 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
+                                            style={{
+                                                width: '32px',
+                                                height: '32px',
+                                                padding: 0,
+                                                display: 'flex',
+                                                alignItems: 'center',
                                                 justifyContent: 'center',
-                                                fontSize: '0.875rem' 
+                                                fontSize: '0.875rem'
                                             }}
                                         >
                                             {pageNum}
