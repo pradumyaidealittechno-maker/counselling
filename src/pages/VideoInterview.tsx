@@ -57,7 +57,7 @@ export default function VideoInterview() {
 
   // Timer effect
   useEffect(() => {
-    let interval: number;
+    let interval: any;
     if (isRecording) {
       interval = setInterval(() => setTimer(t => t + 1), 1000);
     }
@@ -449,17 +449,7 @@ export default function VideoInterview() {
     }
   };
 
-  // Periodic upload effect (Every 5 minutes)
-  useEffect(() => {
-    if (!isRecording) return;
 
-    const interval = setInterval(() => {
-      console.log('⏰ Triggering periodic recording upload...');
-      uploadRecording(true);
-    }, 5 * 60 * 1000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [isRecording, candidateUid]);
 
   const uploadRecording = async (isChunk = false) => {
     if (recordedChunksRef.current.length === 0) {
