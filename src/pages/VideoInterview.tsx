@@ -52,6 +52,7 @@ export default function VideoInterview() {
   const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const agentAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const agentTrackRef = useRef<MediaStreamTrack | null>(null);
   const agentGainRef = useRef<GainNode | null>(null);
 
@@ -175,7 +176,7 @@ export default function VideoInterview() {
 
       // Use default if no specific type is found
       const options: any = {
-        videoBitsPerSecond: 600
+        videoBitsPerSecond: 1000000 // 1 Mbps
       };
 
       if (selectedMimeType) {
@@ -190,7 +191,7 @@ export default function VideoInterview() {
         }
       };
 
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.start(3000); // Collect data every 3 seconds to prevent hiccups
       mediaRecorderRef.current = mediaRecorder;
 
       console.log('✅ Webcam and recording started (with mixed audio)');
@@ -214,6 +215,19 @@ export default function VideoInterview() {
     }
 
     try {
+      // Prevent double audio: Disconnect system audio if active
+      if (systemAudioSourceRef.current) {
+        systemAudioSourceRef.current.disconnect();
+        systemAudioSourceRef.current = null;
+        console.log('🔇 Disconnected system audio to use direct agent track');
+      }
+
+      // Check if already connected
+      if (agentAudioSourceRef.current) {
+        console.log('Agent audio already connected');
+        return;
+      }
+
       console.log('🔌 Connecting agent audio track to mixer...');
       const agentStream = new MediaStream([agentTrackRef.current]);
       const agentSource = audioContextRef.current.createMediaStreamSource(agentStream);
@@ -416,8 +430,19 @@ export default function VideoInterview() {
       displayStream.getVideoTracks().forEach(t => t.stop());
 
       if (audioContextRef.current && audioDestinationRef.current) {
+        // Prevent double audio: Disconnect existing sources
+        if (agentAudioSourceRef.current) {
+          agentAudioSourceRef.current.disconnect();
+          agentAudioSourceRef.current = null;
+          console.log('🔇 Disconnected agent audio to use system audio');
+        }
+        if (systemAudioSourceRef.current) {
+          systemAudioSourceRef.current.disconnect();
+        }
+
         const systemSource = audioContextRef.current.createMediaStreamSource(new MediaStream([audioTrack]));
         systemSource.connect(audioDestinationRef.current);
+        systemAudioSourceRef.current = systemSource;
       }
 
       showToast.success("System audio enabled! The AI voice will now be recorded.");

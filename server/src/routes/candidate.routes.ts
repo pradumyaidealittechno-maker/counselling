@@ -867,7 +867,9 @@ router.post('/:id/analysis', authenticate, async (req, res) => {
       $or: [
         { candidateId: candidateId },
         { id: candidateId },
-        { candidate_id: candidateId }
+        { candidate_id: candidateId },
+        { candidateId: `"${candidateId}"` },
+        { candidate_id: `"${candidateId}"` }
       ]
     });
 
@@ -1045,21 +1047,35 @@ router.post('/sync-analysis', authenticate, async (_req, res) => {
       try {
         const resultData = result as any;
 
-        // Get candidate_id from root level (snake_case as per user's data)
-        const candidateId = resultData.candidate_id;
+        // Get candidate_id and clean quotes
+        let candidateId = resultData.candidate_id || resultData.candidateId || resultData.id;
 
-        if (!candidateId) {
-          console.log('⚠️ No candidate_id in result, skipping');
-          continue;
+        if (candidateId && typeof candidateId === 'string') {
+          candidateId = candidateId.replace(/^"|"$/g, '');
         }
 
-        console.log(`🔍 Looking for candidate with ID: ${candidateId}`);
+        if (candidateId && typeof candidateId === 'string') {
+          candidateId = candidateId.replace(/^"|"$/g, '');
+        }
 
         // Find candidate by _id
-        const candidate = await Candidate.findById(candidateId);
+        let candidate = null;
+        if (candidateId) {
+          try {
+            candidate = await Candidate.findById(candidateId);
+          } catch (e) { console.log('Invalid ID format'); }
+        }
+
+        // Fallback: Try email if ID failed
+        if (!candidate && resultData.data?.candidateInformation?.email && resultData.data.candidateInformation.email !== 'Not discussed') {
+          const email = resultData.data.candidateInformation.email;
+          candidate = await Candidate.findOne({ email: new RegExp(`^${email}$`, 'i') });
+          if (candidate) console.log(`🔗 Found candidate by EMAIL: ${email}`);
+        }
 
         if (!candidate) {
-          errors.push(`Candidate not found for ID: ${candidateId}`);
+          // errors.push(`Candidate not found for ID: ${candidateId}`);
+          // Don't error log every mismatch to avoid noise
           failed++;
           continue;
         }
@@ -1125,7 +1141,8 @@ router.post('/:id/sync-analysis', authenticate, async (req, res) => {
         { candidateId: candidateId },
         { candidateId: `"${candidateId}"` },
         { id: candidateId },
-        { candidate_id: candidateId }
+        { candidate_id: candidateId },
+        { candidate_id: `"${candidateId}"` }
       ]
     });
 
