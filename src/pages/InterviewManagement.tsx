@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Video, Clock, Users, CheckCircle, Play, Square, Loader } from 'lucide-react';
+import { Video, Clock, Users, CheckCircle, Play, Square, Loader, Trash2, AlertTriangle, X } from 'lucide-react';
 import api from '../services/api';
 import { confirmToast, showToast } from '../utils/toast';
 
@@ -21,6 +21,8 @@ export default function InterviewManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [candidates, setCandidates] = useState<any[]>([]);
   const [endingInterview, setEndingInterview] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [candidateToDelete, setCandidateToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -141,6 +143,30 @@ export default function InterviewManagement() {
     return formatDuration(elapsed);
   };
 
+  const handleDeleteClick = (candidateId: string, candidateName: string) => {
+    setCandidateToDelete({ id: candidateId, name: candidateName });
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!candidateToDelete) return;
+
+    try {
+      await api.candidates.delete(candidateToDelete.id);
+      showToast.success(`Deleted candidate ${candidateToDelete.name}`);
+      // Remove from local state immediately
+      setRecentInterviews(prev => prev.filter(i => i.candidateId !== candidateToDelete.id));
+      setDeleteModalOpen(false);
+      setCandidateToDelete(null);
+      // Reload data to ensure sync
+      loadRecentInterviews();
+      loadCandidates();
+    } catch (error) {
+      console.error('Failed to delete candidate:', error);
+      showToast.error('Failed to delete candidate');
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
@@ -154,7 +180,7 @@ export default function InterviewManagement() {
   return (
     <div>
       {/* Header with Gradient */}
-      <div style={{ 
+      <div style={{
         marginBottom: '2rem',
         padding: '1.5rem',
         background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
@@ -169,7 +195,7 @@ export default function InterviewManagement() {
 
       {/* Enhanced Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%)',
           border: '2px solid rgba(16, 185, 129, 0.15)',
@@ -177,14 +203,14 @@ export default function InterviewManagement() {
           transition: 'all 0.3s',
           cursor: 'pointer'
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.1)';
-        }}>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.1)';
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: '56px',
@@ -205,7 +231,7 @@ export default function InterviewManagement() {
           </div>
         </div>
 
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.02) 100%)',
           border: '2px solid rgba(99, 102, 241, 0.15)',
@@ -213,14 +239,14 @@ export default function InterviewManagement() {
           transition: 'all 0.3s',
           cursor: 'pointer'
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(99, 102, 241, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(99, 102, 241, 0.1)';
-        }}>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(99, 102, 241, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(99, 102, 241, 0.1)';
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: '56px',
@@ -241,7 +267,7 @@ export default function InterviewManagement() {
           </div>
         </div>
 
-        <div className="card" style={{ 
+        <div className="card" style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(233, 30, 99, 0.02) 100%)',
           border: '2px solid rgba(233, 30, 99, 0.15)',
@@ -249,14 +275,14 @@ export default function InterviewManagement() {
           transition: 'all 0.3s',
           cursor: 'pointer'
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 8px 25px rgba(233, 30, 99, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(233, 30, 99, 0.1)';
-        }}>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(233, 30, 99, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(233, 30, 99, 0.1)';
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{
               width: '56px',
@@ -279,7 +305,7 @@ export default function InterviewManagement() {
       </div>
 
       {/* Active Sessions */}
-      <div className="card" style={{ 
+      <div className="card" style={{
         padding: '1.75rem',
         marginBottom: '2rem',
         border: '2px solid rgba(16, 185, 129, 0.15)',
@@ -384,7 +410,7 @@ export default function InterviewManagement() {
       </div>
 
       {/* Recent Interviews */}
-      <div className="card" style={{ 
+      <div className="card" style={{
         padding: '1.75rem',
         border: '2px solid rgba(99, 102, 241, 0.15)',
         boxShadow: '0 4px 20px rgba(99, 102, 241, 0.08)',
@@ -439,7 +465,8 @@ export default function InterviewManagement() {
                   <th style={{ width: '15%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Status</th>
                   <th style={{ width: '25%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Email</th>
                   <th style={{ width: '20%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Recording</th>
-                  <th style={{ width: '20%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Date</th>
+                  <th style={{ width: '15%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Date</th>
+                  <th style={{ width: '10%', padding: '1rem 2.5rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-700)' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -458,7 +485,7 @@ export default function InterviewManagement() {
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>
                       {interview.recordingUrl ? (
-                         <a
+                        <a
                           href={interview.recordingUrl}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -475,6 +502,16 @@ export default function InterviewManagement() {
                     <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
                       {new Date(interview.startedAt).toLocaleDateString()} at {new Date(interview.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </td>
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        style={{ color: '#EF4444' }}
+                        onClick={() => handleDeleteClick(interview.candidateId, interview.candidateName)}
+                        title="Delete Interview"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -482,6 +519,108 @@ export default function InterviewManagement() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '400px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--gray-400)'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{
+              width: '48px',
+              height: '48px',
+              background: '#FEE2E2',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              color: '#EF4444'
+            }}>
+              <AlertTriangle size={24} />
+            </div>
+
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 700,
+              color: 'var(--gray-900)',
+              textAlign: 'center',
+              marginBottom: '0.75rem'
+            }}>
+              Delete Candidate?
+            </h3>
+
+            <p style={{
+              color: 'var(--gray-500)',
+              textAlign: 'center',
+              marginBottom: '2rem',
+              lineHeight: 1.5
+            }}>
+              Are you sure you want to delete <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{candidateToDelete?.name}</span>? This action cannot be undone and will remove all interview data.
+            </p>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="btn"
+                style={{
+                  flex: 1,
+                  background: 'var(--gray-100)',
+                  color: 'var(--gray-700)',
+                  padding: '0.75rem'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="btn"
+                style={{
+                  flex: 1,
+                  background: '#EF4444',
+                  color: 'white',
+                  padding: '0.75rem',
+                  border: 'none'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
