@@ -100,79 +100,97 @@ export default function AnalysisReport() {
           let transcript = reportData?.transcript || reportData?.data?.transcript || [];
           // Parse string transcript if needed
           if (typeof transcript === 'string') {
-            transcript = transcript.split('\n').map((line: string) => {
-              const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
-              return match ? { speaker: match[1], text: match[2] } : null;
-            }).filter(Boolean);
+            const parsed: any[] = [];
+            let current: any = null;
+            const lines = transcript.split('\n');
+
+            lines.forEach(line => {
+              const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
+              if (match) {
+                if (current) parsed.push(current);
+                current = { speaker: match[1], text: match[2] };
+              } else if (current) {
+                current.text += '\n' + line.trim();
+              }
+            });
+            if (current) parsed.push(current);
+            transcript = parsed;
           } else if (reportData?.body?.call?.transcript && typeof reportData.body.call.transcript === 'string') {
             // Fallback to body.call.transcript
-            transcript = reportData.body.call.transcript.split('\n').map((line: string) => {
-              const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
-              return match ? { speaker: match[1], text: match[2] } : null;
-            }).filter(Boolean);
+            const parsed: any[] = [];
+            let current: any = null;
+            const lines = reportData.body.call.transcript.split('\n');
+
+            lines.forEach((line: string) => {
+              const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
+              if (match) {
+                if (current) parsed.push(current);
+                current = { speaker: match[1], text: match[2] };
+              } else if (current) {
+                current.text += '\n' + line.trim();
+              }
+            });
+            if (current) parsed.push(current);
+            transcript = parsed;
           }
 
           if (transcript && Array.isArray(transcript) && transcript.length > 0) {
-            const tContainer = clonedDoc.createElement('div');
-            tContainer.className = 'card'; // Use card class for consistency
-            tContainer.style.padding = '1rem';
-            tContainer.style.marginBottom = '1rem';
-            tContainer.style.background = 'var(--white)';
-            tContainer.style.marginTop = '1rem';
-            tContainer.style.borderTop = '2px solid #e5e7eb';
-
             const h2 = clonedDoc.createElement('h3');
             h2.innerText = 'Interview Transcript';
             h2.style.fontWeight = '600';
-            h2.style.fontSize = '1.25rem'; // Larger for PDF
+            h2.style.fontSize = '1.25rem';
             h2.style.marginBottom = '1rem';
+            h2.style.marginTop = '2rem';
             h2.style.color = '#111827';
-            tContainer.appendChild(h2);
-
-            const contentDiv = clonedDoc.createElement('div');
-            contentDiv.style.display = 'flex';
-            contentDiv.style.flexDirection = 'column';
-            contentDiv.style.gap = '1rem';
+            h2.style.borderTop = '2px solid #e5e7eb';
+            h2.style.paddingTop = '1rem';
+            element.appendChild(h2);
 
             transcript.forEach((entry: any) => {
               const speakerLower = (entry.speaker || '').toLowerCase();
               const isAI = speakerLower.includes('ai') || speakerLower.includes('agent') || speakerLower.includes('emma');
 
+              // Create a wrapper row for each message to handle alignment
+              const rowDiv = clonedDoc.createElement('div');
+              rowDiv.style.display = 'flex';
+              rowDiv.style.width = '100%';
+              rowDiv.style.marginBottom = '1rem';
+              rowDiv.style.justifyContent = isAI ? 'flex-start' : 'flex-end';
+
               const bubble = clonedDoc.createElement('div');
-              bubble.style.alignSelf = isAI ? 'flex-start' : 'flex-end';
-              bubble.style.maxWidth = '90%';
-              bubble.style.padding = '0.75rem';
-              bubble.style.borderRadius = '0.5rem';
-              bubble.style.background = isAI ? '#f3f4f6' : '#eef2ff';
+              bubble.style.maxWidth = '80%'; // Reduced from 85% for better spacing
+              bubble.style.padding = '1rem'; // Increased from 0.75rem
+              bubble.style.borderRadius = '0.75rem'; // Increased radius
+              bubble.style.background = isAI ? '#f9fafb' : '#eef2ff';
               bubble.style.border = '1px solid';
               bubble.style.borderColor = isAI ? '#e5e7eb' : '#c7d2fe';
+              bubble.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
 
               const name = clonedDoc.createElement('div');
               name.innerText = entry.speaker || (isAI ? 'AI Agent' : 'Candidate');
-              name.style.fontSize = '0.7rem';
-              name.style.fontWeight = 'bold';
-              name.style.marginBottom = '0.25rem';
-              name.style.color = isAI ? '#4b5563' : '#4338ca';
+              name.style.fontSize = '0.75rem'; // Slightly larger
+              name.style.fontWeight = '700';
+              name.style.marginBottom = '0.5rem'; // More space between name and text
+              name.style.color = isAI ? '#374151' : '#4338ca';
 
               const text = clonedDoc.createElement('div');
               text.innerText = entry.text || '';
-              text.style.fontSize = '0.85rem';
-              text.style.lineHeight = '1.5';
-              text.style.color = '#1f2937';
+              text.style.fontSize = '0.9rem'; // Larger text
+              text.style.lineHeight = '1.6'; // Better readability
+              text.style.whiteSpace = 'pre-wrap';
 
               bubble.appendChild(name);
               bubble.appendChild(text);
-              contentDiv.appendChild(bubble);
+              rowDiv.appendChild(bubble);
+              element.appendChild(rowDiv);
             });
-
-            tContainer.appendChild(contentDiv);
-            element.appendChild(tContainer);
           }
 
           // --- PAGE BREAK LOGIC ---
           // Calculate page height in pixels based on aspect ratio
           const contentWidth = element.scrollWidth;
-          const pageHeight = contentWidth * 1.4142; // A4 Ratio (297/210)
+          const fullPageHeight = contentWidth * 1.4142; // A4 Ratio (297/210)
+          const safePageHeight = fullPageHeight * 0.90; // Trigger break at 90%
 
           // Get container padding to start accumulator correctly
           const containerStyle = window.getComputedStyle(element);
@@ -186,25 +204,34 @@ export default function AnalysisReport() {
             const mb = parseFloat(style.marginBottom) || 0;
             const h = child.offsetHeight + mt + mb;
 
-            // If adding this child exceeds the page height
-            if (currentHeight + h > pageHeight) {
-              // Determine how much space is left on current page
-              const spaceRemaining = pageHeight - currentHeight;
+            // If adding this child exceeds the SAFETY height (90%)
+            if (currentHeight + h > safePageHeight) {
+              // Calculate space needed to reach the EXACT bottom of the physical page
+              const spaceRemaining = fullPageHeight - currentHeight;
 
-              // Only insert break if it's not the very first element (which would overlap)
-              // and if there's actually space to fill
-              if (currentHeight > 0 && spaceRemaining > 0) {
+              if (currentHeight > 0) {
                 const spacer = clonedDoc.createElement('div');
+                // Fill exactly to the end of the page
                 spacer.style.height = `${spaceRemaining}px`;
                 spacer.style.width = '100%';
                 spacer.style.display = 'block';
                 spacer.setAttribute('data-pdf-spacer', 'true');
 
                 child.parentNode?.insertBefore(spacer, child);
-              }
 
-              // Reset height for the new page (starts with this child)
-              currentHeight = h;
+                // Add a small top margin spacer for the next page so it doesn't touch the very top edge
+                const headerSpacer = clonedDoc.createElement('div');
+                headerSpacer.style.height = '40px'; // 40px top margin for new page
+                headerSpacer.style.width = '100%';
+                headerSpacer.style.display = 'block';
+                child.parentNode?.insertBefore(headerSpacer, child);
+
+                // Reset height for the new page
+                // We start at the child's height plus the header spacer we just added
+                currentHeight = h + 40;
+              } else {
+                currentHeight += h;
+              }
             } else {
               currentHeight += h;
             }
@@ -326,34 +353,52 @@ export default function AnalysisReport() {
 
     // Helper to parse string transcript
     if (typeof transcript === 'string') {
-      transcript = transcript.split('\n').map((line: string) => {
-        const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
+      const parsed: any[] = [];
+      let current: any = null;
+      const lines = transcript.split('\n');
+
+      lines.forEach(line => {
+        const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
         if (match) {
-          return {
+          if (current) parsed.push(current);
+          current = {
             speaker: match[1],
             text: match[2],
-            timestamp: '' // Timestamp not available in string format
+            timestamp: ''
           };
+        } else if (current) {
+          // Append to previous message if it doesn't match start pattern
+          // This handles multi-line messages that were being dropped
+          current.text += '\n' + line.trim();
         }
-        return null;
-      }).filter(Boolean);
+      });
+      if (current) parsed.push(current);
+      transcript = parsed;
     }
 
     // Also check deep nested body.call.transcript if from N8N raw
     if ((!transcript || transcript.length === 0) && reportData.body?.call?.transcript) {
       const rawTrans = reportData.body.call.transcript;
       if (typeof rawTrans === 'string') {
-        transcript = rawTrans.split('\n').map((line: string) => {
-          const match = line.match(/^(Agent|User|Interviewer|Candidate): (.*)$/i);
+        const parsed: any[] = [];
+        let current: any = null;
+        const lines = rawTrans.split('\n');
+
+        lines.forEach((line: string) => {
+          const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
           if (match) {
-            return {
+            if (current) parsed.push(current);
+            current = {
               speaker: match[1],
               text: match[2],
               timestamp: ''
             };
+          } else if (current) {
+            current.text += '\n' + line.trim();
           }
-          return null;
-        }).filter(Boolean);
+        });
+        if (current) parsed.push(current);
+        transcript = parsed;
       }
     }
 
@@ -1098,7 +1143,8 @@ export default function AnalysisReport() {
                               lineHeight: 1.6,
                               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                               border: '1px solid',
-                              borderColor: isAI ? '#e2e8f0' : '#c7d2fe'
+                              borderColor: isAI ? '#e2e8f0' : '#c7d2fe',
+                              whiteSpace: 'pre-wrap'
                             }}>
                               {entry.text}
                             </div>
