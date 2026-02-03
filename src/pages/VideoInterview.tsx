@@ -178,7 +178,7 @@ export default function VideoInterview() {
 
       // Use default if no specific type is found
       const options: any = {
-        videoBitsPerSecond: 1000000 // 1 Mbps
+        videoBitsPerSecond: 600 // 1 Mbps
       };
 
       if (selectedMimeType) {

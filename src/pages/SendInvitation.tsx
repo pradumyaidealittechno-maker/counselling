@@ -60,7 +60,7 @@ export default function SendInvitation() {
 
 Dear ${firstName || 'Candidate'},
 
-You have been invited to participate in an AI-powered interview for the position of ${jobTitle}.
+You have been invited to participate in an interview for the position of ${jobTitle}.
 
 Your Interview Code: ${interviewCode}
 
@@ -351,56 +351,56 @@ Good luck!
 
                   {/* Integrated Toolbar for Link Options */}
                   {interviewCode && (
-                    <div style={{ 
-                      padding: '0.5rem 0.75rem', 
-                      background: '#fff', 
-                      borderBottom: '1px solid #e5e7eb', 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                    <div style={{
+                      padding: '0.5rem 0.75rem',
+                      background: '#fff',
+                      borderBottom: '1px solid #e5e7eb',
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'space-between',
                       flexWrap: 'wrap',
                       gap: '0.5rem'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--gray-700)' }}>Interview Link:</span>
-                            <div style={{ 
-                                background: '#EFF6FF', 
-                                border: '1px solid #BFDBFE', 
-                                color: '#2563EB', 
-                                fontSize: '0.75rem', 
-                                fontFamily: 'monospace', 
-                                padding: '0.125rem 0.375rem', 
-                                borderRadius: '0.25rem',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                maxWidth: '100%'
-                            }}>
-                                {interviewLink}
-                            </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--gray-700)' }}>Interview Link:</span>
+                        <div style={{
+                          background: '#EFF6FF',
+                          border: '1px solid #BFDBFE',
+                          color: '#2563EB',
+                          fontSize: '0.75rem',
+                          fontFamily: 'monospace',
+                          padding: '0.125rem 0.375rem',
+                          borderRadius: '0.25rem',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '100%'
+                        }}>
+                          {interviewLink}
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                             <button
-                                onClick={() => copyToClipboard(interviewLink, 'Interview Link')}
-                                className="btn btn-xs btn-ghost"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--gray-600)' }}
-                                title="Copy Link"
-                            >
-                                <Copy size={12} />
-                                <span style={{ fontSize: '0.75rem' }}>Copy</span>
-                            </button>
-                             <a
-                                href={interviewLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-xs btn-ghost"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--gray-600)', textDecoration: 'none' }}
-                                title="Open Link"
-                            >
-                                <Send size={12} /> {/* Using Send icon or ExternalLink if available, utilizing Send for now as per imports */}
-                                <span style={{ fontSize: '0.75rem' }}>Open</span>
-                            </a>
-                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => copyToClipboard(interviewLink, 'Interview Link')}
+                          className="btn btn-xs btn-ghost"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--gray-600)' }}
+                          title="Copy Link"
+                        >
+                          <Copy size={12} />
+                          <span style={{ fontSize: '0.75rem' }}>Copy</span>
+                        </button>
+                        <a
+                          href={interviewLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-xs btn-ghost"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--gray-600)', textDecoration: 'none' }}
+                          title="Open Link"
+                        >
+                          <Send size={12} /> {/* Using Send icon or ExternalLink if available, utilizing Send for now as per imports */}
+                          <span style={{ fontSize: '0.75rem' }}>Open</span>
+                        </a>
+                      </div>
                     </div>
                   )}
 
