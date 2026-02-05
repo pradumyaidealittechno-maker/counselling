@@ -8,6 +8,7 @@ import notificationService from '../services/notification.service.js';
 import { upload } from '../middleware/upload.js';
 import { uploadToS3 } from '../config/s3.js';
 import RetellAgent from '../models/RetellAgent.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -740,10 +741,12 @@ router.post('/browser-event', async (req, res) => {
 });
 
 // Get active interview sessions (protected - admin only)
-router.get('/active-sessions', async (_req, res) => {
+// Get active interview sessions (protected - user specific)
+router.get('/active-sessions', authenticate, async (req, res) => {
   try {
     const activeCandidates = await Candidate.find({
-      interviewStatus: 'in_progress'
+      interviewStatus: 'in_progress',
+      createdBy: (req as any).user.id
     }).select('_id firstName lastName interviewStartedAt email');
 
     const sessions = activeCandidates.map(candidate => ({

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Dna, AlertTriangle, Save, Shield, FileText, Clock, Loader, Plus, Sparkles, X } from 'lucide-react';
 import api from '../services/api';
+import { showToast } from '../utils/toast';
 
 type ImportanceLevel = 'critical' | 'high' | 'medium' | 'low';
 
@@ -98,14 +99,21 @@ export default function JobDNA() {
     if (!job?._id) return;
     try {
       setLoading(true);
+
+      // Update job status to active
       await api.jobs.update(job._id, {
-        status: 'active'
+        status: 'active',
+        interviewQuestions: [] // Clear existing questions so the builder shows the generation form
       });
+      showToast.success('Job DNA approved successfully!');
+
+      // Navigate to AI training
       navigate(`/dashboard/jobs/${job._id}/ai-training`);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to approve job';
       console.error('Failed to approve job:', err);
       setError(errorMessage);
+      showToast.error(errorMessage);
       setLoading(false);
     }
   };
@@ -563,6 +571,8 @@ export default function JobDNA() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }

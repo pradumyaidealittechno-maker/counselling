@@ -108,6 +108,10 @@ const connectDB = async () => {
   console.log('🔌 CONNECTING TO DATABASE:');
   console.log('─'.repeat(60));
 
+  // Enable verbose logging for Mongoose
+  mongoose.set('debug', true);
+  console.log('   ✅ Mongoose debug mode enabled (all queries will be logged)');
+
   try {
     const uri = process.env.MONGODB_URI as string;
     console.log(`   URI: ${uri?.replace(/:[^:@]+@/, ':***@')}`);

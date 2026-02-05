@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Dna, Edit3, Trash2, Plus, Video, Mic, CheckCircle, GripVertical,
-  Info, ChevronDown, ChevronUp, Target, Loader, ChevronLeft, ChevronRight
+  Info, ChevronDown, ChevronUp, Target, Loader, ChevronLeft, ChevronRight,
+  RefreshCw
 } from 'lucide-react';
 import api from '../services/api';
 import { confirmToast } from '../utils/toast';
@@ -89,6 +90,18 @@ export default function InterviewBuilder() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleRegenerateQuestions = async () => {
+    if (!job?._id) return;
+
+    const confirmed = await confirmToast(
+      'Are you sure you want to regenerate all questions? This will permanently delete existing questions and generate new ones based on the Job DNA.'
+    );
+
+    if (!confirmed) return;
+
+    handleGenerateQuestions();
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
@@ -367,17 +380,38 @@ export default function InterviewBuilder() {
 
   return (
     <div style={{ width: '100%', padding: '0 1rem' }}>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <Dna size={20} color="#E91E63" />
-          <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem' }}>Job DNA™ Powered</span>
+      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <Dna size={20} color="#E91E63" />
+            <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem' }}>Job DNA™ Powered</span>
+          </div>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            Interview Question Builder
+          </h1>
+          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+            Questions generated from Job DNA™ for {job.title}
+          </p>
         </div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-          Interview Question Builder
-        </h1>
-        <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
-          Questions generated from Job DNA™ for {job.title}
-        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+          <button
+            className="btn btn-primary"
+            onClick={handleRegenerateQuestions}
+            disabled={generating}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 12px rgba(233, 30, 99, 0.3)' }}
+          >
+            {generating ? (
+              <Loader size={16} className="animate-spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            {generating ? 'Regenerating...' : 'Regenerate Questions from DNA'}
+          </button>
+          <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', textAlign: 'right', maxWidth: '300px' }}>
+            💡 Regenerate questions after updating Job DNA to ensure alignment
+          </p>
+        </div>
       </div>
 
       {/* DNA Coverage & Settings Row */}
@@ -505,9 +539,10 @@ export default function InterviewBuilder() {
         <Info size={18} color="#E91E63" />
         <p style={{ fontSize: '0.8125rem', color: '#831843' }}>
           Each question is linked to specific Job DNA™ traits with signals to evaluate.
-          This ensures consistent, fair evaluation across all candidates.
+          <strong> Questions are automatically regenerated when you approve Job DNA changes.</strong> You can also manually regenerate them anytime using the button above.
         </p>
       </div>
+
 
       {/* Question Categories */}
       {Object.entries(questionsByCategory).map(([category, categoryQuestions]) => (

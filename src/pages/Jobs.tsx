@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, Plus, Search, Filter, Loader, Trash2, Edit } from 'lucide-react';
+import { Briefcase, Plus, Search, Filter, Loader, Trash2, Edit, Eye } from 'lucide-react';
 import api from '../services/api';
 import { confirmToast, showToast } from '../utils/toast';
 
@@ -176,6 +176,22 @@ export default function Jobs() {
                                                 title="Edit Job DNA"
                                             >
                                                 <Edit size={20} color="var(--gray-500)" />
+                                            </Link>
+                                            <Link
+                                                to={`/dashboard/jobs/${job._id}/interview-builder`}
+                                                className="btn btn-icon btn-ghost"
+                                                style={{
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    padding: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderRadius: '8px'
+                                                }}
+                                                title="View Interview Questions"
+                                            >
+                                                <Eye size={20} color="var(--gray-500)" />
                                             </Link>
                                             <button
                                                 className="btn btn-icon btn-ghost"
