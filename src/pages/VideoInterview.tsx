@@ -1034,7 +1034,16 @@ export default function VideoInterview() {
     }
 
     if (recordedChunksRef.current.length === 0) {
-      if (!isChunk) console.warn('⚠️ No recording chunks to upload');
+      if (!isChunk) {
+        console.warn('⚠️ No recording chunks to upload');
+        console.warn('📊 Recording state:', {
+          recordingStarted: recordingStartedRef.current,
+          firstChunkReceived: firstChunkReceivedRef.current,
+          lastChunkTime: lastChunkTimeRef.current ? new Date(lastChunkTimeRef.current).toISOString() : 'never',
+          mediaRecorderState: mediaRecorderRef.current?.state || 'null',
+          timeSinceLastChunk: lastChunkTimeRef.current ? Date.now() - lastChunkTimeRef.current : 'N/A'
+        });
+      }
       return;
     }
 
@@ -1098,6 +1107,13 @@ export default function VideoInterview() {
   };
 
   const handleEnd = async () => {
+    // Prevent multiple calls to handleEnd
+    if (handleEndRef.current) {
+      console.log('⏭️ handleEnd already called, skipping duplicate call');
+      return;
+    }
+    
+    handleEndRef.current = true;
     console.log('🛑 Ending interview...');
     
     try {
