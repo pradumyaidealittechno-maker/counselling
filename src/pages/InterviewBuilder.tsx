@@ -394,7 +394,7 @@ export default function InterviewBuilder() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+        {/* <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
           <button
             className="btn btn-primary"
             onClick={handleRegenerateQuestions}
@@ -411,7 +411,7 @@ export default function InterviewBuilder() {
           <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', textAlign: 'right', maxWidth: '300px' }}>
             💡 Regenerate questions after updating Job DNA to ensure alignment
           </p>
-        </div>
+        </div> */}
       </div>
 
       {/* DNA Coverage & Settings Row */}
