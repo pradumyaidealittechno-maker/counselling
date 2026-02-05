@@ -374,6 +374,7 @@ export default function VideoInterview() {
   const validateInterviewCode = async () => {
     try {
       const response = await fetch(`${API_URL}/api/interviews/validate-code`, {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
@@ -740,6 +741,7 @@ export default function VideoInterview() {
           agentId, // Optional, can be undefined
           candidateId: candidateUid
         })
+
       });
 
       if (!response.ok) {
@@ -792,6 +794,7 @@ export default function VideoInterview() {
 
         console.log('📡 Notifying backend of session start...');
         await fetch(`${API_URL}/api/interviews/start-session`, {
+
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ candidateId: candidateUid, browserInfo })
@@ -1084,6 +1087,8 @@ export default function VideoInterview() {
       const startTime = Date.now();
 
       const response = await fetch(`${API_URL}/api/interviews/save-recording`, {
+
+
         method: 'POST',
         body: formData
       });
@@ -1154,6 +1159,7 @@ export default function VideoInterview() {
       try {
         console.log('📡 Notifying backend of session end...');
         await fetch(`${API_URL}/api/interviews/end-session`, {
+
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
