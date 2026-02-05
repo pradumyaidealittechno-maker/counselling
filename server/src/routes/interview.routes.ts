@@ -281,11 +281,35 @@ router.post('/save-recording', upload.single('file'), async (req, res) => {
       candidate.recordingUrls.push(uploadResult.url);
       candidate.recordingUrl = uploadResult.url;
       candidate.recordingS3Key = uploadResult.key;
+      
+      // Update recording status
+      if (!candidate.recordingStatus) {
+        candidate.recordingStatus = {
+          started: true,
+          firstChunkReceived: false,
+          totalChunks: 0,
+          uploadSuccess: false
+        };
+      }
+      
+      if (candidate.recordingUrls.length === 1) {
+        candidate.recordingStatus.firstChunkReceived = true;
+      }
+      
+      candidate.recordingStatus.totalChunks = candidate.recordingUrls.length;
+      candidate.recordingStatus.lastChunkTime = new Date();
+      candidate.recordingStatus.uploadSuccess = true;
+      
       await candidate.save();
+
+      const uploadSpeed = file.size / (Date.now() - startTime); // bytes per ms
+      const uploadSpeedMbps = ((uploadSpeed * 8) / 1024).toFixed(2); // Mbps
 
       console.log(`✅ [SAVE-RECORDING] Candidate updated:`, {
         candidateId: uid,
-        totalChunks: candidate.recordingUrls.length
+        totalChunks: candidate.recordingUrls.length,
+        uploadSpeed: `${uploadSpeedMbps} Mbps`,
+        recordingStatus: candidate.recordingStatus
       });
     } else {
       console.warn(`⚠️ [SAVE-RECORDING] Candidate ${uid} not found, but file uploaded to S3`);
@@ -526,8 +550,18 @@ router.post('/end-session', async (req, res) => {
       candidateId: candidate._id,
       name: `${candidate.firstName} ${candidate.lastName}`,
       duration: candidate.interviewDuration,
-      completedAt: candidate.interviewCompletedAt
+      completedAt: candidate.interviewCompletedAt,
+      recordingStatus: candidate.recordingStatus,
+      recordingChunks: candidate.recordingUrls?.length || 0,
+      interrupted: candidate.interviewInterrupted || false
     });
+
+    // Verify recording upload
+    if (!candidate.recordingUrls || candidate.recordingUrls.length === 0) {
+      console.warn(`⚠️ [END-SESSION] WARNING: No recording uploaded for candidate ${candidate._id}`);
+    } else if (!candidate.recordingStatus?.uploadSuccess) {
+      console.warn(`⚠️ [END-SESSION] WARNING: Recording upload may have failed for candidate ${candidate._id}`);
+    }
 
     // Create notification for the recruiter/admin who created the job
     try {
@@ -558,6 +592,150 @@ router.post('/end-session', async (req, res) => {
       stack: error.stack
     });
     res.status(500).json({ error: 'Failed to end interview session' });
+  }
+});
+
+// Network health check (public endpoint - called periodically during interview)
+router.post('/network-health', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { candidateId, networkMetrics, timestamp } = req.body;
+
+    console.log(`📡 [NETWORK-HEALTH] Check received at ${formatTimestamp()}:`, {
+      candidateId,
+      quality: networkMetrics?.quality,
+      downlink: networkMetrics?.downlink,
+      rtt: networkMetrics?.rtt,
+      effectiveType: networkMetrics?.effectiveType
+    });
+
+    if (!candidateId) {
+      return res.status(400).json({ error: 'Candidate ID is required' });
+    }
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      console.error(`❌ [NETWORK-HEALTH] Candidate not found: ${candidateId}`);
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Initialize networkHealthChecks array if not exists
+    if (!candidate.networkHealthChecks) {
+      candidate.networkHealthChecks = [];
+    }
+
+    // Add network health check to history
+    (candidate.networkHealthChecks as any[]).push({
+      timestamp: timestamp || new Date(),
+      quality: networkMetrics?.quality,
+      downlink: networkMetrics?.downlink,
+      rtt: networkMetrics?.rtt,
+      effectiveType: networkMetrics?.effectiveType
+    });
+
+    // Store latest network metrics
+    candidate.networkMetrics = networkMetrics;
+
+    await candidate.save();
+
+    const responseTime = Date.now() - startTime;
+    const serverTime = Date.now();
+
+    // Calculate latency (client to server)
+    const clientLatency = timestamp ? serverTime - new Date(timestamp).getTime() : 0;
+
+    // Warn if network quality is poor
+    const warning = networkMetrics?.quality === 'poor' || clientLatency > 1000;
+
+    console.log(`✅ [NETWORK-HEALTH] Saved in ${responseTime}ms:`, {
+      candidateId,
+      quality: networkMetrics?.quality,
+      clientLatency: `${clientLatency}ms`,
+      warning: warning ? 'YES' : 'NO'
+    });
+
+    res.json({
+      success: true,
+      serverTime,
+      clientLatency,
+      warning,
+      message: warning ? 'Poor network quality detected' : 'Network quality is good'
+    });
+  } catch (error: any) {
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [NETWORK-HEALTH] Error after ${responseTime}ms:`, {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ error: 'Failed to save network health check' });
+  }
+});
+
+// Browser event logging (public endpoint - called on browser events)
+router.post('/browser-event', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { candidateId, eventType, eventData, timestamp } = req.body;
+
+    console.log(`🌐 [BROWSER-EVENT] Event received at ${formatTimestamp()}:`, {
+      candidateId,
+      eventType,
+      timestamp,
+      eventData: eventData ? JSON.stringify(eventData).substring(0, 100) : 'N/A'
+    });
+
+    if (!candidateId) {
+      return res.status(400).json({ error: 'Candidate ID is required' });
+    }
+
+    if (!eventType) {
+      return res.status(400).json({ error: 'Event type is required' });
+    }
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      console.error(`❌ [BROWSER-EVENT] Candidate not found: ${candidateId}`);
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    // Initialize browserEvents array if not exists
+    if (!candidate.browserEvents) {
+      candidate.browserEvents = [];
+    }
+
+    // Add browser event to history
+    (candidate.browserEvents as any[]).push({
+      eventType,
+      timestamp: timestamp || new Date(),
+      eventData: eventData || {}
+    });
+
+    // Mark interview as interrupted if browser closed
+    if (eventType === 'beforeunload' || eventType === 'pagehide' || eventType === 'visibilitychange') {
+      candidate.interviewInterrupted = true;
+      console.log(`⚠️ [BROWSER-EVENT] Interview interrupted by ${eventType}`);
+    }
+
+    await candidate.save();
+
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ [BROWSER-EVENT] Saved in ${responseTime}ms:`, {
+      candidateId,
+      eventType,
+      totalEvents: (candidate.browserEvents as any[]).length
+    });
+
+    res.json({
+      success: true,
+      message: 'Browser event logged successfully'
+    });
+  } catch (error: any) {
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [BROWSER-EVENT] Error after ${responseTime}ms:`, {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ error: 'Failed to log browser event' });
   }
 });
 

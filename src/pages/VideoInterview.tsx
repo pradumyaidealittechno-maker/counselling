@@ -28,6 +28,12 @@ export default function VideoInterview() {
   const [candidateUid, setCandidateUid] = useState('');
   const [jobTitle, setJobTitle] = useState('Software Engineer');
   const [companyName, setCompanyName] = useState('Our Company');
+  
+  // Network and recording health states
+  const [networkQuality, setNetworkQuality] = useState<'good' | 'fair' | 'poor'>('good');
+  const [showNetworkWarning, setShowNetworkWarning] = useState(false);
+  const [recordingHealth, setRecordingHealth] = useState<'healthy' | 'warning' | 'failed'>('healthy');
+  const [showRecordingWarning, setShowRecordingWarning] = useState(false);
 
   // Refs
   const retellClientRef = useRef<any>(null);
@@ -64,6 +70,12 @@ export default function VideoInterview() {
   const uploadInProgressRef = useRef<boolean>(false);
   const isCleaningUpRef = useRef<boolean>(false);
   const sessionIdRef = useRef<string>('');
+  const handleEndRef = useRef<boolean>(false);
+  
+  // Recording health tracking
+  const recordingStartedRef = useRef<boolean>(false);
+  const firstChunkReceivedRef = useRef<boolean>(false);
+  const lastChunkTimeRef = useRef<number>(Date.now());
 
   // Timer effect
   useEffect(() => {
@@ -73,6 +85,233 @@ export default function VideoInterview() {
     }
     return () => clearInterval(interval);
   }, [isRecording]);
+  
+  // Network quality monitoring
+  useEffect(() => {
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    
+    if (connection) {
+      const checkNetworkQuality = () => {
+        const effectiveType = connection.effectiveType;
+        const downlink = connection.downlink;
+        const rtt = connection.rtt;
+        
+        console.log('🌐 [NETWORK-MONITOR] Connection update:', {
+          effectiveType,
+          downlink: `${downlink} Mbps`,
+          rtt: `${rtt}ms`
+        });
+        
+        let quality: 'good' | 'fair' | 'poor' = 'good';
+        
+        if (effectiveType === 'slow-2g' || effectiveType === '2g' || downlink < 1 || rtt > 500) {
+          quality = 'poor';
+          setShowNetworkWarning(true);
+          showToast.error('Poor network detected. Recording quality may be affected.');
+        } else if (effectiveType === '3g' || downlink < 2 || rtt > 300) {
+          quality = 'fair';
+          showToast.error('Fair network quality. Please ensure stable connection.');
+        }
+        
+        setNetworkQuality(quality);
+      };
+      
+      checkNetworkQuality();
+      connection.addEventListener('change', checkNetworkQuality);
+      
+      return () => {
+        connection.removeEventListener('change', checkNetworkQuality);
+      };
+    }
+  }, []);
+  
+  // Periodic network health checks to backend
+  useEffect(() => {
+    if (!started || !isRecording) return;
+    
+    const healthCheckInterval = setInterval(async () => {
+      const healthCheckStart = Date.now();
+      
+      try {
+        const response = await fetch(`${API_URL}/api/interviews/network-health`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            candidateId: candidateUid,
+            sessionId: sessionIdRef.current,
+            metrics: {
+              timestamp: new Date().toISOString(),
+              recordingChunks: recordedChunksRef.current.length,
+              duration: timer
+            }
+          })
+        });
+        
+        const data = await response.json();
+        const clientLatency = Date.now() - healthCheckStart;
+        
+        console.log('💓 [NETWORK-HEALTH] Health check result:', {
+          serverLatency: data.latency,
+          clientLatency,
+          quality: data.quality,
+          warning: data.warning
+        });
+        
+        if (data.warning || clientLatency > 1000) {
+          console.warn('⚠️ [NETWORK-HEALTH] Poor network detected');
+          setShowNetworkWarning(true);
+          showToast.error('Network quality is poor. Please check your connection.');
+        }
+      } catch (error) {
+        console.error('❌ [NETWORK-HEALTH] Health check failed:', error);
+      }
+    }, 15000);
+    
+    return () => clearInterval(healthCheckInterval);
+  }, [started, isRecording, candidateUid, timer]);
+  
+  // Recording health monitor
+  useEffect(() => {
+    if (!isRecording) return;
+    
+    let lastChunkCount = 0;
+    let noChunkWarnings = 0;
+    
+    const healthCheck = setInterval(() => {
+      const currentChunkCount = recordedChunksRef.current.length;
+      const timeSinceLastChunk = Date.now() - lastChunkTimeRef.current;
+      
+      console.log(`💓 [RECORDING-HEALTH] Health check:`, {
+        chunks: currentChunkCount,
+        duration: `${timer}s`,
+        timeSinceLastChunk: `${(timeSinceLastChunk / 1000).toFixed(1)}s`,
+        recordingStarted: recordingStartedRef.current,
+        firstChunkReceived: firstChunkReceivedRef.current
+      });
+      
+      // Check if chunks stopped coming
+      if (currentChunkCount === lastChunkCount && recordingStartedRef.current) {
+        noChunkWarnings++;
+        console.warn(`⚠️ [RECORDING-HEALTH] No new chunks for ${noChunkWarnings * 5} seconds`);
+        
+        if (noChunkWarnings >= 2) {
+          console.error('❌ [RECORDING-HEALTH] Recording appears to have stopped!');
+          setRecordingHealth('failed');
+          setShowRecordingWarning(true);
+          showToast.error('Recording issue detected. Please end and restart interview.');
+        } else if (noChunkWarnings >= 1) {
+          setRecordingHealth('warning');
+        }
+      } else {
+        noChunkWarnings = 0;
+        setRecordingHealth('healthy');
+      }
+      
+      // Check if recording started but no chunks received
+      if (recordingStartedRef.current && !firstChunkReceivedRef.current && timer > 10) {
+        console.error('❌ [RECORDING-HEALTH] Recording started but no chunks received after 10s!');
+        setRecordingHealth('failed');
+        setShowRecordingWarning(true);
+        showToast.error('Recording failed to capture data. Please restart interview.');
+      }
+      
+      lastChunkCount = currentChunkCount;
+    }, 5000);
+    
+    return () => clearInterval(healthCheck);
+  }, [isRecording, timer]);
+  
+  // Browser closure detection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (started && isRecording) {
+        e.preventDefault();
+        e.returnValue = 'Interview is in progress. Are you sure you want to leave?';
+        
+        console.warn('⚠️ [BROWSER-CLOSE] User attempting to close browser during interview');
+        
+        if (navigator.sendBeacon) {
+          const data = JSON.stringify({
+            candidateId: candidateUid,
+            sessionId: sessionIdRef.current,
+            event: 'browser_close_attempt',
+            timestamp: new Date().toISOString(),
+            recordingChunks: recordedChunksRef.current.length,
+            duration: timer
+          });
+          
+          navigator.sendBeacon(`${API_URL}/api/interviews/browser-event`, data);
+          console.log('📡 [BROWSER-CLOSE] Beacon sent to backend');
+        }
+        
+        return e.returnValue;
+      }
+    };
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.warn('⚠️ [TAB-HIDDEN] User switched away from interview tab');
+        
+        if (started && isRecording) {
+          fetch(`${API_URL}/api/interviews/browser-event`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              candidateId: candidateUid,
+              sessionId: sessionIdRef.current,
+              event: 'tab_hidden',
+              timestamp: new Date().toISOString(),
+              duration: timer
+            })
+          }).catch(err => console.error('Failed to log tab hidden:', err));
+        }
+      } else {
+        console.log('✅ [TAB-VISIBLE] User returned to interview tab');
+        
+        if (started && isRecording) {
+          fetch(`${API_URL}/api/interviews/browser-event`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              candidateId: candidateUid,
+              sessionId: sessionIdRef.current,
+              event: 'tab_visible',
+              timestamp: new Date().toISOString(),
+              duration: timer
+            })
+          }).catch(err => console.error('Failed to log tab visible:', err));
+        }
+      }
+    };
+    
+    const handlePageHide = () => {
+      console.warn('⚠️ [PAGE-HIDE] Page is being hidden/closed');
+      
+      if (started && isRecording && navigator.sendBeacon) {
+        navigator.sendBeacon(
+          `${API_URL}/api/interviews/browser-event`,
+          JSON.stringify({
+            candidateId: candidateUid,
+            sessionId: sessionIdRef.current,
+            event: 'forceful_close',
+            timestamp: new Date().toISOString(),
+            duration: timer,
+            recordingChunks: recordedChunksRef.current.length
+          })
+        );
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [started, isRecording, candidateUid, timer]);
 
   // Validate code on mount
   useEffect(() => {
@@ -113,6 +352,17 @@ export default function VideoInterview() {
         'video/webm'
       ];
       console.log('🎥 Supported MIME types:', mimeTypes.filter(type => MediaRecorder.isTypeSupported(type)));
+    }
+    
+    // Check Network Information API
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    if (connection) {
+      console.log('🌐 Network Information:', {
+        effectiveType: connection.effectiveType,
+        downlink: `${connection.downlink} Mbps`,
+        rtt: `${connection.rtt}ms`,
+        saveData: connection.saveData
+      });
     }
 
     return () => {
@@ -260,6 +510,7 @@ export default function VideoInterview() {
   const startWebcam = async () => {
     try {
       // 1. Get User Media (Mic & Cam)
+      console.log('📹 Requesting media access...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
         audio: {
@@ -290,17 +541,24 @@ export default function VideoInterview() {
 
       audioContextRef.current = audioContext;
       audioDestinationRef.current = destination;
+      
+      console.log('🎚️ AudioContext created:', {
+        state: audioContext.state,
+        sampleRate: audioContext.sampleRate
+      });
 
       // 3. Add Mic to Mixer
       const micSource = audioContext.createMediaStreamSource(stream);
       micSource.connect(destination);
       micSourceRef.current = micSource;
+      console.log('✅ Microphone connected to mixer');
 
       // 4. Setup Agent Audio Gain (will connect later when track is available)
       const agentGain = audioContext.createGain();
       agentGain.gain.value = 1.0;
       agentGain.connect(destination);
       agentGainRef.current = agentGain;
+      console.log('✅ Agent audio gain node created');
 
       // 5. Try to connect if track is already available
       if (agentTrackRef.current) {
@@ -312,31 +570,91 @@ export default function VideoInterview() {
         ...stream.getVideoTracks(),
         ...destination.stream.getAudioTracks()
       ]);
+      
+      // Validate mixed stream
+      const videoTracks = mixedStream.getVideoTracks();
+      const audioTracks = mixedStream.getAudioTracks();
+      
+      console.log('📹 Mixed stream validation:', {
+        videoTracks: videoTracks.length,
+        audioTracks: audioTracks.length,
+        videoEnabled: videoTracks[0]?.enabled,
+        audioEnabled: audioTracks[0]?.enabled,
+        videoReadyState: videoTracks[0]?.readyState,
+        audioReadyState: audioTracks[0]?.readyState
+      });
+      
+      if (videoTracks.length === 0) {
+        throw new Error('No video tracks in mixed stream');
+      }
+      
+      if (audioTracks.length === 0) {
+        console.warn('⚠️ No audio tracks in mixed stream');
+      }
 
       // 7. Start recording with mixed stream
       const selectedMimeType = getSupportedMimeType();
 
-      // Use default if no specific type is found
       const options: any = {
-        videoBitsPerSecond: 600 // 1 Mbps
+        videoBitsPerSecond: 600000 // 600 kbps
       };
 
       if (selectedMimeType) {
         options.mimeType = selectedMimeType;
       }
+      
+      console.log('🎥 Creating MediaRecorder with options:', options);
 
       const mediaRecorder = new MediaRecorder(mixedStream, options);
+      
+      // Add comprehensive event handlers
+      mediaRecorder.onstart = () => {
+        recordingStartedRef.current = true;
+        console.log('✅ MediaRecorder.onstart fired - recording actually started');
+        
+        // Verify first chunk within 5 seconds
+        setTimeout(() => {
+          if (!firstChunkReceivedRef.current) {
+            console.error('❌ No chunks received after 5 seconds!');
+            setRecordingHealth('failed');
+            setShowRecordingWarning(true);
+            showToast.error('Recording failed to start. Please refresh and try again.');
+          }
+        }, 5000);
+      };
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
+          if (!firstChunkReceivedRef.current) {
+            firstChunkReceivedRef.current = true;
+            console.log('✅ First chunk received - recording working!');
+            setRecordingHealth('healthy');
+          }
+          
           recordedChunksRef.current.push(event.data);
+          lastChunkTimeRef.current = Date.now();
+          console.log(`📦 Chunk received: ${(event.data.size / 1024).toFixed(2)} KB (Total: ${recordedChunksRef.current.length})`);
         }
       };
+      
+      mediaRecorder.onerror = (event: any) => {
+        console.error('❌ MediaRecorder error:', event.error);
+        setRecordingHealth('failed');
+        setShowRecordingWarning(true);
+        showToast.error('Recording error: ' + (event.error?.message || 'Unknown error'));
+      };
 
-      mediaRecorder.start(3000); // Collect data every 3 seconds to prevent hiccups
-      mediaRecorderRef.current = mediaRecorder;
+      try {
+        mediaRecorder.start(1000); // Collect data every 1 second (reduced from 3s)
+        mediaRecorderRef.current = mediaRecorder;
+        console.log('📹 MediaRecorder.start() called - waiting for onstart event...');
+      } catch (startError) {
+        console.error('❌ Failed to start MediaRecorder:', startError);
+        showToast.error('Failed to start recording');
+        throw startError;
+      }
 
-      console.log('✅ Webcam and recording started (with mixed audio)');
+      console.log('✅ Webcam and recording setup complete');
       return true;
     } catch (error) {
       console.error('❌ Camera access denied:', error);

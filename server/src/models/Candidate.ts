@@ -26,6 +26,32 @@ export interface ICandidate extends Document {
   interviewAttempts: number;
   hasAccessedInterview: boolean;
   browserInfo?: Record<string, unknown>;
+  networkMetrics?: {
+    quality: string;
+    downlink?: number;
+    rtt?: number;
+    effectiveType?: string;
+  };
+  networkHealthChecks?: Array<{
+    timestamp: Date;
+    quality: string;
+    downlink?: number;
+    rtt?: number;
+    effectiveType?: string;
+  }>;
+  browserEvents?: Array<{
+    eventType: string;
+    timestamp: Date;
+    eventData?: Record<string, unknown>;
+  }>;
+  interviewInterrupted?: boolean;
+  recordingStatus?: {
+    started: boolean;
+    firstChunkReceived: boolean;
+    totalChunks: number;
+    lastChunkTime?: Date;
+    uploadSuccess: boolean;
+  };
   recordingUrl?: string;
   recordingS3Key?: string;
   recordingUrls?: string[];
@@ -136,6 +162,39 @@ const candidateSchema = new Schema<ICandidate>(
       default: false,
     },
     browserInfo: Schema.Types.Mixed,
+    networkMetrics: {
+      quality: String,
+      downlink: Number,
+      rtt: Number,
+      effectiveType: String,
+    },
+    networkHealthChecks: [
+      {
+        timestamp: Date,
+        quality: String,
+        downlink: Number,
+        rtt: Number,
+        effectiveType: String,
+      },
+    ],
+    browserEvents: [
+      {
+        eventType: String,
+        timestamp: Date,
+        eventData: Schema.Types.Mixed,
+      },
+    ],
+    interviewInterrupted: {
+      type: Boolean,
+      default: false,
+    },
+    recordingStatus: {
+      started: Boolean,
+      firstChunkReceived: Boolean,
+      totalChunks: Number,
+      lastChunkTime: Date,
+      uploadSuccess: Boolean,
+    },
     recordingUrl: String,
     recordingS3Key: String,
     recordingUrls: [String], // Array to store multiple recording chunks
