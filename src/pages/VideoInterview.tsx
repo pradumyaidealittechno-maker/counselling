@@ -596,7 +596,7 @@ export default function VideoInterview() {
       const selectedMimeType = getSupportedMimeType();
 
       const options: any = {
-        videoBitsPerSecond: 600000 // 600 kbps
+        videoBitsPerSecond: 300000 // 300 kbps
       };
 
       if (selectedMimeType) {
