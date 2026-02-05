@@ -58,6 +58,13 @@ export default function VideoInterview() {
   const agentTrackRef = useRef<MediaStreamTrack | null>(null);
   const agentGainRef = useRef<GainNode | null>(null);
 
+  // Session lock and mutex flags
+  const sessionLockRef = useRef<boolean>(false);
+  const audioSourceMutexRef = useRef<'none' | 'agent' | 'system'>('none');
+  const uploadInProgressRef = useRef<boolean>(false);
+  const isCleaningUpRef = useRef<boolean>(false);
+  const sessionIdRef = useRef<string>('');
+
   // Timer effect
   useEffect(() => {
     let interval: any;
@@ -76,10 +83,41 @@ export default function VideoInterview() {
 
   // Clean up audio context on unmount
   useEffect(() => {
+    // Browser detection and logging
+    const userAgent = navigator.userAgent;
+    const isChrome = /Chrome/.test(userAgent) && !/Edg/.test(userAgent);
+    const isSafari = /Safari/.test(userAgent) && !isChrome;
+    const isFirefox = /Firefox/.test(userAgent);
+    const isEdge = /Edg/.test(userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+    const isAndroid = /Android/.test(userAgent);
+
+    console.log('🌐 Browser Detection:', {
+      userAgent,
+      browser: isChrome ? 'Chrome' : isSafari ? 'Safari' : isFirefox ? 'Firefox' : isEdge ? 'Edge' : 'Unknown',
+      platform: isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop',
+      mediaRecorderSupported: typeof MediaRecorder !== 'undefined',
+      audioContextSupported: typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined',
+      getUserMediaSupported: typeof navigator.mediaDevices?.getUserMedia !== 'undefined'
+    });
+
+    // Log supported MIME types
+    if (typeof MediaRecorder !== 'undefined') {
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=h264,opus',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
+        'video/webm'
+      ];
+      console.log('🎥 Supported MIME types:', mimeTypes.filter(type => MediaRecorder.isTypeSupported(type)));
+    }
+
     return () => {
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-      }
+      console.log('🧹 Component unmounting - cleaning up');
+      cleanupAllResources();
     };
   }, []);
 
@@ -108,6 +146,108 @@ export default function VideoInterview() {
     } catch (error) {
       console.error('Code validation error:', error);
       showToast.error('Failed to validate code. Please try again.');
+    }
+  };
+
+  const cleanupAllResources = async () => {
+    if (isCleaningUpRef.current) {
+      console.log('⏳ Cleanup already in progress, skipping...');
+      return;
+    }
+
+    isCleaningUpRef.current = true;
+    console.log('🧹 Starting comprehensive cleanup...');
+
+    try {
+      // Stop Retell client
+      if (retellClientRef.current) {
+        try {
+          retellClientRef.current.stopCall();
+          console.log('✅ Retell call stopped');
+        } catch (e) {
+          console.warn('⚠️ Error stopping Retell call:', e);
+        }
+        retellClientRef.current = null;
+      }
+
+      // Stop media recorder
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+          console.log('✅ MediaRecorder stopped');
+        } catch (e) {
+          console.warn('⚠️ Error stopping MediaRecorder:', e);
+        }
+        mediaRecorderRef.current = null;
+      }
+
+      // Disconnect audio sources
+      if (micSourceRef.current) {
+        try {
+          micSourceRef.current.disconnect();
+          console.log('✅ Mic source disconnected');
+        } catch (e) {
+          console.warn('⚠️ Error disconnecting mic:', e);
+        }
+        micSourceRef.current = null;
+      }
+
+      if (agentAudioSourceRef.current) {
+        try {
+          agentAudioSourceRef.current.disconnect();
+          console.log('✅ Agent audio source disconnected');
+        } catch (e) {
+          console.warn('⚠️ Error disconnecting agent audio:', e);
+        }
+        agentAudioSourceRef.current = null;
+      }
+
+      if (systemAudioSourceRef.current) {
+        try {
+          systemAudioSourceRef.current.disconnect();
+          console.log('✅ System audio source disconnected');
+        } catch (e) {
+          console.warn('⚠️ Error disconnecting system audio:', e);
+        }
+        systemAudioSourceRef.current = null;
+      }
+
+      // Close audio context
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        try {
+          await audioContextRef.current.close();
+          console.log('✅ AudioContext closed');
+        } catch (e) {
+          console.warn('⚠️ Error closing AudioContext:', e);
+        }
+        audioContextRef.current = null;
+      }
+
+      // Stop webcam stream
+      if (webcamStreamRef.current) {
+        webcamStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log(`✅ Track stopped: ${track.kind}`);
+        });
+        webcamStreamRef.current = null;
+      }
+
+      // Clear refs
+      agentTrackRef.current = null;
+      agentGainRef.current = null;
+      audioDestinationRef.current = null;
+      recordedChunksRef.current = [];
+
+      // Reset mutex and locks
+      audioSourceMutexRef.current = 'none';
+      sessionLockRef.current = false;
+      uploadInProgressRef.current = false;
+
+      console.log('✅ Cleanup completed successfully');
+    } catch (error) {
+      console.error('❌ Error during cleanup:', error);
+    } finally {
+      isCleaningUpRef.current = false;
     }
   };
 
@@ -206,28 +346,37 @@ export default function VideoInterview() {
   };
 
   const connectAgentToMixer = () => {
+    // Check mutex - prevent double audio connection
+    if (audioSourceMutexRef.current === 'agent') {
+      console.log('🔒 Agent audio already connected (mutex locked)');
+      return;
+    }
+
+    if (audioSourceMutexRef.current === 'system') {
+      console.log('⚠️ System audio is active, disconnecting to use agent audio');
+      // Disconnect system audio to use agent audio
+      if (systemAudioSourceRef.current) {
+        systemAudioSourceRef.current.disconnect();
+        systemAudioSourceRef.current = null;
+        console.log('🔇 System audio disconnected');
+      }
+    }
+
     if (!agentTrackRef.current) {
-      console.log('No agent track available to connect');
+      console.log('❌ No agent track available to connect');
       return;
     }
 
     if (!audioContextRef.current || !agentGainRef.current) {
-      console.log('Mixer not ready, will connect later');
+      console.log('❌ Mixer not ready, will connect later');
       return;
     }
 
     try {
-      // Prevent double audio: Disconnect system audio if active
-      if (systemAudioSourceRef.current) {
-        systemAudioSourceRef.current.disconnect();
-        systemAudioSourceRef.current = null;
-        console.log('🔇 Disconnected system audio to use direct agent track');
-      }
-
       // Check if already connected
       if (agentAudioSourceRef.current) {
-        console.log('Agent audio already connected');
-        return;
+        agentAudioSourceRef.current.disconnect();
+        console.log('🔌 Disconnected previous agent audio source');
       }
 
       console.log('🔌 Connecting agent audio track to mixer...');
@@ -235,9 +384,14 @@ export default function VideoInterview() {
       const agentSource = audioContextRef.current.createMediaStreamSource(agentStream);
       agentSource.connect(agentGainRef.current);
       agentAudioSourceRef.current = agentSource;
-      console.log('✅ Agent audio successfully connected to recording mixer');
+      
+      // Lock mutex
+      audioSourceMutexRef.current = 'agent';
+      
+      console.log('✅ Agent audio successfully connected to recording mixer (mutex: agent)');
     } catch (e) {
       console.error('❌ Error connecting agent track to mixer:', e);
+      audioSourceMutexRef.current = 'none';
     }
   };
 
@@ -285,9 +439,28 @@ export default function VideoInterview() {
   };
 
   const handleStart = async () => {
+    // Session lock - prevent multiple sessions
+    if (sessionLockRef.current) {
+      console.warn('⚠️ Interview session already in progress (session locked)');
+      showToast.error('Interview already in progress');
+      return;
+    }
+
+    // Cleanup any existing resources before starting new session
+    console.log('🧹 Cleaning up before starting new session...');
+    await cleanupAllResources();
+
+    // Lock session
+    sessionLockRef.current = true;
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionIdRef.current = sessionId;
+    console.log(`🔒 Session locked: ${sessionId}`);
+
     try {
       // 1. Start webcam first (mandatory)
+      console.log('📹 Starting webcam...');
       await startWebcam();
+      console.log('✅ Webcam started successfully');
 
       // 2. Notify backend interview started
       try {
@@ -295,27 +468,32 @@ export default function VideoInterview() {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
           language: navigator.language,
-          screenResolution: `${window.screen.width}x${window.screen.height}`
+          screenResolution: `${window.screen.width}x${window.screen.height}`,
+          sessionId: sessionIdRef.current
         };
 
+        console.log('📡 Notifying backend of session start...');
         await fetch(`${API_URL}/api/interviews/start-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ candidateId: candidateUid, browserInfo })
         });
 
-        console.log('🎥 Session started - backend notified');
+        console.log('✅ Session started - backend notified');
       } catch (err) {
-        console.warn('Session notification failed (continuing):', err);
+        console.warn('⚠️ Session notification failed (continuing):', err);
       }
 
       // 3. Get Retell token and start AI call
+      console.log('🔑 Getting Retell token...');
       const token = await getRetellToken();
+      console.log('✅ Retell token received');
 
       if (!window.RetellWebClient) {
         throw new Error('Retell SDK not loaded');
       }
 
+      console.log('🤖 Initializing Retell client...');
       const retellClient = new window.RetellWebClient();
       retellClientRef.current = retellClient;
 
@@ -328,38 +506,59 @@ export default function VideoInterview() {
             time: idx * 10
           }));
           setTranscript(transcriptList);
+          
+          if (!update.is_partial && update.transcript.length > 0) {
+            const lastItem = update.transcript[update.transcript.length - 1];
+            console.log(`💬 Transcript: [${lastItem.role}] ${lastItem.content.substring(0, 50)}...`);
+          }
         }
       });
 
       // Handle conversation events
       retellClient.on('call_ready', () => {
-        console.log('Retell call ready - looking for agent track');
+        console.log('📞 Retell call ready - looking for agent track');
         findAndConnectAgentTrack(retellClient);
+        
+        // Retry after 2 seconds if not found
+        setTimeout(() => {
+          if (audioSourceMutexRef.current === 'none') {
+            console.log('🔄 Retrying agent track connection...');
+            findAndConnectAgentTrack(retellClient);
+          }
+        }, 2000);
       });
 
       retellClient.on('conversationStarted', () => {
-        console.log('Retell conversation started');
+        console.log('💬 Retell conversation started');
         setAiSpeaking(true);
         setTimeout(() => setAiSpeaking(false), 3000);
       });
 
       retellClient.on('agent_start_talking', () => {
+        console.log('🗣️ AI started talking');
         setAiSpeaking(true);
       });
 
       retellClient.on('agent_stop_talking', () => {
+        console.log('🤐 AI stopped talking');
         setAiSpeaking(false);
       });
 
       retellClient.on('call_ended', () => {
-        console.log('Call ended by Retell');
+        console.log('📞 Call ended by Retell');
         handleEnd();
+      });
+
+      retellClient.on('error', (error: any) => {
+        console.error('❌ Retell error:', error);
+        showToast.error('Call error: ' + error.message);
       });
 
       if (retellClient.room) {
         retellClient.room.on('trackSubscribed', (track: any, publication: any) => {
+          console.log('🎵 Track subscribed:', publication.trackName);
           if (publication.trackName === 'agent_audio') {
-            console.log('Agent track subscribed via room event');
+            console.log('✅ Agent audio track subscribed via room event');
             agentTrackRef.current = track.mediaStreamTrack;
             connectAgentToMixer();
           }
@@ -367,7 +566,9 @@ export default function VideoInterview() {
       }
 
       // Start the call
+      console.log('📞 Starting Retell call...');
       await retellClient.startCall({ accessToken: token });
+      console.log('✅ Retell call started successfully');
 
       setStarted(true);
       setIsRecording(true);
@@ -375,23 +576,30 @@ export default function VideoInterview() {
 
       console.log('✅ Interview started successfully');
     } catch (error) {
-      console.error('Failed to start interview:', error);
+      console.error('❌ Failed to start interview:', error);
       showToast.error('Failed to start interview. Please try again.');
-      stopWebcam();
+      sessionLockRef.current = false;
+      await cleanupAllResources();
     }
   };
 
   const findAndConnectAgentTrack = (client: any) => {
     if (!client || !client.room) {
-      console.log('Client or room not ready for agent track search');
+      console.log('⚠️ Client or room not ready for agent track search');
       return;
     }
 
     console.log('🔍 Searching for agent audio track...');
+    console.log(`📊 Remote participants: ${client.room.remoteParticipants.size}`);
 
     // Search all remote participants
     for (const participant of client.room.remoteParticipants.values()) {
+      console.log(`👤 Checking participant: ${participant.identity || 'unknown'}`);
+      console.log(`🎵 Audio publications: ${participant.audioTrackPublications.size}`);
+      
       for (const publication of participant.audioTrackPublications.values()) {
+        console.log(`📻 Publication: ${publication.trackName}, subscribed: ${publication.isSubscribed}`);
+        
         if (publication.track) {
           console.log('✅ Agent track found and subscribed!');
           agentTrackRef.current = (publication.track as any).mediaStreamTrack;
@@ -400,13 +608,24 @@ export default function VideoInterview() {
         }
       }
     }
+    
+    console.log('⚠️ No agent audio track found yet');
   };
 
 
   const enableSystemAudioFallback = async () => {
+    // Check mutex - prevent if agent audio already connected
+    if (audioSourceMutexRef.current === 'agent') {
+      console.log('⚠️ Agent audio already connected, system audio not needed');
+      showToast.success("Agent audio is already working!");
+      return;
+    }
+
     try {
       showToast.success("Please select 'This Tab' and enable 'Share tab audio' in the sharing dialog to record the AI's voice.");
 
+      console.log('🖥️ Requesting system audio via screen share...');
+      
       // @ts-ignore - getDisplayMedia options
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: true, // Required to get the tab picker  
@@ -423,13 +642,17 @@ export default function VideoInterview() {
       if (!audioTrack) {
         showToast.error("No audio shared. Please try again and ensure 'Share Audio' is checked.");
         displayStream.getTracks().forEach(t => t.stop());
+        console.warn('⚠️ No audio track in display stream');
         return;
       }
 
-      console.log('🖥️ System audio track obtained from screen share');
+      console.log('✅ System audio track obtained from screen share');
 
       // Stop the video track immediately as we don't need it
-      displayStream.getVideoTracks().forEach(t => t.stop());
+      displayStream.getVideoTracks().forEach(t => {
+        t.stop();
+        console.log('🎥 Display video track stopped');
+      });
 
       if (audioContextRef.current && audioDestinationRef.current) {
         // Prevent double audio: Disconnect existing sources
@@ -440,16 +663,23 @@ export default function VideoInterview() {
         }
         if (systemAudioSourceRef.current) {
           systemAudioSourceRef.current.disconnect();
+          console.log('🔇 Disconnected previous system audio');
         }
 
         const systemSource = audioContextRef.current.createMediaStreamSource(new MediaStream([audioTrack]));
         systemSource.connect(audioDestinationRef.current);
         systemAudioSourceRef.current = systemSource;
+        
+        // Lock mutex
+        audioSourceMutexRef.current = 'system';
+        
+        console.log('✅ System audio connected to mixer (mutex: system)');
       }
 
       showToast.success("System audio enabled! The AI voice will now be recorded.");
     } catch (err) {
-      console.error('Failed to get system audio:', err);
+      console.error('❌ Failed to get system audio:', err);
+      showToast.error('Failed to enable system audio');
     }
   };
 
@@ -479,21 +709,41 @@ export default function VideoInterview() {
 
 
   const uploadRecording = async (isChunk = false) => {
-    if (recordedChunksRef.current.length === 0) {
-      if (!isChunk) console.warn('No recording to upload');
+    // Upload debounce - prevent duplicate uploads
+    if (uploadInProgressRef.current && !isChunk) {
+      console.log('⏳ Upload already in progress, skipping duplicate upload');
       return;
     }
+
+    if (recordedChunksRef.current.length === 0) {
+      if (!isChunk) console.warn('⚠️ No recording chunks to upload');
+      return;
+    }
+
+    if (!isChunk) {
+      uploadInProgressRef.current = true;
+    }
+    
+    console.log(`📤 Starting ${isChunk ? 'chunk' : 'final'} upload process...`);
 
     const chunksToUpload = isChunk ? [...recordedChunksRef.current] : recordedChunksRef.current;
 
     if (isChunk) {
-      recordedChunksRef.current = []; // Clear buffer
+      recordedChunksRef.current = []; // Clear buffer for chunks
     }
 
     try {
       const blob = new Blob(chunksToUpload, { type: 'video/webm' });
+      const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
       const timestamp = Date.now();
       const filename = `interview_${candidateUid}_${timestamp}${isChunk ? '_part' : '_final'}.webm`;
+
+      console.log('📦 Blob created:', {
+        size: `${sizeMB} MB`,
+        type: blob.type,
+        chunks: chunksToUpload.length,
+        filename
+      });
 
       const formData = new FormData();
       formData.append('file', blob, filename);
@@ -503,60 +753,92 @@ export default function VideoInterview() {
         formData.append('isChunk', 'true');
       }
 
-      console.log(`📤 Uploading ${isChunk ? 'chunk' : 'final'} recording (${(blob.size / 1024 / 1024).toFixed(2)} MB)...`);
+      console.log(`📤 Uploading ${isChunk ? 'chunk' : 'final'} recording (${sizeMB} MB)...`);
+      const startTime = Date.now();
 
       const response = await fetch(`${API_URL}/api/interviews/save-recording`, {
         method: 'POST',
         body: formData
       });
 
+      const uploadTime = ((Date.now() - startTime) / 1000).toFixed(2);
+
       if (response.ok) {
-        console.log(`✅ ${isChunk ? 'Chunk' : 'Final'} recording uploaded successfully`);
+        console.log(`✅ ${isChunk ? 'Chunk' : 'Final'} recording uploaded successfully in ${uploadTime}s`);
       } else {
-        console.error('Failed to upload recording');
+        const errorText = await response.text();
+        console.error(`❌ Failed to upload recording: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
+    } finally {
+      if (!isChunk) {
+        uploadInProgressRef.current = false;
+        console.log('🔓 Upload lock released');
+      }
     }
   };
 
   const handleEnd = async () => {
+    console.log('🛑 Ending interview...');
+    
     try {
       // Calculate duration
       const duration = startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : timer;
+      console.log(`⏱️ Interview duration: ${duration}s`);
 
       // Stop Retell call
       if (retellClientRef.current) {
-        retellClientRef.current.stopCall();
+        try {
+          retellClientRef.current.stopCall();
+          console.log('✅ Retell call stopped');
+        } catch (e) {
+          console.warn('⚠️ Error stopping Retell call:', e);
+        }
       }
 
       // Stop recording
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        console.log('⏹️ Stopping MediaRecorder...');
         mediaRecorderRef.current.stop();
 
-        // Wait for final data
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait 2 seconds for final chunks + additional processing time
+        console.log('⏳ Waiting for final chunks...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
+        console.log(`📊 Final chunk count: ${recordedChunksRef.current.length}`);
+        
         // Upload recording
         await uploadRecording();
       }
 
       // Stop webcam
+      console.log('📹 Stopping webcam...');
       stopWebcam();
 
       // Notify backend session ended
       try {
+        console.log('📡 Notifying backend of session end...');
         await fetch(`${API_URL}/api/interviews/end-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidateId: candidateUid, duration })
+          body: JSON.stringify({ 
+            candidateId: candidateUid, 
+            duration,
+            sessionId: sessionIdRef.current,
+            audioSourceUsed: audioSourceMutexRef.current
+          })
         });
         console.log('✅ Session ended - backend notified');
       } catch (err) {
-        console.warn('End session notification failed:', err);
+        console.warn('⚠️ End session notification failed:', err);
       }
 
+      // Cleanup all resources
+      await cleanupAllResources();
+
       // Navigate to completion page
+      console.log('🎉 Navigating to completion page...');
       navigate('/interview-complete', {
         state: {
           jobTitle,
@@ -565,7 +847,8 @@ export default function VideoInterview() {
         }
       });
     } catch (error) {
-      console.error('Error ending interview:', error);
+      console.error('❌ Error ending interview:', error);
+      // Navigate anyway
       navigate('/interview-complete', {
         state: {
           jobTitle,

@@ -11,12 +11,36 @@ import RetellAgent from '../models/RetellAgent.js';
 
 const router = express.Router();
 
+// Helper function to format timestamp with IST and UTC
+const formatTimestamp = (): string => {
+  const now = new Date();
+  const istTime = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(now);
+  const utcTime = now.toISOString();
+  return `${istTime} IST (${utcTime} UTC)`;
+};
+
 // Validate interview code (public endpoint)
 router.post('/validate-code', async (req, res) => {
+  const startTime = Date.now();
   try {
     const { code } = req.body;
+    console.log('🔐 [VALIDATE-CODE] Request received:', {
+      code: code ? `${code.substring(0, 3)}***` : 'missing',
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     if (!code) {
+      console.log('❌ [VALIDATE-CODE] Failed: No code provided');
       return res.status(400).json({ valid: false, error: 'Code is required' });
     }
 
@@ -25,18 +49,28 @@ router.post('/validate-code', async (req, res) => {
     }).populate('jobId');
 
     if (!candidate) {
+      console.log(`❌ [VALIDATE-CODE] Failed: Invalid code "${code}"`);
       return res.status(404).json({ valid: false, error: 'Invalid code' });
     }
+
+    console.log(`✅ [VALIDATE-CODE] Candidate found:`, {
+      candidateId: candidate._id,
+      name: `${candidate.firstName} ${candidate.lastName}`,
+      status: candidate.interviewStatus,
+      hasAccessed: candidate.hasAccessedInterview
+    });
 
     // Check if code is expired
     if (candidate.interviewCodeExpiry && new Date() > candidate.interviewCodeExpiry) {
       candidate.interviewStatus = 'expired';
       await candidate.save();
+      console.log(`⏰ [VALIDATE-CODE] Code expired for candidate ${candidate._id}`);
       return res.status(400).json({ valid: false, error: 'Code expired' });
     }
 
     // Check if interview already completed
     if (candidate.hasAccessedInterview && candidate.interviewStatus === 'completed') {
+      console.log(`⚠️ [VALIDATE-CODE] Interview already completed for candidate ${candidate._id}`);
       return res.status(400).json({
         valid: false,
         error: 'Interview already completed'
@@ -50,12 +84,20 @@ router.post('/validate-code', async (req, res) => {
       candidate.interviewStartedAt = new Date();
       candidate.interviewAttempts += 1;
       await candidate.save();
+      console.log(`🎬 [VALIDATE-CODE] First access - marked as in_progress (attempt #${candidate.interviewAttempts})`);
     }
 
     // Get job details for dynamic display
     const job = candidate.jobId as any;
     const jobTitle = job?.title || 'Software Engineer';
     const companyName = job?.company || 'Our Company';
+
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ [VALIDATE-CODE] Success in ${responseTime}ms:`, {
+      candidateId: candidate._id,
+      jobTitle,
+      companyName
+    });
 
     res.json({
       valid: true,
@@ -65,27 +107,39 @@ router.post('/validate-code', async (req, res) => {
       company_name: companyName,
     });
   } catch (error: any) {
-    console.error('Validate code error:', error);
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [VALIDATE-CODE] Error after ${responseTime}ms:`, {
+      message: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ valid: false, error: 'Server error' });
   }
 });
 
 // Create Retell web call (public endpoint for interview page)
 router.post('/create-web-call', async (req, res) => {
+  const startTime = Date.now();
   try {
-    console.log('📞 Received request to create web call');
-    console.log('   Body:', req.body);
+    console.log('📞 [CREATE-WEB-CALL] Request received:', {
+      body: req.body,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     let { agentId, candidateId } = req.body;
 
     // If candidateId is provided, try to find the agent tailored for the job
     if (candidateId) {
       try {
-        console.log(`🔍 Looking up candidate: ${candidateId}`);
+        console.log(`🔍 [CREATE-WEB-CALL] Looking up candidate: ${candidateId}`);
         const candidate = await Candidate.findById(candidateId);
 
         if (candidate) {
-          console.log(`   Candidate found. JobID: ${candidate.jobId}`);
+          console.log(`✅ [CREATE-WEB-CALL] Candidate found:`, {
+            candidateId: candidate._id,
+            name: `${candidate.firstName} ${candidate.lastName}`,
+            jobId: candidate.jobId
+          });
 
           if (candidate.jobId) {
             // Strategy 1: Direct lookup with toString()
@@ -98,57 +152,71 @@ router.post('/create-web-call', async (req, res) => {
 
             // Strategy 3: Brute force (fetch all and compare strings) - infallible fallback
             if (!retellAgent) {
-              console.log('   ⚠️ Direct lookup failed. Trying manual string match...');
+              console.log('⚠️ [CREATE-WEB-CALL] Direct lookup failed. Trying manual string match...');
               const allAgents = await RetellAgent.find({});
               retellAgent = allAgents.find(a => a.jobId.toString() === candidate.jobId.toString()) || null;
             }
 
             if (retellAgent) {
-              console.log(`✅ RetellAgent found in DB (via Strategy ${retellAgent ? 'Success' : 'Failed'}):`, retellAgent);
+              console.log(`✅ [CREATE-WEB-CALL] RetellAgent found:`, {
+                agentId: retellAgent.agent_id,
+                jobId: retellAgent.jobId
+              });
               if (retellAgent.agent_id) {
-                console.log(`   Using custom agent_id from DB: ${retellAgent.agent_id}`);
                 agentId = retellAgent.agent_id;
               }
             } else {
-              console.log(`⚠️ RetellAgent NOT found for jobId: ${candidate.jobId}`);
+              console.log(`⚠️ [CREATE-WEB-CALL] RetellAgent NOT found for jobId: ${candidate.jobId}`);
 
-              // If we really can't find it, consider throwing an explicit error explaining WHY
-              // instead of falling through to the generic 400
               if (!process.env.RETELL_AGENT_ID) {
+                console.error(`❌ [CREATE-WEB-CALL] No fallback agent configured`);
                 return res.status(400).json({
                   error: `No AI Agent configured for Job ID: ${candidate.jobId}. Please contact support.`
                 });
               }
             }
           } else {
-            console.log('⚠️ Candidate has no jobId');
+            console.log('⚠️ [CREATE-WEB-CALL] Candidate has no jobId');
           }
         } else {
-          console.log('⚠️ Candidate not found in DB');
+          console.log('⚠️ [CREATE-WEB-CALL] Candidate not found in DB');
         }
-      } catch (err) {
-        console.error('❌ Error fetching candidate/agent from DB:', err);
+      } catch (err: any) {
+        console.error('❌ [CREATE-WEB-CALL] Error fetching candidate/agent:', {
+          message: err.message,
+          stack: err.stack
+        });
       }
     }
 
     if (!agentId) {
       // Fallback to env var if no agentId from DB or request
       agentId = process.env.RETELL_AGENT_ID;
+      console.log(`🔄 [CREATE-WEB-CALL] Using fallback agent from env: ${agentId}`);
     }
 
     if (!agentId) {
-      console.log('❌ No agent ID provided and no default configured');
+      console.log('❌ [CREATE-WEB-CALL] No agent ID available');
       return res.status(400).json({ error: 'Agent ID is required' });
     }
 
+    console.log(`🤖 [CREATE-WEB-CALL] Creating web call with agent: ${agentId}`);
     const callData = await retellService.createWebCall(agentId);
 
-    console.log('✅ Web call created successfully');
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ [CREATE-WEB-CALL] Success in ${responseTime}ms:`, {
+      callId: callData.call_id || 'N/A',
+      accessToken: callData.access_token ? `${callData.access_token.substring(0, 10)}...` : 'N/A'
+    });
+
     res.json(callData);
   } catch (error: any) {
-    console.error('❌ Create web call error:');
-    console.error('   Error message:', error.message);
-    console.error('   Error stack:', error.stack);
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [CREATE-WEB-CALL] Error after ${responseTime}ms:`, {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    });
     res.status(500).json({ error: error.message || 'Failed to create interview session' });
   }
 });
@@ -156,56 +224,75 @@ router.post('/create-web-call', async (req, res) => {
 
 // Save interview recording (public endpoint)
 router.post('/save-recording', upload.single('file'), async (req, res) => {
+  const startTime = Date.now();
   try {
     const { uid, isChunk } = req.body;
     const file = req.file;
 
+    console.log(`📹 [SAVE-RECORDING] Request received at ${formatTimestamp()}:`, {
+      uid,
+      isChunk: isChunk === 'true',
+      fileSize: file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'N/A',
+      fileName: file?.originalname,
+      mimeType: file?.mimetype
+    });
+
     if (!file) {
-      console.error('❌ Save recording failed: No file uploaded');
+      console.error('❌ [SAVE-RECORDING] No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
     if (!uid) {
-      console.error('❌ Save recording failed: Candidate UID required');
+      console.error('❌ [SAVE-RECORDING] Candidate UID required');
       return res.status(400).json({ error: 'Candidate UID required in body' });
     }
 
-    console.log(`🎥 Uploading recording for candidate ${uid}, size: ${file.size} bytes${isChunk ? ' (Chunk)' : ''}`);
-
     const s3Folder = process.env.AWS_S3_RECORDINGS_FOLDER || 'recordings';
-    // Create a folder structure: recordings/{uid}/filename
     const s3KeyName = `${uid}/${file.originalname}`;
+
+    console.log(`☁️ [SAVE-RECORDING] Uploading to S3: ${s3Folder}/${s3KeyName}`);
 
     let uploadResult;
     try {
-      // Upload to S3
+      const uploadStartTime = Date.now();
       uploadResult = await uploadToS3(
         file.buffer,
         s3Folder,
-        s3KeyName, // Pass the partial path, uploadToS3 joins it with folder
+        s3KeyName,
         file.mimetype
       );
+      const uploadTime = Date.now() - uploadStartTime;
+      console.log(`✅ [SAVE-RECORDING] S3 upload completed in ${uploadTime}ms:`, {
+        url: uploadResult.url,
+        key: uploadResult.key
+      });
     } catch (s3Error: any) {
-      console.error('❌ S3 Upload Error:', s3Error);
+      console.error('❌ [SAVE-RECORDING] S3 Upload Error:', {
+        message: s3Error.message,
+        stack: s3Error.stack
+      });
       return res.status(500).json({ error: `S3 Upload Failed: ${s3Error.message}` });
     }
 
     // Update candidate record
     const candidate = await Candidate.findById(uid);
     if (candidate) {
-      // Add to list of chunks
       if (!candidate.recordingUrls) candidate.recordingUrls = [];
       candidate.recordingUrls.push(uploadResult.url);
-
-      // Update latest URL as fallback
       candidate.recordingUrl = uploadResult.url;
       candidate.recordingS3Key = uploadResult.key;
       await candidate.save();
 
-      console.log(`✅ Recording chunk saved for candidate ${uid}. Total chunks: ${candidate.recordingUrls.length}`);
+      console.log(`✅ [SAVE-RECORDING] Candidate updated:`, {
+        candidateId: uid,
+        totalChunks: candidate.recordingUrls.length
+      });
     } else {
-      console.warn(`⚠️ Candidate ${uid} not found during recording save logic, but file was uploaded to S3.`);
+      console.warn(`⚠️ [SAVE-RECORDING] Candidate ${uid} not found, but file uploaded to S3`);
     }
+
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ [SAVE-RECORDING] Complete in ${responseTime}ms at ${formatTimestamp()}`);
 
     res.json({
       success: true,
@@ -213,7 +300,11 @@ router.post('/save-recording', upload.single('file'), async (req, res) => {
       key: uploadResult.key,
     });
   } catch (error: any) {
-    console.error('Save recording error generic:', error);
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [SAVE-RECORDING] Error after ${responseTime}ms:`, {
+      message: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ error: `Failed to save recording: ${error.message}` });
   }
 });
@@ -331,15 +422,27 @@ router.post('/generate-code', async (req, res) => {
 
 // Start interview session (public endpoint - called when interview starts)
 router.post('/start-session', async (req, res) => {
+  const startTime = Date.now();
   try {
     const { candidateId, browserInfo } = req.body;
 
+    console.log(`🎬 [START-SESSION] Request received at ${formatTimestamp()}:`, {
+      candidateId,
+      browserInfo: browserInfo ? {
+        userAgent: browserInfo.userAgent?.substring(0, 50) + '...',
+        platform: browserInfo.platform,
+        sessionId: browserInfo.sessionId
+      } : 'N/A'
+    });
+
     if (!candidateId) {
+      console.error('❌ [START-SESSION] Candidate ID required');
       return res.status(400).json({ error: 'Candidate ID is required' });
     }
 
     const candidate = await Candidate.findById(candidateId);
     if (!candidate) {
+      console.error(`❌ [START-SESSION] Candidate not found: ${candidateId}`);
       return res.status(404).json({ error: 'Candidate not found' });
     }
 
@@ -351,7 +454,12 @@ router.post('/start-session', async (req, res) => {
     }
     await candidate.save();
 
-    console.log(`🎥 Interview STARTED: ${candidate.firstName} ${candidate.lastName} (${candidateId})`);
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ [START-SESSION] Success in ${responseTime}ms at ${formatTimestamp()}:`, {
+      candidateId: candidate._id,
+      name: `${candidate.firstName} ${candidate.lastName}`,
+      startedAt: candidate.interviewStartedAt
+    });
 
     res.json({
       success: true,
@@ -360,23 +468,36 @@ router.post('/start-session', async (req, res) => {
       startedAt: candidate.interviewStartedAt
     });
   } catch (error: any) {
-    console.error('Start session error:', error);
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [START-SESSION] Error after ${responseTime}ms:`, {
+      message: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ error: 'Failed to start interview session' });
   }
 });
 
 // End interview session (public endpoint - called when interview ends)
 router.post('/end-session', async (req, res) => {
+  const startTime = Date.now();
   try {
-    const { candidateId, sessionId, duration } = req.body;
+    const { candidateId, sessionId, duration, audioSourceUsed } = req.body;
 
     const id = candidateId || sessionId;
+    console.log(`🏁 [END-SESSION] Request received at ${formatTimestamp()}:`, {
+      candidateId: id,
+      duration: duration ? `${duration}s` : 'N/A',
+      audioSourceUsed: audioSourceUsed || 'N/A'
+    });
+
     if (!id) {
+      console.error('❌ [END-SESSION] Candidate ID or Session ID required');
       return res.status(400).json({ error: 'Candidate ID or Session ID is required' });
     }
 
     const candidate = await Candidate.findById(id);
     if (!candidate) {
+      console.error(`❌ [END-SESSION] Candidate not found: ${id}`);
       return res.status(404).json({ error: 'Candidate not found' });
     }
 
@@ -388,14 +509,25 @@ router.post('/end-session', async (req, res) => {
     if (duration) {
       candidate.interviewDuration = duration;
     } else if (candidate.interviewStartedAt) {
-      // Calculate duration if not provided
       const elapsed = Math.floor((Date.now() - candidate.interviewStartedAt.getTime()) / 1000);
       candidate.interviewDuration = elapsed;
     }
 
+    // Store audio source used for debugging
+    if (audioSourceUsed) {
+      if (!candidate.browserInfo) candidate.browserInfo = {};
+      (candidate.browserInfo as any).audioSourceUsed = audioSourceUsed;
+    }
+
     await candidate.save();
 
-    console.log(`✅ Interview COMPLETED: ${candidate.firstName} ${candidate.lastName} (${id})`);
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ [END-SESSION] Success in ${responseTime}ms at ${formatTimestamp()}:`, {
+      candidateId: candidate._id,
+      name: `${candidate.firstName} ${candidate.lastName}`,
+      duration: candidate.interviewDuration,
+      completedAt: candidate.interviewCompletedAt
+    });
 
     // Create notification for the recruiter/admin who created the job
     try {
@@ -407,11 +539,10 @@ router.post('/end-session', async (req, res) => {
           `${candidate.firstName} ${candidate.lastName}`,
           job.title
         );
-        console.log(`📬 Notification created for user ${job.createdBy}`);
+        console.log(`📬 [END-SESSION] Notification created for user ${job.createdBy}`);
       }
-    } catch (notifError) {
-      console.error('Notification creation failed:', notifError);
-      // Continue even if notification fails
+    } catch (notifError: any) {
+      console.error('⚠️ [END-SESSION] Notification creation failed:', notifError.message);
     }
 
     res.json({
@@ -421,7 +552,11 @@ router.post('/end-session', async (req, res) => {
       duration: candidate.interviewDuration
     });
   } catch (error: any) {
-    console.error('End session error:', error);
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [END-SESSION] Error after ${responseTime}ms:`, {
+      message: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ error: 'Failed to end interview session' });
   }
 });

@@ -20,3 +20,6 @@ yarn-error.log*
 
 # cache
 *.tsbuildinfo
+DEBUGGING_GUIDE.md
+IMPLEMENTATION_SUMMARY.md
+PROJECT_OVERVIEW.md

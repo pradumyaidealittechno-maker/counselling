@@ -48,6 +48,13 @@ export default function CandidateInterview() {
   const agentTrackRef = useRef<MediaStreamTrack | null>(null);
   const agentAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
+  // Session lock and mutex flags
+  const sessionLockRef = useRef<boolean>(false);
+  const audioSourceMutexRef = useRef<'none' | 'agent' | 'system'>('none');
+  const uploadInProgressRef = useRef<boolean>(false);
+  const isCleaningUpRef = useRef<boolean>(false);
+  const sessionIdRef = useRef<string>('');
+
   // Validate code on mount
   useEffect(() => {
     const codeFromUrl = searchParams.get('code');
@@ -61,11 +68,55 @@ export default function CandidateInterview() {
     const script = document.createElement('script');
     script.src = 'https://esm.sh/retell-client-js-sdk';
     script.type = 'module';
+    script.onload = () => {
+      console.log('✅ Retell SDK loaded successfully');
+    };
+    script.onerror = () => {
+      console.error('❌ Failed to load Retell SDK');
+    };
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      console.log('🧹 Component unmounting - cleaning up');
+      cleanupAllResources();
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
+  }, []);
+
+  // Detect browser for compatibility logging
+  useEffect(() => {
+    const userAgent = navigator.userAgent;
+    const isChrome = /Chrome/.test(userAgent) && !/Edg/.test(userAgent);
+    const isSafari = /Safari/.test(userAgent) && !isChrome;
+    const isFirefox = /Firefox/.test(userAgent);
+    const isEdge = /Edg/.test(userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+    const isAndroid = /Android/.test(userAgent);
+
+    console.log('🌐 Browser Detection:', {
+      userAgent,
+      browser: isChrome ? 'Chrome' : isSafari ? 'Safari' : isFirefox ? 'Firefox' : isEdge ? 'Edge' : 'Unknown',
+      platform: isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop',
+      mediaRecorderSupported: typeof MediaRecorder !== 'undefined',
+      audioContextSupported: typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined',
+      getUserMediaSupported: typeof navigator.mediaDevices?.getUserMedia !== 'undefined'
+    });
+
+    // Log supported MIME types
+    if (typeof MediaRecorder !== 'undefined') {
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=h264,opus',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
+        'video/webm'
+      ];
+      console.log('🎥 Supported MIME types:', mimeTypes.filter(type => MediaRecorder.isTypeSupported(type)));
+    }
   }, []);
 
   const validateCode = async (inputCode: string) => {
@@ -85,17 +136,137 @@ export default function CandidateInterview() {
     }
   };
 
+  const cleanupAllResources = async () => {
+    if (isCleaningUpRef.current) {
+      console.log('⏳ Cleanup already in progress, skipping...');
+      return;
+    }
+
+    isCleaningUpRef.current = true;
+    console.log('🧹 Starting comprehensive cleanup...');
+
+    try {
+      // Stop timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        console.log('✅ Timer stopped');
+      }
+
+      // Stop Retell client
+      if (retellClientRef.current) {
+        try {
+          retellClientRef.current.stopCall();
+          console.log('✅ Retell call stopped');
+        } catch (e) {
+          console.warn('⚠️ Error stopping Retell call:', e);
+        }
+        retellClientRef.current = null;
+      }
+
+      // Stop media recorder
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+          console.log('✅ MediaRecorder stopped');
+        } catch (e) {
+          console.warn('⚠️ Error stopping MediaRecorder:', e);
+        }
+        mediaRecorderRef.current = null;
+      }
+
+      // Disconnect audio sources
+      if (agentAudioSourceRef.current) {
+        try {
+          agentAudioSourceRef.current.disconnect();
+          console.log('✅ Agent audio source disconnected');
+        } catch (e) {
+          console.warn('⚠️ Error disconnecting agent audio:', e);
+        }
+        agentAudioSourceRef.current = null;
+      }
+
+      // Close audio context
+      if (mixerContextRef.current && mixerContextRef.current.state !== 'closed') {
+        try {
+          await mixerContextRef.current.close();
+          console.log('✅ AudioContext closed');
+        } catch (e) {
+          console.warn('⚠️ Error closing AudioContext:', e);
+        }
+        mixerContextRef.current = null;
+      }
+
+      // Stop media stream
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log(`✅ Track stopped: ${track.kind}`);
+        });
+        mediaStreamRef.current = null;
+      }
+
+      // Clear refs
+      agentTrackRef.current = null;
+      agentGainRef.current = null;
+      recordedChunksRef.current = [];
+
+      // Reset mutex and locks
+      audioSourceMutexRef.current = 'none';
+      sessionLockRef.current = false;
+      uploadInProgressRef.current = false;
+
+      console.log('✅ Cleanup completed successfully');
+    } catch (error) {
+      console.error('❌ Error during cleanup:', error);
+    } finally {
+      isCleaningUpRef.current = false;
+    }
+  };
+
   const requestMediaAccess = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: true,
+      console.log('📹 Requesting media access...');
+      
+      // Browser-specific constraints
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      
+      const constraints: MediaStreamConstraints = {
+        video: { 
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 }, 
+          facingMode: 'user' 
+        },
+        audio: isIOS || isSafari ? true : {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      };
+
+      console.log('🎤 Using constraints:', constraints);
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      console.log('✅ Media access granted:', {
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+        videoSettings: stream.getVideoTracks()[0]?.getSettings(),
+        audioSettings: stream.getAudioTracks()[0]?.getSettings()
       });
 
       mediaStreamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Ensure video plays (Safari compatibility)
+        try {
+          await videoRef.current.play();
+          console.log('✅ Video element playing');
+        } catch (playError) {
+          console.warn('⚠️ Video autoplay blocked:', playError);
+        }
       }
 
       setHasMediaAccess(true);
@@ -103,7 +274,11 @@ export default function CandidateInterview() {
       setIsMicOn(true);
       setMediaError('');
     } catch (error: any) {
-      console.error('Media access error:', error);
+      console.error('❌ Media access error:', {
+        name: error.name,
+        message: error.message,
+        constraint: error.constraint
+      });
       setMediaError('Camera and microphone access is required for the interview.');
     }
   };
@@ -114,6 +289,7 @@ export default function CandidateInterview() {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCameraOn(videoTrack.enabled);
+        console.log(`📹 Camera ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
       }
     }
   };
@@ -124,22 +300,35 @@ export default function CandidateInterview() {
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMicOn(audioTrack.enabled);
+        console.log(`🎤 Microphone ${audioTrack.enabled ? 'enabled' : 'disabled'}`);
       }
     }
   };
 
   const startRecording = async () => {
-    if (!mediaStreamRef.current) return;
+    if (!mediaStreamRef.current) {
+      console.error('❌ Cannot start recording: No media stream');
+      return;
+    }
 
+    console.log('🎬 Starting recording process...');
     recordedChunksRef.current = [];
 
     try {
       // Create audio mixer
-      const mixerContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const mixerContext = new AudioContextClass();
       mixerContextRef.current = mixerContext;
 
+      console.log('🎚️ AudioContext created:', {
+        state: mixerContext.state,
+        sampleRate: mixerContext.sampleRate
+      });
+
+      // Resume if suspended (Safari compatibility)
       if (mixerContext.state === 'suspended') {
         await mixerContext.resume();
+        console.log('✅ AudioContext resumed from suspended state');
       }
 
       const mixerDestination = mixerContext.createMediaStreamDestination();
@@ -149,6 +338,9 @@ export default function CandidateInterview() {
       if (userAudioTrack) {
         const userSource = mixerContext.createMediaStreamSource(new MediaStream([userAudioTrack]));
         userSource.connect(mixerDestination);
+        console.log('✅ User microphone connected to mixer');
+      } else {
+        console.warn('⚠️ No user audio track found');
       }
 
       // Setup agent audio gain
@@ -156,10 +348,14 @@ export default function CandidateInterview() {
       agentGain.gain.value = 1.0;
       agentGain.connect(mixerDestination);
       agentGainRef.current = agentGain;
+      console.log('✅ Agent audio gain node created');
 
       // Try to connect if track is already available
       if (agentTrackRef.current) {
+        console.log('🔌 Agent track already available, connecting...');
         connectAgentToMixer();
+      } else {
+        console.log('⏳ Waiting for agent track to become available...');
       }
 
       // Create recording stream
@@ -168,9 +364,16 @@ export default function CandidateInterview() {
         ...mixerDestination.stream.getAudioTracks(),
       ]);
 
+      console.log('📹 Recording stream created:', {
+        videoTracks: recordingStream.getVideoTracks().length,
+        audioTracks: recordingStream.getAudioTracks().length
+      });
+
       const mimeType = getSupportedMimeType();
       const options: any = { mimeType };
       if (!mimeType) delete options.mimeType;
+
+      console.log('🎥 MediaRecorder options:', options);
 
       const mediaRecorder = new MediaRecorder(recordingStream, options);
       mediaRecorderRef.current = mediaRecorder;
@@ -178,63 +381,104 @@ export default function CandidateInterview() {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
+          console.log(`📦 Chunk received: ${(event.data.size / 1024).toFixed(2)} KB (Total chunks: ${recordedChunksRef.current.length})`);
         }
       };
 
-      mediaRecorder.onstop = () => {
-        uploadRecording();
-        if (mixerContextRef.current) {
-          mixerContextRef.current.close();
-          mixerContextRef.current = null;
-        }
+      mediaRecorder.onstop = async () => {
+        console.log('⏹️ MediaRecorder stopped, preparing upload...');
+        // Add 2-second delay to ensure all chunks are received
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`📊 Final chunk count: ${recordedChunksRef.current.length}`);
+        await uploadRecording();
+      };
+
+      mediaRecorder.onerror = (event: any) => {
+        console.error('❌ MediaRecorder error:', event.error);
       };
 
       mediaRecorder.start(1000);
-      console.log('Recording started');
+      console.log('✅ Recording started successfully');
     } catch (error) {
-      console.error('Recording error:', error);
+      console.error('❌ Recording error:', error);
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+      console.log('⏹️ Stopping recording...');
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (error) {
+        console.error('❌ Error stopping recording:', error);
+      }
+    } else {
+      console.log('⚠️ MediaRecorder already inactive or not initialized');
     }
   };
 
   const connectAgentToMixer = () => {
+    // Check mutex - prevent double audio connection
+    if (audioSourceMutexRef.current === 'agent') {
+      console.log('🔒 Agent audio already connected (mutex locked)');
+      return;
+    }
+
+    if (audioSourceMutexRef.current === 'system') {
+      console.log('⚠️ System audio is active, cannot connect agent audio (mutex conflict)');
+      return;
+    }
+
     if (!agentTrackRef.current) {
-      console.log('No agent track available to connect');
+      console.log('❌ No agent track available to connect');
       return;
     }
 
     if (!mixerContextRef.current || !agentGainRef.current) {
-      console.log('Mixer not ready, will connect later');
+      console.log('❌ Mixer not ready, will connect later');
       return;
     }
 
     try {
       console.log('🔌 Connecting agent audio track to mixer...');
+      
+      // Disconnect any existing agent audio source
+      if (agentAudioSourceRef.current) {
+        agentAudioSourceRef.current.disconnect();
+        console.log('🔌 Disconnected previous agent audio source');
+      }
+
       const agentStream = new MediaStream([agentTrackRef.current]);
       const agentSource = mixerContextRef.current.createMediaStreamSource(agentStream);
       agentSource.connect(agentGainRef.current);
       agentAudioSourceRef.current = agentSource;
-      console.log('✅ Agent audio successfully connected to recording mixer');
+      
+      // Lock mutex
+      audioSourceMutexRef.current = 'agent';
+      
+      console.log('✅ Agent audio successfully connected to recording mixer (mutex: agent)');
     } catch (e) {
       console.error('❌ Error connecting agent track to mixer:', e);
+      audioSourceMutexRef.current = 'none';
     }
   };
 
   const findAndConnectAgentTrack = (client: any) => {
     if (!client || !client.room) {
-      console.log('Client or room not ready for agent track search');
+      console.log('⚠️ Client or room not ready for agent track search');
       return;
     }
 
     console.log('🔍 Searching for agent audio track...');
+    console.log(`📊 Remote participants: ${client.room.remoteParticipants.size}`);
 
     for (const participant of client.room.remoteParticipants.values()) {
+      console.log(`👤 Checking participant: ${participant.identity || 'unknown'}`);
+      console.log(`🎵 Audio publications: ${participant.audioTrackPublications.size}`);
+      
       for (const publication of participant.audioTrackPublications.values()) {
+        console.log(`📻 Publication: ${publication.trackName}, subscribed: ${publication.isSubscribed}`);
+        
         if (publication.track) {
           console.log('✅ Agent track found and subscribed!');
           agentTrackRef.current = (publication.track as any).mediaStreamTrack;
@@ -243,41 +487,97 @@ export default function CandidateInterview() {
         }
       }
     }
+    
+    console.log('⚠️ No agent audio track found yet');
   };
 
   const uploadRecording = async () => {
-    if (recordedChunksRef.current.length === 0) return;
+    // Upload debounce - prevent duplicate uploads
+    if (uploadInProgressRef.current) {
+      console.log('⏳ Upload already in progress, skipping duplicate upload');
+      return;
+    }
 
-    const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+    if (recordedChunksRef.current.length === 0) {
+      console.warn('⚠️ No recording chunks to upload');
+      return;
+    }
+
+    uploadInProgressRef.current = true;
+    console.log('📤 Starting upload process...');
 
     try {
+      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
+      
+      console.log('📦 Blob created:', {
+        size: `${sizeMB} MB`,
+        type: blob.type,
+        chunks: recordedChunksRef.current.length
+      });
+
+      const startTime = Date.now();
       await api.interviews.saveRecording(blob, candidateName, candidateUid);
-      console.log('Recording uploaded');
+      const uploadTime = ((Date.now() - startTime) / 1000).toFixed(2);
+      
+      console.log(`✅ Recording uploaded successfully in ${uploadTime}s`);
+      
+      // Clear chunks after successful upload
+      recordedChunksRef.current = [];
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
+    } finally {
+      uploadInProgressRef.current = false;
+      console.log('🔓 Upload lock released');
     }
   };
 
   const startInterview = async () => {
+    // Session lock - prevent multiple sessions
+    if (sessionLockRef.current) {
+      console.warn('⚠️ Interview session already in progress (session locked)');
+      return;
+    }
+
     if (!hasMediaAccess) {
       await requestMediaAccess();
       return;
     }
 
+    // Cleanup any existing resources before starting new session
+    console.log('🧹 Cleaning up before starting new session...');
+    await cleanupAllResources();
+
+    // Lock session
+    sessionLockRef.current = true;
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionIdRef.current = sessionId;
+    console.log(`🔒 Session locked: ${sessionId}`);
+
     try {
       setInterviewStatus('connecting');
+      console.log('🚀 Starting interview...');
+
+      // Check if Retell SDK is loaded
+      if (!window.RetellWebClient) {
+        throw new Error('Retell SDK not loaded. Please refresh the page.');
+      }
 
       // Get Retell access token
+      console.log('🔑 Requesting Retell access token...');
       const { access_token } = await api.interviews.createWebCall(
         import.meta.env.VITE_RETELL_AGENT_ID
       );
+      console.log('✅ Access token received');
 
       // Initialize Retell client
       const RetellWebClient = window.RetellWebClient;
       const client = new RetellWebClient();
       retellClientRef.current = client;
+      console.log('✅ Retell client initialized');
 
       client.on('call_started', () => {
+        console.log('📞 Call started');
         setInterviewStatus('active');
         startRecording();
 
@@ -285,15 +585,25 @@ export default function CandidateInterview() {
         timerRef.current = setInterval(() => {
           setDuration((prev) => prev + 1);
         }, 1000);
+        console.log('⏱️ Timer started');
 
-        // Try to find agent track
+        // Try to find agent track immediately
         findAndConnectAgentTrack(client);
+        
+        // Retry after 2 seconds if not found
+        setTimeout(() => {
+          if (audioSourceMutexRef.current === 'none') {
+            console.log('🔄 Retrying agent track connection...');
+            findAndConnectAgentTrack(client);
+          }
+        }, 2000);
       });
 
       if (client.room) {
         client.room.on('trackSubscribed', (track: any, publication: any) => {
+          console.log('🎵 Track subscribed:', publication.trackName);
           if (publication.trackName === 'agent_audio') {
-            console.log('Agent track subscribed via room event');
+            console.log('✅ Agent audio track subscribed via room event');
             agentTrackRef.current = track.mediaStreamTrack;
             connectAgentToMixer();
           }
@@ -301,6 +611,7 @@ export default function CandidateInterview() {
       }
 
       client.on('call_ended', () => {
+        console.log('📞 Call ended by Retell');
         setInterviewStatus('completed');
         stopRecording();
 
@@ -321,44 +632,65 @@ export default function CandidateInterview() {
           };
 
           if (!update.is_partial) {
+            console.log(`💬 Transcript: [${entry.speaker}] ${entry.text.substring(0, 50)}...`);
             setTranscript((prev) => [...prev, entry]);
           }
         }
       });
 
       client.on('error', (error: any) => {
-        console.error('Retell error:', error);
+        console.error('❌ Retell error:', error);
         setInterviewStatus('idle');
+        sessionLockRef.current = false;
       });
 
+      console.log('📞 Starting Retell call...');
       await client.startCall({ accessToken: access_token, sampleRate: 24000 });
+      console.log('✅ Retell call started successfully');
     } catch (error) {
-      console.error('Start interview error:', error);
+      console.error('❌ Start interview error:', error);
       setInterviewStatus('idle');
+      sessionLockRef.current = false;
+      await cleanupAllResources();
     }
   };
 
-  const endInterview = () => {
+  const endInterview = async () => {
+    console.log('🛑 Ending interview...');
+    
     if (retellClientRef.current) {
-      retellClientRef.current.stopCall();
+      try {
+        retellClientRef.current.stopCall();
+        console.log('✅ Retell call stop requested');
+      } catch (error) {
+        console.error('❌ Error stopping Retell call:', error);
+      }
     }
   };
 
   const submitResults = async () => {
+    console.log('📊 Submitting interview results...');
+    
     try {
       await api.interviews.submitResult({
         candidateId: candidateUid,
         transcript,
         duration,
-        metadata: { completedAt: new Date().toISOString() },
+        metadata: { 
+          completedAt: new Date().toISOString(),
+          sessionId: sessionIdRef.current,
+          audioSourceUsed: audioSourceMutexRef.current
+        },
       });
+
+      console.log('✅ Results submitted successfully');
 
       // Navigate to completion page
       setTimeout(() => {
         navigate('/interview-complete');
       }, 2000);
     } catch (error) {
-      console.error('Submit results error:', error);
+      console.error('❌ Submit results error:', error);
     }
   };
 
