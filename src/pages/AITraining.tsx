@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Brain, CheckCircle, Loader, Dna, ArrowRight, Shield } from 'lucide-react';
+import { Brain, CheckCircle, Loader, Dna, ArrowRight, Shield, X } from 'lucide-react';
 
 const trainingSteps = [
   { label: 'Reading Job DNA', duration: 1500 },
@@ -14,6 +14,17 @@ export default function AITraining() {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [complete, setComplete] = useState(false);
+  const [mappedDimensions, setMappedDimensions] = useState([
+    'Skill DNA',
+    'Experience DNA',
+    'Behavioral DNA',
+    'Communication DNA',
+    'Cultural DNA'
+  ]);
+
+  const removeDimension = (dim: string) => {
+    setMappedDimensions(prev => prev.filter(d => d !== dim));
+  };
 
   useEffect(() => {
     if (currentStep < trainingSteps.length) {
@@ -33,7 +44,7 @@ export default function AITraining() {
         <div style={{
           width: '100px',
           height: '100px',
-          background: complete 
+          background: complete
             ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
             : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
           borderRadius: '50%',
@@ -41,7 +52,7 @@ export default function AITraining() {
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 1.5rem',
-          boxShadow: complete 
+          boxShadow: complete
             ? '0 0 40px rgba(16, 185, 129, 0.4)'
             : '0 0 40px rgba(99, 102, 241, 0.4)'
         }}>
@@ -55,7 +66,7 @@ export default function AITraining() {
           {complete ? 'AI Agent Ready!' : 'Training AI Interview Agent'}
         </h1>
         <p style={{ color: 'var(--gray-500)' }}>
-          {complete 
+          {complete
             ? 'Your AI interview agent has been trained on the approved Job DNA'
             : 'Training AI agent on approved Job DNA for Senior Software Engineer'}
         </p>
@@ -94,7 +105,7 @@ export default function AITraining() {
             <div style={{
               width: `${progress}%`,
               height: '100%',
-              background: complete 
+              background: complete
                 ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
                 : 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%)',
               borderRadius: '6px',
@@ -159,11 +170,11 @@ export default function AITraining() {
               <span style={{ fontWeight: 600 }}>Job DNA Dimensions Mapped</span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {['Skill DNA', 'Experience DNA', 'Behavioral DNA', 'Communication DNA', 'Cultural DNA'].map((dim, i) => (
-                <span key={i} style={{
+              {mappedDimensions.map((dim) => (
+                <span key={dim} style={{
                   background: 'var(--white)',
                   border: '1px solid #e5e7eb',
-                  padding: '0.5rem 1rem',
+                  padding: '0.5rem 0.75rem 0.5rem 1rem',
                   borderRadius: '9999px',
                   fontSize: '0.875rem',
                   display: 'flex',
@@ -172,6 +183,23 @@ export default function AITraining() {
                 }}>
                   <CheckCircle size={14} color="#10b981" />
                   {dim}
+                  <button
+                    onClick={() => removeDimension(dim)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: 'var(--gray-400)',
+                      marginLeft: '0.25rem'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-400)')}
+                  >
+                    <X size={14} />
+                  </button>
                 </span>
               ))}
             </div>
@@ -180,8 +208,8 @@ export default function AITraining() {
 
         {/* Action Button */}
         {complete && (
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             style={{ width: '100%', marginTop: '2rem' }}
             onClick={() => navigate(jobId ? `/dashboard/jobs/${jobId}/interview-builder` : '/dashboard/jobs/interview-builder')}
           >

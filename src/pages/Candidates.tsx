@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Upload, Search, Mail, MoreVertical, FileText, Dna, TrendingUp, Users, Plus, Loader } from 'lucide-react';
+import { Upload, Search, Mail, MoreVertical, FileText, Dna, TrendingUp, Users, Plus, Loader, Trash2, X } from 'lucide-react';
 import api from '../services/api';
 import AddCandidateDialog from '../components/AddCandidateDialog';
-import { confirmToast, showToast } from '../utils/toast';
+import { showToast } from '../utils/toast';
 
 interface Candidate {
   _id: string;
@@ -66,6 +66,9 @@ export default function Candidates() {
   const [uploadJobId, setUploadJobId] = useState<string>(''); // Dedicated state for upload section
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [candidateToDelete, setCandidateToDelete] = useState<Candidate | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = () => setActiveMenuId(null);
@@ -205,17 +208,25 @@ export default function Candidates() {
     }
   };
 
-  const handleDelete = async (candidateId: string) => {
-    const confirmed = await confirmToast('Are you sure you want to delete this candidate? This action cannot be undone.');
-    if (confirmed) {
-      try {
-        await api.candidates.delete(candidateId);
-        showToast.success('Candidate deleted successfully');
-        await loadCandidates();
-      } catch (err) {
-        console.error('Failed to delete candidate:', err);
-        showToast.error('Failed to delete candidate. Please try again.');
-      }
+  const handleDelete = (candidate: Candidate) => {
+    setCandidateToDelete(candidate);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!candidateToDelete) return;
+    try {
+      setIsDeleting(true);
+      await api.candidates.delete(candidateToDelete._id);
+      showToast.success('Candidate deleted successfully');
+      await loadCandidates();
+      setDeleteModalOpen(false);
+      setCandidateToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete candidate:', err);
+      showToast.error('Failed to delete candidate. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -799,7 +810,7 @@ export default function Candidates() {
                                 onMouseLeave={(e) => {
                                   e.currentTarget.style.backgroundColor = 'transparent';
                                 }}
-                                onClick={() => handleDelete(candidate._id)}
+                                onClick={() => handleDelete(candidate)}
                               >
                                 Delete
                               </button>
@@ -888,6 +899,92 @@ export default function Candidates() {
       </div>
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && candidateToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            width: '100%',
+            maxWidth: '400px',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--gray-400)'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#FEF2F2',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+                color: '#EF4444'
+              }}>
+                <Trash2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
+                Delete Candidate?
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+                Are you sure you want to delete <span style={{ fontWeight: 600 }}>{candidateToDelete.firstName} {candidateToDelete.lastName}</span>? This action cannot be undone.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="btn btn-outline"
+                style={{ flex: 1 }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="btn btn-primary"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#EF4444',
+                  borderColor: '#EF4444'
+                }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AddCandidateDialog
         isOpen={showAddDialog}

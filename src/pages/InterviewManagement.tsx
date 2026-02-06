@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Video, Clock, Users, CheckCircle, Play, Square, Loader, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Video, Clock, Users, CheckCircle, Play, Square, Loader, Trash2, X } from 'lucide-react';
 import api from '../services/api';
 import { confirmToast, showToast } from '../utils/toast';
 
@@ -535,11 +535,11 @@ export default function InterviewManagement() {
           zIndex: 1000
         }}>
           <div style={{
-            background: 'white',
-            borderRadius: '1rem',
-            padding: '2rem',
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
             width: '100%',
             maxWidth: '400px',
+            padding: '1.5rem',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
             position: 'relative'
           }}>
@@ -558,61 +558,43 @@ export default function InterviewManagement() {
               <X size={20} />
             </button>
 
-            <div style={{
-              width: '48px',
-              height: '48px',
-              background: '#FEE2E2',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.5rem',
-              color: '#EF4444'
-            }}>
-              <AlertTriangle size={24} />
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#FEF2F2',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+                color: '#EF4444'
+              }}>
+                <Trash2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
+                Delete Candidate Interview ?
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+                Are you sure you want to delete <span style={{ fontWeight: 600 }}>{candidateToDelete?.name}</span>? This action cannot be undone and will remove all interview data.
+              </p>
             </div>
 
-            <h3 style={{
-              fontSize: '1.25rem',
-              fontWeight: 700,
-              color: 'var(--gray-900)',
-              textAlign: 'center',
-              marginBottom: '0.75rem'
-            }}>
-              Delete Candidate?
-            </h3>
-
-            <p style={{
-              color: 'var(--gray-500)',
-              textAlign: 'center',
-              marginBottom: '2rem',
-              lineHeight: 1.5
-            }}>
-              Are you sure you want to delete <span style={{ fontWeight: 600, color: 'var(--gray-900)' }}>{candidateToDelete?.name}</span>? This action cannot be undone and will remove all interview data.
-            </p>
-
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button
                 onClick={() => setDeleteModalOpen(false)}
-                className="btn"
-                style={{
-                  flex: 1,
-                  background: 'var(--gray-100)',
-                  color: 'var(--gray-700)',
-                  padding: '0.75rem'
-                }}
+                className="btn btn-outline"
+                style={{ flex: 1 }}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="btn"
+                className="btn btn-primary"
                 style={{
                   flex: 1,
-                  background: '#EF4444',
-                  color: 'white',
-                  padding: '0.75rem',
-                  border: 'none'
+                  backgroundColor: '#EF4444',
+                  borderColor: '#EF4444'
                 }}
               >
                 Delete

@@ -321,7 +321,7 @@ router.patch('/:id/questions/:questionId', authenticate, async (req, res) => {
     }
 
     const questionIndex = job.interviewQuestions.findIndex(
-      (q: any) => q.id === req.params.questionId
+      (q: any) => q.id === req.params.questionId || q._id?.toString() === req.params.questionId
     );
 
     if (questionIndex === -1) {
@@ -353,7 +353,7 @@ router.delete('/:id/questions/:questionId', authenticate, async (req, res) => {
     }
 
     const questionIndex = job.interviewQuestions.findIndex(
-      (q: any) => q.id === req.params.questionId
+      (q: any) => q.id === req.params.questionId || q._id?.toString() === req.params.questionId
     );
 
     if (questionIndex === -1) {

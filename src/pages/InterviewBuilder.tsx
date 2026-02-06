@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Dna, Edit3, Trash2, Plus, Video, Mic, CheckCircle, GripVertical,
   Info, ChevronDown, ChevronUp, Target, Loader, ChevronLeft, ChevronRight,
-  RefreshCw
+  // RefreshCw,
+  X
 } from 'lucide-react';
 import api from '../services/api';
-import { confirmToast } from '../utils/toast';
+import { confirmToast, showToast } from '../utils/toast';
 
 interface InterviewQuestion {
   id: string;
@@ -49,6 +50,8 @@ export default function InterviewBuilder() {
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
 
   // Pagination & Finalize Input State
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,6 +67,16 @@ export default function InterviewBuilder() {
       setLoading(true);
       if (jobId) {
         const data = await api.jobs.getById(jobId);
+        // Normalize IDs: Ensure every question has a consistent 'id' property
+        if (data.interviewQuestions) {
+          data.interviewQuestions = data.interviewQuestions.map((q: any) => {
+            const normalizedId = q.id || q._id?.toString();
+            return {
+              ...q,
+              id: normalizedId
+            };
+          });
+        }
         setJob(data);
       }
     } catch (err: any) {
@@ -83,7 +96,12 @@ export default function InterviewBuilder() {
         count: questionCount,
         customPrompt: customPrompt
       });
-      setJob(prev => prev ? { ...prev, interviewQuestions: result.questions } : null);
+      // Normalize IDs for generated questions
+      const normalizedQuestions = (result.questions || []).map((q: any) => ({
+        ...q,
+        id: q.id || q._id
+      }));
+      setJob(prev => prev ? { ...prev, interviewQuestions: normalizedQuestions } : null);
     } catch (err: any) {
       console.error('Failed to generate questions:', err);
       setError(err.message || 'Failed to generate questions');
@@ -92,35 +110,69 @@ export default function InterviewBuilder() {
     }
   };
 
-  const handleRegenerateQuestions = async () => {
-    if (!job?._id) return;
+  // const handleRegenerateQuestions = async () => {
+  //   if (!job?._id) return;
 
-    const confirmed = await confirmToast(
-      'Are you sure you want to regenerate all questions? This will permanently delete existing questions and generate new ones based on the Job DNA.'
-    );
+  //   const confirmed = await confirmToast(
+  //     'Are you sure you want to regenerate all questions? This will permanently delete existing questions and generate new ones based on the Job DNA.'
+  //   );
 
-    if (!confirmed) return;
+  //   if (!confirmed) return;
 
-    handleGenerateQuestions();
+  //   handleGenerateQuestions();
+  // };
+
+  const handleDeleteClick = (questionId: string) => {
+    setQuestionToDelete(questionId);
+    setDeleteModalOpen(true);
   };
 
-  const handleDeleteQuestion = async (questionId: string) => {
-    if (!job?._id) return;
+  const confirmDeleteQuestion = async () => {
+    if (!job?._id || !questionToDelete) return;
+
+    console.log('🗑️ Attempting to delete question:', questionToDelete);
 
     try {
-      await api.jobs.deleteQuestion(job._id, questionId);
-      setJob(prev => prev ? {
-        ...prev,
-        interviewQuestions: prev.interviewQuestions?.filter(q => q.id !== questionId)
-      } : null);
+      // If it's a temp ID, just remove it from the local state
+      if (questionToDelete.startsWith('temp-')) {
+        console.log('📝 Removing unsaved temp question');
+        setJob(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            interviewQuestions: prev.interviewQuestions?.filter(q => q.id !== questionToDelete)
+          };
+        });
+        showToast.success('Question removed');
+        setDeleteModalOpen(false);
+        setQuestionToDelete(null);
+        return;
+      }
+
+      // Otherwise, call the API for persistent questions
+      await api.jobs.deleteQuestion(job._id, questionToDelete);
+      console.log('✅ Backend deletion successful');
+
+      setJob(prev => {
+        if (!prev) return null;
+        const updatedQuestions = (prev.interviewQuestions || []).filter(
+          q => q.id !== questionToDelete && (q as any)._id !== questionToDelete
+        );
+        return { ...prev, interviewQuestions: updatedQuestions };
+      });
+
+      showToast.success('Question deleted successfully');
+      setDeleteModalOpen(false);
+      setQuestionToDelete(null);
     } catch (err: any) {
-      console.error('Failed to delete question:', err);
+      console.error('❌ Failed to delete question:', err);
+      showToast.error(err.message || 'Failed to delete question');
       setError(err.message || 'Failed to delete question');
     }
   };
 
   const handleEditQuestion = (question: InterviewQuestion) => {
-    setEditingQuestionId(question.id);
+    setEditingQuestionId(question.id || (question as any)._id);
   };
 
   const handleSaveQuestion = async (updatedQuestion: InterviewQuestion) => {
@@ -129,17 +181,23 @@ export default function InterviewBuilder() {
       if (updatedQuestion.id.startsWith('temp-')) {
         // Create new
         const { id, ...newQuestionData } = updatedQuestion;
-        const savedQuestion = await api.jobs.addQuestion(job._id, newQuestionData);
+        const response = await api.jobs.addQuestion(job._id, newQuestionData);
+        // Backend returns { question: { ... } }, extract it
+        const savedQuestion = response.question || response;
+        const normalizedSaved = { ...savedQuestion, id: savedQuestion.id || savedQuestion._id };
         setJob(prev => prev ? {
           ...prev,
-          interviewQuestions: prev.interviewQuestions?.map(q => q.id === updatedQuestion.id ? savedQuestion : q)
+          interviewQuestions: prev.interviewQuestions?.map(q => q.id === updatedQuestion.id ? normalizedSaved : q)
         } : null);
       } else {
         // Update existing
-        await api.jobs.updateQuestion(job._id, updatedQuestion.id, updatedQuestion);
+        const response = await api.jobs.updateQuestion(job._id, updatedQuestion.id, updatedQuestion);
+        // Backend returns { question: { ... } }, extract it
+        const savedQuestion = response.question || response;
+        const normalizedSaved = { ...savedQuestion, id: savedQuestion.id || savedQuestion._id };
         setJob(prev => prev ? {
           ...prev,
-          interviewQuestions: prev.interviewQuestions?.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
+          interviewQuestions: prev.interviewQuestions?.map(q => q.id === updatedQuestion.id ? normalizedSaved : q)
         } : null);
       }
       setEditingQuestionId(null);
@@ -207,9 +265,21 @@ export default function InterviewBuilder() {
 
   const questions = job?.interviewQuestions || [];
 
-  // Pagination Logic
-  const totalPages = Math.ceil(questions.length / itemsPerPage);
-  const paginatedQuestions = questions.slice(
+  // Sort questions by category order: Technical -> Behavioral -> Situational -> Communication
+  const categoryOrder: Record<string, number> = {
+    technical: 1,
+    behavioral: 2,
+    situational: 3,
+    communication: 4
+  };
+
+  const sortedQuestions = [...questions].sort((a, b) => {
+    return (categoryOrder[a.category] || 99) - (categoryOrder[b.category] || 99);
+  });
+
+  // Pagination Logic using sorted questions
+  const totalPages = Math.ceil(sortedQuestions.length / itemsPerPage);
+  const paginatedQuestions = sortedQuestions.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -379,22 +449,23 @@ export default function InterviewBuilder() {
   }
 
   return (
-    <div style={{ width: '100%', padding: '0 1rem' }}>
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Dna size={20} color="#E91E63" />
-            <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem' }}>Job DNA™ Powered</span>
+    <>
+      <div style={{ width: '100%', padding: '0 1rem' }}>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <Dna size={20} color="#E91E63" />
+              <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem' }}>Job DNA™ Powered</span>
+            </div>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              Interview Question Builder
+            </h1>
+            <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+              Questions generated from Job DNA™ for {job.title}
+            </p>
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Interview Question Builder
-          </h1>
-          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
-            Questions generated from Job DNA™ for {job.title}
-          </p>
-        </div>
 
-        {/* <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+          {/* <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
           <button
             className="btn btn-primary"
             onClick={handleRegenerateQuestions}
@@ -412,269 +483,354 @@ export default function InterviewBuilder() {
             💡 Regenerate questions after updating Job DNA to ensure alignment
           </p>
         </div> */}
-      </div>
+        </div>
 
-      {/* DNA Coverage & Settings Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-        {/* DNA Coverage */}
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <Target size={16} color="#E91E63" />
-            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>DNA Coverage</span>
+        {/* DNA Coverage & Settings Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          {/* DNA Coverage */}
+          <div className="card" style={{ padding: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <Target size={16} color="#E91E63" />
+              <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>DNA Coverage</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{
+                padding: '0.25rem 0.5rem',
+                borderRadius: '9999px',
+                fontSize: '0.625rem',
+                fontWeight: 500,
+                background: 'rgba(99, 102, 241, 0.1)',
+                color: '#6366F1'
+              }}>
+                Skill: {coverage.skill} traits
+              </span>
+              <span style={{
+                padding: '0.25rem 0.5rem',
+                borderRadius: '9999px',
+                fontSize: '0.625rem',
+                fontWeight: 500,
+                background: 'rgba(16, 185, 129, 0.1)',
+                color: '#10B981'
+              }}>
+                Experience: {coverage.experience} traits
+              </span>
+              <span style={{
+                padding: '0.25rem 0.5rem',
+                borderRadius: '9999px',
+                fontSize: '0.625rem',
+                fontWeight: 500,
+                background: 'rgba(245, 158, 11, 0.1)',
+                color: '#F59E0B'
+              }}>
+                Behavioral: {coverage.behavioral} traits
+              </span>
+              <span style={{
+                padding: '0.25rem 0.5rem',
+                borderRadius: '9999px',
+                fontSize: '0.625rem',
+                fontWeight: 500,
+                background: 'rgba(59, 130, 246, 0.1)',
+                color: '#3B82F6'
+              }}>
+                Communication: {coverage.communication} traits
+              </span>
+            </div>
+            <p style={{ fontSize: '0.625rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
+              {coverage.total} total DNA traits evaluated across {questions.length} questions
+            </p>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <span style={{
-              padding: '0.25rem 0.5rem',
-              borderRadius: '9999px',
-              fontSize: '0.625rem',
-              fontWeight: 500,
-              background: 'rgba(99, 102, 241, 0.1)',
-              color: '#6366F1'
-            }}>
-              Skill: {coverage.skill} traits
-            </span>
-            <span style={{
-              padding: '0.25rem 0.5rem',
-              borderRadius: '9999px',
-              fontSize: '0.625rem',
-              fontWeight: 500,
-              background: 'rgba(16, 185, 129, 0.1)',
-              color: '#10B981'
-            }}>
-              Experience: {coverage.experience} traits
-            </span>
-            <span style={{
-              padding: '0.25rem 0.5rem',
-              borderRadius: '9999px',
-              fontSize: '0.625rem',
-              fontWeight: 500,
-              background: 'rgba(245, 158, 11, 0.1)',
-              color: '#F59E0B'
-            }}>
-              Behavioral: {coverage.behavioral} traits
-            </span>
-            <span style={{
-              padding: '0.25rem 0.5rem',
-              borderRadius: '9999px',
-              fontSize: '0.625rem',
-              fontWeight: 500,
-              background: 'rgba(59, 130, 246, 0.1)',
-              color: '#3B82F6'
-            }}>
-              Communication: {coverage.communication} traits
-            </span>
+
+          {/* Interview Settings */}
+          <div className="card" style={{ padding: '1rem' }}>
+            <h3 style={{ fontWeight: 600, marginBottom: '0.75rem', fontSize: '0.875rem' }}>Interview Settings</h3>
+            <div style={{ display: 'flex', gap: '2rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <div style={{
+                  width: '44px',
+                  height: '24px',
+                  background: videoEnabled ? '#E91E63' : '#E5E7EB',
+                  borderRadius: '12px',
+                  position: 'relative',
+                  transition: 'background 0.2s'
+                }} onClick={() => setVideoEnabled(!videoEnabled)}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    background: 'var(--white)',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: videoEnabled ? '22px' : '2px',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+                <Video size={18} color={videoEnabled ? '#E91E63' : '#9CA3AF'} />
+                <span style={{ color: videoEnabled ? '#374151' : '#9CA3AF', fontSize: '0.875rem' }}>Video</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <div style={{
+                  width: '44px',
+                  height: '24px',
+                  background: voiceEnabled ? '#E91E63' : '#E5E7EB',
+                  borderRadius: '12px',
+                  position: 'relative',
+                  transition: 'background 0.2s'
+                }} onClick={() => setVoiceEnabled(!voiceEnabled)}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    background: 'var(--white)',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: voiceEnabled ? '22px' : '2px',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+                <Mic size={18} color={voiceEnabled ? '#E91E63' : '#9CA3AF'} />
+                <span style={{ color: voiceEnabled ? '#374151' : '#9CA3AF', fontSize: '0.875rem' }}>Voice</span>
+              </label>
+            </div>
           </div>
-          <p style={{ fontSize: '0.625rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
-            {coverage.total} total DNA traits evaluated across {questions.length} questions
+        </div>
+
+        {/* DNA Linkage Info */}
+        <div style={{
+          background: 'rgba(233, 30, 99, 0.05)',
+          border: '1px solid rgba(233, 30, 99, 0.15)',
+          borderRadius: '0.75rem',
+          padding: '0.75rem 1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          marginBottom: '1.5rem'
+        }}>
+          <Info size={18} color="#E91E63" />
+          <p style={{ fontSize: '0.8125rem', color: '#831843' }}>
+            Each question is linked to specific Job DNA™ traits with signals to evaluate.
+            <strong> Questions are automatically regenerated when you approve Job DNA changes.</strong> You can also manually regenerate them anytime using the button above.
           </p>
         </div>
 
-        {/* Interview Settings */}
-        <div className="card" style={{ padding: '1rem' }}>
-          <h3 style={{ fontWeight: 600, marginBottom: '0.75rem', fontSize: '0.875rem' }}>Interview Settings</h3>
-          <div style={{ display: 'flex', gap: '2rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <div style={{
-                width: '44px',
-                height: '24px',
-                background: videoEnabled ? '#E91E63' : '#E5E7EB',
-                borderRadius: '12px',
-                position: 'relative',
-                transition: 'background 0.2s'
-              }} onClick={() => setVideoEnabled(!videoEnabled)}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  background: 'var(--white)',
-                  borderRadius: '50%',
-                  position: 'absolute',
-                  top: '2px',
-                  left: videoEnabled ? '22px' : '2px',
-                  transition: 'left 0.2s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                }} />
+
+        {/* Question Categories */}
+        {Object.entries(questionsByCategory).map(([category, categoryQuestions]) => (
+          categoryQuestions.length > 0 && (
+            <div key={category} className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '0.9375rem' }}>
+                  {category} Questions
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 400 }}>
+                    ({categoryQuestions.length})
+                  </span>
+                </h3>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => handleAddQuestion(category)}
+                >
+                  <Plus size={14} /> Add Question
+                </button>
               </div>
-              <Video size={18} color={videoEnabled ? '#E91E63' : '#9CA3AF'} />
-              <span style={{ color: videoEnabled ? '#374151' : '#9CA3AF', fontSize: '0.875rem' }}>Video</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <div style={{
-                width: '44px',
-                height: '24px',
-                background: voiceEnabled ? '#E91E63' : '#E5E7EB',
-                borderRadius: '12px',
-                position: 'relative',
-                transition: 'background 0.2s'
-              }} onClick={() => setVoiceEnabled(!voiceEnabled)}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  background: 'var(--white)',
-                  borderRadius: '50%',
-                  position: 'absolute',
-                  top: '2px',
-                  left: voiceEnabled ? '22px' : '2px',
-                  transition: 'left 0.2s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                }} />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {categoryQuestions.map((q, i) => (
+                  <QuestionCard
+                    key={q.id || i}
+                    question={q}
+                    index={i}
+                    isExpanded={expandedQuestion === (q.id || `${category}-${i}`)}
+                    onToggle={() => setExpandedQuestion(expandedQuestion === (q.id || `${category}-${i}`) ? null : (q.id || `${category}-${i}`))}
+                    onEdit={() => handleEditQuestion(q)}
+                    onDelete={() => handleDeleteClick(q.id || (q as any)._id)}
+                    isEditing={editingQuestionId === (q.id || (q as any)._id)}
+                    onSave={handleSaveQuestion}
+                    onCancel={() => handleCancelEdit(q.id || (q as any)._id)}
+                  />
+                ))}
               </div>
-              <Mic size={18} color={voiceEnabled ? '#E91E63' : '#9CA3AF'} />
-              <span style={{ color: voiceEnabled ? '#374151' : '#9CA3AF', fontSize: '0.875rem' }}>Voice</span>
-            </label>
+            </div>
+          )
+        ))}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem', marginBottom: '2rem' }}>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="btn btn-ghost btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <ChevronLeft size={16} /> Previous
+            </button>
+
+            <span style={{ fontSize: '0.875rem', color: 'var(--gray-600)', fontWeight: 500 }}>
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="btn btn-ghost btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              Next <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Finalize Input & Actions */}
+        <div style={{ marginTop: '1.5rem', background: 'var(--white)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--gray-200)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--gray-900)' }}>Finalize Interview</h3>
+
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
+                How many questions do you want to ask? <span style={{ color: '#EF4444' }}>*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                max={questions.length}
+                value={askQuestionCount}
+                onChange={(e) => setAskQuestionCount(e.target.value)}
+                className="input"
+                placeholder={`Max: ${questions.length}`}
+                style={{ width: '100%' }}
+              />
+              <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
+                Enter the number of questions to be selected for the actual interview.
+              </p>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
+                Estimated Duration
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  readOnly
+                  value={askQuestionCount ? `${parseInt(askQuestionCount) * 2} minutes` : '0 minutes'}
+                  className="input"
+                  style={{ width: '100%', background: 'var(--gray-50)', color: 'var(--gray-600)' }}
+                />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
+                Total time allocated for the candidate to complete the interview.
+              </p>
+            </div>
+            <div style={{ flex: 1 }}></div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleFinalizeInterview}
+              disabled={syncing || !askQuestionCount || parseInt(askQuestionCount) <= 0 || parseInt(askQuestionCount) > questions.length}
+              style={{ paddingLeft: '2rem', paddingRight: '2rem' }}
+            >
+              {syncing ? (
+                <>
+                  <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                  Finalizing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={18} /> Finalize Interview
+                </>
+              )}
+            </button>
+            <button className="btn btn-ghost">Save as Draft</button>
           </div>
         </div>
       </div>
 
-      {/* DNA Linkage Info */}
-      <div style={{
-        background: 'rgba(233, 30, 99, 0.05)',
-        border: '1px solid rgba(233, 30, 99, 0.15)',
-        borderRadius: '0.75rem',
-        padding: '0.75rem 1rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        marginBottom: '1.5rem'
-      }}>
-        <Info size={18} color="#E91E63" />
-        <p style={{ fontSize: '0.8125rem', color: '#831843' }}>
-          Each question is linked to specific Job DNA™ traits with signals to evaluate.
-          <strong> Questions are automatically regenerated when you approve Job DNA changes.</strong> You can also manually regenerate them anytime using the button above.
-        </p>
-      </div>
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && questionToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            width: '100%',
+            maxWidth: '400px',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--gray-400)'
+              }}
+            >
+              <X size={20} />
+            </button>
 
-
-      {/* Question Categories */}
-      {Object.entries(questionsByCategory).map(([category, categoryQuestions]) => (
-        categoryQuestions.length > 0 && (
-          <div key={category} className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '0.9375rem' }}>
-                {category} Questions
-                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 400 }}>
-                  ({categoryQuestions.length})
-                </span>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#FEF2F2',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+                color: '#EF4444'
+              }}>
+                <Trash2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
+                Delete Question?
               </h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+                Are you sure you want to delete this question? This action cannot be undone.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => handleAddQuestion(category)}
+                onClick={() => setDeleteModalOpen(false)}
+                className="btn btn-outline"
+                style={{ flex: 1 }}
               >
-                <Plus size={14} /> Add Question
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteQuestion}
+                className="btn btn-primary"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#EF4444',
+                  borderColor: '#EF4444'
+                }}
+              >
+                Delete
               </button>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {categoryQuestions.map((q, i) => (
-                <QuestionCard
-                  key={q.id || i}
-                  question={q}
-                  index={i}
-                  isExpanded={expandedQuestion === (q.id || `${category}-${i}`)}
-                  onToggle={() => setExpandedQuestion(expandedQuestion === (q.id || `${category}-${i}`) ? null : (q.id || `${category}-${i}`))}
-                  onEdit={() => handleEditQuestion(q)}
-                  onDelete={() => handleDeleteQuestion(q.id)}
-                  isEditing={editingQuestionId === q.id}
-                  onSave={handleSaveQuestion}
-                  onCancel={() => handleCancelEdit(q.id)}
-                />
-              ))}
-            </div>
           </div>
-        )
-      ))}
-
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem', marginBottom: '2rem' }}>
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="btn btn-ghost btn-sm"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-          >
-            <ChevronLeft size={16} /> Previous
-          </button>
-
-          <span style={{ fontSize: '0.875rem', color: 'var(--gray-600)', fontWeight: 500 }}>
-            Page {currentPage} of {totalPages}
-          </span>
-
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="btn btn-ghost btn-sm"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-          >
-            Next <ChevronRight size={16} />
-          </button>
         </div>
       )}
-
-      {/* Finalize Input & Actions */}
-      <div style={{ marginTop: '1.5rem', background: 'var(--white)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--gray-200)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--gray-900)' }}>Finalize Interview</h3>
-
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
-              How many questions do you want to ask? <span style={{ color: '#EF4444' }}>*</span>
-            </label>
-            <input
-              type="number"
-              min="1"
-              max={questions.length}
-              value={askQuestionCount}
-              onChange={(e) => setAskQuestionCount(e.target.value)}
-              className="input"
-              placeholder={`Max: ${questions.length}`}
-              style={{ width: '100%' }}
-            />
-            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
-              Enter the number of questions to be selected for the actual interview.
-            </p>
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
-              Estimated Duration (approx. 2 min/question)
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                readOnly
-                value={askQuestionCount ? `${parseInt(askQuestionCount) * 2} minutes` : '0 minutes'}
-                className="input"
-                style={{ width: '100%', background: 'var(--gray-50)', color: 'var(--gray-600)' }}
-              />
-            </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
-              Total time allocated for the candidate to complete the interview.
-            </p>
-          </div>
-          <div style={{ flex: 1 }}></div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleFinalizeInterview}
-            disabled={syncing || !askQuestionCount || parseInt(askQuestionCount) <= 0 || parseInt(askQuestionCount) > questions.length}
-            style={{ paddingLeft: '2rem', paddingRight: '2rem' }}
-          >
-            {syncing ? (
-              <>
-                <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                Finalizing...
-              </>
-            ) : (
-              <>
-                <CheckCircle size={18} /> Finalize Interview
-              </>
-            )}
-          </button>
-          <button className="btn btn-ghost">Save as Draft</button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
 

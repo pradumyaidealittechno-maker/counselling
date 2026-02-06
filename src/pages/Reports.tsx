@@ -519,11 +519,11 @@ export default function Reports() {
                             fontSize: '0.75rem'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.15)';
+                            e.currentTarget.style.backgroundColor = '#d81557'; // Darker pink
                             e.currentTarget.style.transform = 'translateY(-1px)';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(233, 30, 99, 0.08)';
+                            e.currentTarget.style.backgroundColor = '#E91E63'; // Original pink
                             e.currentTarget.style.transform = 'translateY(0)';
                           }}
                         >
@@ -673,7 +673,7 @@ export default function Reports() {
                 <Trash2 size={24} />
               </div>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
-                Delete Candidate?
+                Delete Candidate Report ?
               </h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
                 Are you sure you want to delete <span style={{ fontWeight: 600 }}>{reportToDelete.candidateInformation?.fullName || reportToDelete.data?.candidateInformation?.fullName || 'this candidate'}</span>? This action cannot be undone.

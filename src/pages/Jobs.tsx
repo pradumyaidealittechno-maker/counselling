@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, Plus, Search, Filter, Loader, Trash2, Edit, Eye } from 'lucide-react';
+import { Briefcase, Plus, Search, Filter, Loader, Trash2, Edit, Eye, X } from 'lucide-react';
 import api from '../services/api';
-import { confirmToast, showToast } from '../utils/toast';
+import { showToast } from '../utils/toast';
 
 interface Job {
     _id: string;
@@ -21,6 +21,9 @@ export default function Jobs() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -45,17 +48,25 @@ export default function Jobs() {
         }
     };
 
-    const handleDelete = async (jobId: string) => {
-        const confirmed = await confirmToast('Are you sure you want to delete this job? \n\n⚠️ WARNING: This will permanently delete the Job AND ALL associated Candidates, Resumes, and Interview Data. This action cannot be undone.');
-        if (confirmed) {
-            try {
-                await api.jobs.delete(jobId);
-                showToast.success('Job and all associated data deleted successfully');
-                await loadJobs(); // Refresh list
-            } catch (err) {
-                console.error('Failed to delete job:', err);
-                showToast.error('Failed to delete job. Please try again.');
-            }
+    const handleDeleteClick = (job: Job) => {
+        setJobToDelete(job);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!jobToDelete) return;
+        try {
+            setIsDeleting(true);
+            await api.jobs.delete(jobToDelete._id);
+            showToast.success('Job and all associated data deleted successfully');
+            await loadJobs(); // Refresh list
+            setDeleteModalOpen(false);
+            setJobToDelete(null);
+        } catch (err) {
+            console.error('Failed to delete job:', err);
+            showToast.error('Failed to delete job. Please try again.');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -204,7 +215,7 @@ export default function Jobs() {
                                                     justifyContent: 'center',
                                                     borderRadius: '8px'
                                                 }}
-                                                onClick={() => handleDelete(job._id)}
+                                                onClick={() => handleDeleteClick(job)}
                                                 title="Delete Job"
                                             >
                                                 <Trash2 size={20} color="#EF4444" />
@@ -279,6 +290,92 @@ export default function Jobs() {
                         >
                             Next
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteModalOpen && jobToDelete && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 50
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '0.75rem',
+                        width: '100%',
+                        maxWidth: '400px',
+                        padding: '1.5rem',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        position: 'relative'
+                    }}>
+                        <button
+                            onClick={() => setDeleteModalOpen(false)}
+                            style={{
+                                position: 'absolute',
+                                top: '1rem',
+                                right: '1rem',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--gray-400)'
+                            }}
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                backgroundColor: '#FEF2F2',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto 1rem',
+                                color: '#EF4444'
+                            }}>
+                                <Trash2 size={24} />
+                            </div>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>
+                                Delete Job?
+                            </h3>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+                                Are you sure you want to delete <span style={{ fontWeight: 600 }}>{jobToDelete.title}</span>? This will also delete ALL associated Candidates, Resumes, and Interview Data. This action cannot be undone.
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <button
+                                onClick={() => setDeleteModalOpen(false)}
+                                className="btn btn-outline"
+                                style={{ flex: 1 }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="btn btn-primary"
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: '#EF4444',
+                                    borderColor: '#EF4444'
+                                }}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

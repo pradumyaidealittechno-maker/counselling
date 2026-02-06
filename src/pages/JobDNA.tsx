@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Dna, AlertTriangle, Save, Shield, FileText, Clock, Loader, Plus, Sparkles, X } from 'lucide-react';
+import { Dna, AlertTriangle, Save, Shield, FileText, Clock, Loader, Plus, Sparkles, X, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import { showToast } from '../utils/toast';
 
@@ -233,6 +233,42 @@ export default function JobDNA() {
     navigate('/dashboard/jobs');
   };
 
+  const handleDeleteTrait = (dimension: string, traitId: string) => {
+    if (!job?.jobDNA) return;
+
+    const updatedJobDNA = { ...job.jobDNA } as any;
+    updatedJobDNA[dimension] = updatedJobDNA[dimension].filter((t: DNATrait) => t.id !== traitId);
+
+    setJob(prev => prev ? { ...prev, jobDNA: updatedJobDNA } : null);
+
+    // Also remove from editedTraits if present
+    const key = `${dimension}-${traitId}`;
+    if (editedTraits[key]) {
+      const newEdited = { ...editedTraits };
+      delete newEdited[key];
+      setEditedTraits(newEdited);
+    }
+  };
+
+  const handleAddTrait = (dimension: string) => {
+    if (!job?.jobDNA) return;
+
+    const newId = `new-${Date.now()}`;
+    const newTrait: DNATrait = {
+      id: newId,
+      name: 'New Trait',
+      description: '',
+      importance: 'medium',
+      signals: []
+    };
+
+    const updatedJobDNA = { ...job.jobDNA } as any;
+    updatedJobDNA[dimension] = [newTrait, ...updatedJobDNA[dimension]];
+
+    setJob(prev => prev ? { ...prev, jobDNA: updatedJobDNA } : null);
+    setEditingTrait(`${dimension}-${newId}`);
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
@@ -441,10 +477,10 @@ export default function JobDNA() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={16} color="var(--gray-400)" /><span style={{ fontSize: '0.85rem', color: 'var(--gray-600)' }}>Created {new Date(job.createdAt).toLocaleDateString()} at {new Date(job.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-          <DNASection title="Skill DNA" dimension="skillDNA" traits={jobDNA.skillDNA} color="#6366F1" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
-          <DNASection title="Experience DNA" dimension="experienceDNA" traits={jobDNA.experienceDNA} color="#10B981" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
-          <DNASection title="Behavioral DNA" dimension="behavioralDNA" traits={jobDNA.behavioralDNA} color="#F59E0B" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
-          <DNASection title="Communication DNA" dimension="communicationDNA" traits={jobDNA.communicationDNA} color="#3B82F6" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} />
+          <DNASection title="Skill DNA" dimension="skillDNA" traits={jobDNA.skillDNA} color="#6366F1" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onDelete={handleDeleteTrait} onAdd={handleAddTrait} editedTraits={editedTraits} />
+          <DNASection title="Experience DNA" dimension="experienceDNA" traits={jobDNA.experienceDNA} color="#10B981" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onDelete={handleDeleteTrait} onAdd={handleAddTrait} editedTraits={editedTraits} />
+          <DNASection title="Behavioral DNA" dimension="behavioralDNA" traits={jobDNA.behavioralDNA} color="#F59E0B" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onDelete={handleDeleteTrait} onAdd={handleAddTrait} editedTraits={editedTraits} />
+          <DNASection title="Communication DNA" dimension="communicationDNA" traits={jobDNA.communicationDNA} color="#3B82F6" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onDelete={handleDeleteTrait} onAdd={handleAddTrait} editedTraits={editedTraits} />
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'var(--gray-50)', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
@@ -453,7 +489,7 @@ export default function JobDNA() {
               <div style={{ width: '20px', height: '20px', background: 'var(--white)', borderRadius: '50%', position: 'absolute', top: '2px', left: culturalDNAEnabled ? '22px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
             </button>
           </div>
-          {culturalDNAEnabled && jobDNA.culturalDNA.length > 0 && <div style={{ marginTop: '0.75rem' }}><DNASection title="Cultural DNA" dimension="culturalDNA" traits={jobDNA.culturalDNA} color="#E91E63" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} editedTraits={editedTraits} /></div>}
+          {culturalDNAEnabled && jobDNA.culturalDNA.length > 0 && <div style={{ marginTop: '0.75rem' }}><DNASection title="Cultural DNA" dimension="culturalDNA" traits={jobDNA.culturalDNA} color="#E91E63" editingTrait={editingTrait} setEditingTrait={setEditingTrait} onUpdate={handleUpdateTrait} onDelete={handleDeleteTrait} onAdd={handleAddTrait} editedTraits={editedTraits} /></div>}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -577,7 +613,7 @@ export default function JobDNA() {
   );
 }
 
-function DNASection({ title, dimension, traits, color, editingTrait, setEditingTrait, onUpdate, editedTraits }: {
+function DNASection({ title, dimension, traits, color, editingTrait, setEditingTrait, onUpdate, onDelete, onAdd, editedTraits }: {
   title: string;
   dimension: string;
   traits: DNATrait[];
@@ -585,6 +621,8 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
   editingTrait: string | null;
   setEditingTrait: (id: string | null) => void;
   onUpdate: (dimension: string, traitId: string, field: keyof DNATrait, value: string) => void;
+  onDelete: (dimension: string, traitId: string) => void;
+  onAdd: (dimension: string) => void;
   editedTraits: Record<string, DNATrait>;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -598,10 +636,19 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
 
   return (
     <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-        <Dna size={16} color={color} />
-        <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--gray-900)' }}>{title}</span>
-        <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>({traits.length})</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Dna size={16} color={color} />
+          <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--gray-900)' }}>{title}</span>
+          <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>({traits.length})</span>
+        </div>
+        <button
+          onClick={() => onAdd(dimension)}
+          className="btn btn-ghost btn-sm"
+          style={{ padding: '2px 8px', height: '28px', minHeight: 'auto', fontSize: '0.75rem' }}
+        >
+          <Plus size={14} /> Add
+        </button>
       </div>
       {traits.length === 0 ? <p style={{ fontSize: '0.875rem', color: 'var(--gray-400)', fontStyle: 'italic' }}>No traits defined</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -628,7 +675,6 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                       type="text"
                       value={currentTrait.name}
                       onChange={(e) => onUpdate(dimension, trait.id, 'name', e.target.value)}
-                      onBlur={() => setEditingTrait(null)}
                       autoFocus
                       style={{
                         fontSize: '0.95rem',
@@ -645,47 +691,81 @@ function DNASection({ title, dimension, traits, color, editingTrait, setEditingT
                   ) : (
                     <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--gray-900)' }}>{currentTrait.name}</span>
                   )}
-                  <select
-                    value={currentTrait.importance}
-                    onChange={(e) => onUpdate(dimension, trait.id, 'importance', e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      fontSize: '0.85rem',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '9999px',
-                      background: currentTrait.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' : currentTrait.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                      color: currentTrait.importance === 'critical' ? '#DC2626' : currentTrait.importance === 'high' ? '#D97706' : '#6B7280',
-                      fontWeight: 500,
-                      textTransform: 'capitalize',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="critical">Critical</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <select
+                      value={currentTrait.importance}
+                      onChange={(e) => onUpdate(dimension, trait.id, 'importance', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        fontSize: '0.85rem',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '9999px',
+                        background: currentTrait.importance === 'critical' ? 'rgba(239, 68, 68, 0.1)' : currentTrait.importance === 'high' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                        color: currentTrait.importance === 'critical' ? '#DC2626' : currentTrait.importance === 'high' ? '#D97706' : '#6B7280',
+                        fontWeight: 500,
+                        textTransform: 'capitalize',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="critical">Critical</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(dimension, trait.id);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        color: 'var(--gray-400)',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gray-400)')}
+                      title="Delete trait"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
                 {isEditing ? (
-                  <textarea
-                    value={currentTrait.description}
-                    onChange={(e) => onUpdate(dimension, trait.id, 'description', e.target.value)}
-                    onBlur={() => setEditingTrait(null)}
-                    style={{
-                      fontSize: '0.8125rem',
-                      color: 'var(--gray-500)',
-                      background: 'var(--white)',
-                      border: '1px solid var(--gray-300)',
-                      borderRadius: '0.25rem',
-                      padding: '0.5rem',
-                      width: '100%',
-                      minHeight: '60px',
-                      resize: 'vertical'
-                    }}
-                  />
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <textarea
+                      value={currentTrait.description}
+                      onChange={(e) => onUpdate(dimension, trait.id, 'description', e.target.value)}
+                      placeholder="Describe the trait here..."
+                      style={{
+                        fontSize: '0.8125rem',
+                        color: 'var(--gray-500)',
+                        background: 'var(--white)',
+                        border: '1px solid var(--gray-300)',
+                        borderRadius: '0.25rem',
+                        padding: '0.5rem',
+                        width: '100%',
+                        minHeight: '60px',
+                        resize: 'vertical'
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTrait(null);
+                        }}
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: '2px 12px', height: '28px', minHeight: 'auto', fontSize: '0.75rem' }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <p style={{ fontSize: '1rem', color: 'var(--gray-500)', lineHeight: 1.6 }}>{currentTrait.description}</p>
+                  <p style={{ fontSize: '1rem', color: 'var(--gray-500)', lineHeight: '1.6' }}>{currentTrait.description}</p>
                 )}
               </div>
             );
