@@ -3,8 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Dna, Edit3, Trash2, Plus, Video, Mic, CheckCircle, GripVertical,
   Info, ChevronDown, ChevronUp, Target, Loader, ChevronLeft, ChevronRight,
-  // RefreshCw,
-  X
+  X, Briefcase, Users, Brain, Bot, Cpu
 } from 'lucide-react';
 import api from '../services/api';
 import { confirmToast, showToast } from '../utils/toast';
@@ -35,6 +34,8 @@ interface Job {
   interviewQuestions?: InterviewQuestion[];
   jobDNA?: any;
 }
+
+
 
 export default function InterviewBuilder() {
   const navigate = useNavigate();
@@ -177,6 +178,12 @@ export default function InterviewBuilder() {
 
   const handleSaveQuestion = async (updatedQuestion: InterviewQuestion) => {
     if (!job?._id) return;
+
+    if (!updatedQuestion.text || !updatedQuestion.text.trim()) {
+      showToast.error('Question text cannot be empty');
+      return;
+    }
+
     try {
       if (updatedQuestion.id.startsWith('temp-')) {
         // Create new
@@ -208,6 +215,11 @@ export default function InterviewBuilder() {
   };
 
   const handleAddQuestion = (category: string) => {
+    if (editingQuestionId) {
+      showToast.error('Please save or cancel the current question before adding a new one');
+      return;
+    }
+
     const tempId = `temp-${Date.now()}`;
     const newQuestion: InterviewQuestion = {
       id: tempId,
@@ -334,119 +346,240 @@ export default function InterviewBuilder() {
   // No questions yet - show generate option
   if (questions.length === 0) {
     return (
-      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Dna size={20} color="#E91E63" />
-            <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem' }}>Job DNA™ Powered</span>
+      <div style={{ position: 'relative', width: '100%', minHeight: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+
+        {/* Background Animation */}
+        {/* Animated Background Blobs */}
+        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(233,30,99,0.06) 0%, rgba(255,255,255,0) 70%)', zIndex: 0, animation: 'float-slow 20s infinite alternate', filter: 'blur(40px)' }} />
+        <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '700px', height: '700px', background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, rgba(255,255,255,0) 70%)', zIndex: 0, animation: 'float-slow 15s infinite alternate-reverse', filter: 'blur(40px)' }} />
+
+        {/* Floating Nodes */}
+        {/* Node 1: DNA (Left Top) */}
+        <div style={{ position: 'absolute', top: '15%', left: '10%', zIndex: 0, animation: 'swap-med 25s ease-in-out infinite' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)', padding: '16px', borderRadius: '24px', boxShadow: '0 8px 32px rgba(233, 30, 99, 0.1)', border: '1px solid rgba(255, 255, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px', animation: 'float 6s ease-in-out infinite' }}>
+            <div style={{ background: 'rgba(233, 30, 99, 0.1)', padding: '8px', borderRadius: '12px' }}>
+              <Dna size={24} color="#E91E63" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 500 }}>Analyzing</div>
+              <div style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 600 }}>Job DNA</div>
+            </div>
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Interview Question Builder
-          </h1>
-          <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
-            Generate questions for {job.title}
-          </p>
         </div>
 
-        <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem'
-          }}>
-            <Dna size={40} color="#E91E63" />
+        {/* Node 2: Brain (Right Top) */}
+        <div style={{ position: 'absolute', top: '15%', left: '80%', zIndex: 0, animation: 'swap-med 25s ease-in-out infinite', animationDelay: '-12.5s' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)', padding: '16px', borderRadius: '24px', boxShadow: '0 8px 32px rgba(99, 102, 241, 0.1)', border: '1px solid rgba(255, 255, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px', animation: 'float 8s ease-in-out infinite alternate' }}>
+            <div style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '8px', borderRadius: '12px' }}>
+              <Brain size={24} color="#6366F1" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 500 }}>Detecting</div>
+              <div style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 600 }}>Traits</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Node 3: Users (Left Bottom) */}
+        <div style={{ position: 'absolute', bottom: '15%', left: '15%', zIndex: 0, animation: 'swap-narrow 28s ease-in-out infinite' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)', padding: '16px', borderRadius: '24px', boxShadow: '0 8px 32px rgba(16, 185, 129, 0.1)', border: '1px solid rgba(255, 255, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px', animation: 'float 7s ease-in-out infinite reverse' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '8px', borderRadius: '12px' }}>
+              <Users size={24} color="#10B981" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 500 }}>Matching</div>
+              <div style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 600 }}>Candidates</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Node 4: Briefcase (Right Bottom) */}
+        <div style={{ position: 'absolute', bottom: '15%', left: '75%', zIndex: 0, animation: 'swap-narrow 28s ease-in-out infinite', animationDelay: '-14s' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)', padding: '16px', borderRadius: '24px', boxShadow: '0 8px 32px rgba(245, 158, 11, 0.1)', border: '1px solid rgba(255, 255, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px', animation: 'float 9s ease-in-out infinite alternate-reverse' }}>
+            <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '8px', borderRadius: '12px' }}>
+              <Briefcase size={24} color="#F59E0B" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 500 }}>Context</div>
+              <div style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 600 }}>Role Fit</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Node 5: AI Model (Left Middle) */}
+        <div style={{ position: 'absolute', top: '48%', left: '5%', zIndex: 0, animation: 'swap-wide 30s ease-in-out infinite' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)', padding: '16px', borderRadius: '24px', boxShadow: '0 8px 32px rgba(124, 58, 237, 0.1)', border: '1px solid rgba(255, 255, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px', animation: 'float 8s ease-in-out infinite' }}>
+            <div style={{ background: 'rgba(124, 58, 237, 0.1)', padding: '8px', borderRadius: '12px' }}>
+              <Cpu size={24} color="#7C3AED" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 500 }}>AI Model</div>
+              <div style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 600 }}>Job Analyzing</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Node 6: AI Agent (Right Middle) */}
+        <div style={{ position: 'absolute', top: '48%', left: '85%', zIndex: 0, animation: 'swap-wide 30s ease-in-out infinite', animationDelay: '-15s' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(8px)', padding: '16px', borderRadius: '24px', boxShadow: '0 8px 32px rgba(59, 130, 246, 0.1)', border: '1px solid rgba(255, 255, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px', animation: 'float 7s ease-in-out infinite reverse' }}>
+            <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '8px', borderRadius: '12px' }}>
+              <Bot size={24} color="#3B82F6" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 500 }}>AI Agent</div>
+              <div style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: 600 }}>Working on questions</div>
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+             @keyframes float {
+               0% { transform: translateY(0px) rotate(0deg); }
+               50% { transform: translateY(-15px) rotate(2deg); }
+               100% { transform: translateY(0px) rotate(0deg); }
+             }
+             @keyframes float-slow {
+               0% { transform: translate(0, 0); }
+               100% { transform: translate(30px, 30px); }
+             }
+             @keyframes swap-med {
+                0% { left: 10%; }
+                50% { left: 80%; }
+                100% { left: 10%; }
+             }
+             @keyframes swap-narrow {
+                0% { left: 15%; }
+                50% { left: 75%; }
+                100% { left: 15%; }
+             }
+             @keyframes swap-wide {
+                0% { left: 5%; }
+                50% { left: 85%; }
+                100% { left: 5%; }
+             }
+           `}</style>
+
+        <div style={{ maxWidth: '750px', width: '100%', position: 'relative', zIndex: 1, paddingTop: '2rem' }}>
+          <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: 'rgba(233, 30, 99, 0.08)', padding: '8px 16px', borderRadius: '20px', border: '1px solid rgba(233, 30, 99, 0.1)' }}>
+              <Dna size={16} color="#E91E63" />
+              <span style={{ color: '#E91E63', fontWeight: 600, fontSize: '0.875rem', letterSpacing: '0.01em' }}>Job DNA™ Powered</span>
+            </div>
+            <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.75rem', background: 'linear-gradient(135deg, #111827 0%, #4B5563 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>
+              Interview Question Builder
+            </h1>
+            <p style={{ color: '#6B7280', fontSize: '1.125rem' }}>
+              Generate precise questions for <span style={{ fontWeight: 600, color: '#374151' }}>{job.title}</span>
+            </p>
           </div>
 
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-            Generate Interview Questions
-          </h2>
-          <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
-            {job.jobDNA
-              ? 'Use Job DNA™ to generate tailored interview questions that evaluate candidates against your specific requirements.'
-              : 'Generate Job DNA first to create tailored interview questions.'}
-          </p>
-
-          {job.jobDNA && (
-            <div style={{ maxWidth: '400px', margin: '0 auto 1.5rem', textAlign: 'left' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.25rem' }}>
-                  Number of Questions
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={questionCount}
-                  onChange={(e) => setQuestionCount(parseInt(e.target.value) || 8)}
-                  className="input"
-                  style={{ width: '100%' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.25rem' }}>
-                  Custom Instructions (Optional)
-                </label>
-                <textarea
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="e.g., Focus heavily on React proficiency..."
-                  className="input"
-                  style={{ width: '100%', minHeight: '80px' }}
-                />
-              </div>
-            </div>
-          )}
-
-          {error && (
+          <div className="card" style={{ padding: '3.5rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 24px 48px -12px rgba(17, 24, 39, 0.1)', borderRadius: '1.5rem' }}>
             <div style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: '0.5rem',
-              padding: '0.75rem',
-              marginBottom: '1rem',
-              color: '#DC2626',
-              fontSize: '0.875rem'
+              width: '96px',
+              height: '96px',
+              background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 2rem',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.5)'
             }}>
-              {error}
+              <Dna size={48} color="#E91E63" />
             </div>
-          )}
 
-          {job.jobDNA ? (
-            <button
-              className="btn btn-primary"
-              onClick={handleGenerateQuestions}
-              disabled={generating}
-            >
-              {generating ? (
-                <>
-                  <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                  Generating Questions...
-                </>
-              ) : (
-                <>
-                  <Dna size={18} /> Generate Questions from DNA
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate(`/dashboard/jobs/${job._id}/job-dna`)}
-            >
-              <Dna size={18} /> Generate Job DNA First
-            </button>
-          )}
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: '#1F2937' }}>
+              Generate Interview Questions
+            </h2>
+            <p style={{ color: '#6B7280', marginBottom: '2.5rem', maxWidth: '480px', margin: '0 auto 2.5rem', lineHeight: '1.6', fontSize: '1rem' }}>
+              {job.jobDNA
+                ? 'Use Job DNA™ to generate tailored interview questions that evaluate candidates against your specific requirements and competency model.'
+                : 'Generate Job DNA first to create tailored interview questions.'}
+            </p>
+
+            {job.jobDNA && (
+              <div style={{ maxWidth: '440px', margin: '0 auto 2.5rem', textAlign: 'left' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
+                    Number of Questions
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(parseInt(e.target.value) || 8)}
+                    className="input"
+                    style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', borderRadius: '0.75rem', border: '1px solid #E5E7EB', background: 'white' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>
+                    Custom Instructions (Optional)
+                  </label>
+                  <textarea
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="e.g., Focus heavily on React proficiency..."
+                    className="input"
+                    style={{ width: '100%', minHeight: '100px', padding: '0.875rem', fontSize: '0.95rem', borderRadius: '0.75rem', border: '1px solid #E5E7EB', background: 'white' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div style={{
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '0.75rem',
+                padding: '1rem',
+                marginBottom: '2rem',
+                color: '#B91C1C',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <Info size={16} color="#B91C1C" /> {error}
+              </div>
+            )}
+
+            {job.jobDNA ? (
+              <button
+                className="btn btn-primary"
+                onClick={handleGenerateQuestions}
+                disabled={generating}
+                style={{ padding: '1rem 2.5rem', fontSize: '1rem', fontWeight: 600, borderRadius: '0.75rem', boxShadow: '0 4px 12px rgba(233, 30, 99, 0.3)', transition: 'all 0.2s', width: '100%' }}
+              >
+                {generating ? (
+                  <>
+                    <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                    Generating Questions...
+                  </>
+                ) : (
+                  <>
+                    <Dna size={20} /> Generate Questions from DNA
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate(`/dashboard/jobs/${job._id}/job-dna`)}
+                style={{ padding: '1rem 2.5rem', fontSize: '1rem', fontWeight: 600, borderRadius: '0.75rem', width: '100%' }}
+              >
+                <Dna size={20} /> Generate Job DNA First
+              </button>
+            )}
+          </div>
+          <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
-
-        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
+
+
 
   return (
     <>
@@ -629,6 +762,8 @@ export default function InterviewBuilder() {
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => handleAddQuestion(category)}
+                  disabled={!!editingQuestionId}
+                  style={{ opacity: editingQuestionId ? 0.5 : 1, cursor: editingQuestionId ? 'not-allowed' : 'pointer' }}
                 >
                   <Plus size={14} /> Add Question
                 </button>
@@ -857,19 +992,77 @@ function QuestionCard({
 }) {
   const primaryMapping = question.dnaMapping?.[0];
   const [editedText, setEditedText] = useState(question.text);
+  const [editedDnaMapping, setEditedDnaMapping] = useState(question.dnaMapping || []);
+  const [editedEvaluationCriteria, setEditedEvaluationCriteria] = useState(question.evaluationCriteria || { excellent: '', good: '', average: '', poor: '' });
+  const [editedFollowUpQuestions, setEditedFollowUpQuestions] = useState(question.followUpQuestions || []);
 
   useEffect(() => {
     setEditedText(question.text);
-  }, [question.text]);
+    setEditedDnaMapping(question.dnaMapping || []);
+    setEditedEvaluationCriteria(question.evaluationCriteria || { excellent: '', good: '', average: '', poor: '' });
+    setEditedFollowUpQuestions(question.followUpQuestions || []);
+  }, [question]);
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSave({ ...question, text: editedText });
+    onSave({
+      ...question,
+      text: editedText,
+      // Ensure we pass the updated arrays/objects
+      dnaMapping: editedDnaMapping,
+      evaluationCriteria: editedEvaluationCriteria,
+      followUpQuestions: editedFollowUpQuestions
+    });
   };
 
   const handleCancel = (e: React.MouseEvent) => {
     e.stopPropagation();
     onCancel();
+  };
+
+  const handleAddMapping = () => {
+    setEditedDnaMapping([
+      ...editedDnaMapping,
+      {
+        dimension: 'Behavioral', // Default
+        trait: '',
+        importance: 'medium',
+        signalsToEvaluate: []
+      }
+    ]);
+  };
+
+  const handleRemoveMapping = (index: number) => {
+    const newMappings = [...editedDnaMapping];
+    newMappings.splice(index, 1);
+    setEditedDnaMapping(newMappings);
+  };
+
+  const handleUpdateMapping = (index: number, field: keyof typeof editedDnaMapping[0], value: any) => {
+    const newMappings = [...editedDnaMapping];
+    newMappings[index] = { ...newMappings[index], [field]: value };
+    setEditedDnaMapping(newMappings);
+  };
+
+  const handleSignalsChange = (index: number, value: string) => {
+    const signals = value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    handleUpdateMapping(index, 'signalsToEvaluate', signals);
+  };
+
+  const handleAddFollowUp = () => {
+    setEditedFollowUpQuestions([...editedFollowUpQuestions, '']);
+  };
+
+  const handleRemoveFollowUp = (index: number) => {
+    const newQuestions = [...editedFollowUpQuestions];
+    newQuestions.splice(index, 1);
+    setEditedFollowUpQuestions(newQuestions);
+  };
+
+  const handleFollowUpChange = (index: number, value: string) => {
+    const newQuestions = [...editedFollowUpQuestions];
+    newQuestions[index] = value;
+    setEditedFollowUpQuestions(newQuestions);
   };
 
   return (
@@ -905,12 +1098,13 @@ function QuestionCard({
         <div style={{ flex: 1 }}>
           {isEditing ? (
             <div onClick={e => e.stopPropagation()}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.25rem' }}>Question Text</label>
               <textarea
                 className="input"
                 style={{
                   width: '100%',
                   minHeight: '80px',
-                  marginBottom: '0.5rem',
+                  marginBottom: '1rem',
                   fontSize: '1rem',
                   padding: '0.75rem'
                 }}
@@ -919,6 +1113,156 @@ function QuestionCard({
                 placeholder="Enter question text..."
                 autoFocus
               />
+
+              {/* Edit DNA Mappings Section */}
+              <div style={{ marginBottom: '1rem', padding: '1rem', background: 'white', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)' }}>DNA Trait Mappings</label>
+                  <button
+                    type="button"
+                    onClick={handleAddMapping}
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto' }}
+                  >
+                    <Plus size={14} /> Add Trait
+                  </button>
+                </div>
+
+                {editedDnaMapping.length === 0 && (
+                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No DNA traits mapped. Add one to evaluate candidates effectively.</p>
+                )}
+
+                {editedDnaMapping.map((mapping, mIndex) => (
+                  <div key={mIndex} style={{
+                    marginBottom: '0.75rem',
+                    padding: '0.75rem',
+                    background: '#F9FAFB',
+                    borderRadius: '0.375rem',
+                    border: '1px solid #E5E7EB',
+                    position: 'relative'
+                  }}>
+                    <button
+                      onClick={() => handleRemoveMapping(mIndex)}
+                      style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444' }}
+                      title="Remove mapping"
+                    >
+                      <X size={14} />
+                    </button>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.125rem' }}>Dimension</label>
+                        <select
+                          className="input"
+                          style={{ width: '100%', padding: '0.25rem', fontSize: '0.875rem' }}
+                          value={mapping.dimension}
+                          onChange={(e) => handleUpdateMapping(mIndex, 'dimension', e.target.value)}
+                        >
+                          <option value="Skill">Skill</option>
+                          <option value="Experience">Experience</option>
+                          <option value="Behavioral">Behavioral</option>
+                          <option value="Communication">Communication</option>
+                          <option value="Cultural">Cultural</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.125rem' }}>Importance</label>
+                        <select
+                          className="input"
+                          style={{ width: '100%', padding: '0.25rem', fontSize: '0.875rem' }}
+                          value={mapping.importance}
+                          onChange={(e) => handleUpdateMapping(mIndex, 'importance', e.target.value)}
+                        >
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.125rem' }}>Trait Name</label>
+                      <input
+                        type="text"
+                        className="input"
+                        style={{ width: '100%', padding: '0.375rem', fontSize: '0.875rem' }}
+                        value={mapping.trait}
+                        onChange={(e) => handleUpdateMapping(mIndex, 'trait', e.target.value)}
+                        placeholder="e.g. Problem Solving"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.125rem' }}>Signals to Evaluate (comma separated)</label>
+                      <input
+                        type="text"
+                        className="input"
+                        style={{ width: '100%', padding: '0.375rem', fontSize: '0.875rem' }}
+                        value={mapping.signalsToEvaluate.join(', ')}
+                        onChange={(e) => handleSignalsChange(mIndex, e.target.value)}
+                        placeholder="e.g. clear communication, examples provided"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Edit Evaluation Criteria */}
+              <div style={{ marginBottom: '1rem', padding: '1rem', background: 'white', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>Evaluation Criteria</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  {['excellent', 'good', 'average', 'poor'].map((level) => (
+                    <div key={level}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.125rem', textTransform: 'capitalize' }}>{level}</label>
+                      <textarea
+                        className="input"
+                        style={{ width: '100%', padding: '0.375rem', fontSize: '0.75rem', minHeight: '60px' }}
+                        value={(editedEvaluationCriteria as any)[level]}
+                        onChange={(e) => setEditedEvaluationCriteria({ ...editedEvaluationCriteria, [level]: e.target.value })}
+                        placeholder={`Criteria for ${level} response...`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Edit Follow-up Questions */}
+              <div style={{ marginBottom: '1rem', padding: '1rem', background: 'white', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)' }}>Follow-up Questions</label>
+                  <button
+                    type="button"
+                    onClick={handleAddFollowUp}
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto' }}
+                  >
+                    <Plus size={14} /> Add
+                  </button>
+                </div>
+                {editedFollowUpQuestions.length === 0 && (
+                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No follow-up questions added.</p>
+                )}
+                {editedFollowUpQuestions.map((q, qIndex) => (
+                  <div key={qIndex} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ flex: 1, padding: '0.375rem', fontSize: '0.875rem' }}
+                      value={q}
+                      onChange={(e) => handleFollowUpChange(qIndex, e.target.value)}
+                      placeholder="Enter follow-up question..."
+                    />
+                    <button
+                      onClick={() => handleRemoveFollowUp(qIndex)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444' }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   className="btn btn-primary btn-sm"

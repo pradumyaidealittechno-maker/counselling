@@ -483,20 +483,20 @@ export default function InterviewManagement() {
                     <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {interview.email}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
+                    <td style={{ padding: '1rem 2.5rem' }}>
                       {interview.recordingUrl ? (
                         <a
                           href={interview.recordingUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-ghost"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#6366F1' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#6366F1', paddingLeft: 0 }}
                         >
                           <Play size={14} />
                           <span style={{ fontSize: '0.75rem' }}>View Recording</span>
                         </a>
                       ) : (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--gray-400)', fontStyle: 'italic' }}>Pending</span>
+                        <span style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 600 }}>Pending</span>
                       )}
                     </td>
                     <td style={{ padding: '1rem 1.5rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
