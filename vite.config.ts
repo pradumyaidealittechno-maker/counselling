@@ -9,9 +9,17 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
 
+    allowedHosts: [
+      'intelligens.app',
+      'www.intelligens.app',
+      'hrapi.intelligens.app',
+    ],
 
-
-
+    hmr: {
+      protocol: 'wss',
+      host: 'hrapi.intelligens.app',
+      clientPort: 443,
+    }
 
   }
 })

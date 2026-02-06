@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Mail, Lock, User, Building, ArrowRight, Dna, Video, Brain, AlertCircle } from 'lucide-react';
+import { Sparkles, Mail, Lock, User, Building, ArrowRight, Dna, Video, Brain, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
 
 export default function Signup() {
@@ -15,6 +15,7 @@ export default function Signup() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({
@@ -310,17 +311,36 @@ export default function Signup() {
             <div style={{ position: 'relative' }}>
               <Lock size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 className="input"
                 placeholder="••••••••"
-                style={{ paddingLeft: '40px' }}
+                style={{ paddingLeft: '40px', paddingRight: '40px' }}
                 value={formData.password}
                 onChange={handleChange}
                 required
                 minLength={8}
                 disabled={loading}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#9ca3af'
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
             <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
               Minimum 8 characters
