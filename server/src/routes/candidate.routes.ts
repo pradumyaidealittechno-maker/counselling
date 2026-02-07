@@ -250,6 +250,26 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
       }
     }
 
+    // Calculate DNA Match
+    let resumeMatchScore = 0;
+    let resumeMatchAnalysis = undefined;
+
+    if (text && job.description) {
+      try {
+        console.log('🧬 Calculating Resume DNA Match for Uploaded Resume...');
+        const matchResult = await aiService.calculateResumeMatch(
+          text.substring(0, 15000),
+          job.description,
+          job.jobDNA
+        );
+        resumeMatchScore = matchResult.score;
+        resumeMatchAnalysis = matchResult;
+        console.log('✅ DNA Match Score:', resumeMatchScore);
+      } catch (matchErr) {
+        console.error('DNA Matching failed:', matchErr);
+      }
+    }
+
     // Fallback: extract name from filename if AI failed to get name
     if (!candidateData.firstName) {
       const fileName = file.originalname.replace(/\.[^/.]+$/, '');
@@ -279,6 +299,12 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
         // Update phone if parsed
         if (candidateData.phone) {
           candidate.phone = candidateData.phone;
+        }
+
+        // Update Match Score
+        if (resumeMatchScore > 0) {
+          candidate.resumeMatchScore = resumeMatchScore;
+          candidate.resumeMatchAnalysis = resumeMatchAnalysis;
         }
 
         await candidate.save();
@@ -311,6 +337,8 @@ router.post('/upload-resume', authenticate, upload.single('resume'), async (req,
       interviewCodeExpiry,
       interviewStatus: email ? 'pending' : 'pending', // Use 'pending' - admin needs to add email manually
       createdBy: (req as any).user.id,
+      resumeMatchScore,
+      resumeMatchAnalysis
     });
 
     await candidate.save();

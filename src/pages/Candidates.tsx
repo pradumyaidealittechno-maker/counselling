@@ -131,68 +131,45 @@ export default function Candidates() {
     const file = files[0];
 
     try {
-      // Step 1: Parse resume to extract candidate data (doesn't save file)
-      const formData = new FormData();
-      formData.append('resume', file);
-
-      // Note using relative URL to let proxy handle it or full URL if env not set
-      // 2. Parse Resume
-      setUploadStatus('Parsing resume...');
-      const parseResponse = await fetch(`${API_URL}/api/candidates/parse-resume`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: formData
-      });
-
-      if (!parseResponse.ok) {
-        const error = await parseResponse.json();
-        throw new Error(error.error || 'Failed to parse resume');
-      }
-
-      const parseResult = await parseResponse.json();
-      const candidateData = parseResult.data;
-
-      console.log('✅ Extracted candidate data:', candidateData);
-
-      // Use the specific uploadJobId
+      // If job is selected, use the robust backend upload endpoint directly
       if (uploadJobId) {
-        // Step 2: Create candidate with extracted data + selected job
-        try {
-          const createFormData = new FormData();
-          createFormData.append('firstName', candidateData.firstName || 'Unknown');
-          createFormData.append('lastName', candidateData.lastName || 'Candidate');
-          createFormData.append('email', candidateData.email || '');
-          createFormData.append('phone', candidateData.phone || '');
-          createFormData.append('experience', candidateData.experience || '');
-          createFormData.append('linkedInUrl', candidateData.linkedIn || '');
-          createFormData.append('jobId', uploadJobId);
-          createFormData.append('resume', file); // Send the file for S3 upload
+        setUploadStatus('Processing resume...');
+        const formData = new FormData();
+        formData.append('resume', file);
+        formData.append('jobId', uploadJobId);
 
-          const createResponse = await fetch(`${API_URL}/api/candidates`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-            },
-            body: createFormData
-          });
+        // Uses /api/candidates/upload-resume which handles parsing and fallback for missing fields
+        const response = await api.candidates.uploadResume(formData);
 
-          if (!createResponse.ok) {
-            const error = await createResponse.json();
-            throw new Error(error.error || 'Failed to create candidate');
-          }
+        const candidateName = response.candidate ? `${response.candidate.firstName} ${response.candidate.lastName}` : 'Candidate';
+        showToast.success(`✅ Candidate processed: ${candidateName}`);
 
-          showToast.success(`✅ Candidate created: ${candidateData.firstName} ${candidateData.lastName}`);
-          await loadCandidates();
-        } catch (error: any) {
-          throw new Error(error.message || 'Failed to create candidate');
-        }
+        await loadCandidates();
       } else {
-        // Fallback if somehow triggered without job (though button prevents it now, nice to keep safety)
+        // Fallback/Preview Mode: Parse first to show in dialog
+        setUploadStatus('Parsing resume...');
+        const formData = new FormData();
+        formData.append('resume', file);
+
+        const parseResponse = await fetch(`${API_URL}/api/candidates/parse-resume`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          },
+          body: formData
+        });
+
+        if (!parseResponse.ok) {
+          const error = await parseResponse.json();
+          throw new Error(error.error || 'Failed to parse resume');
+        }
+
+        const parseResult = await parseResponse.json();
+        const candidateData = parseResult.data;
+
         setParsedCandidateData(candidateData);
         setShowAddDialog(true);
-        showToast.success('Resume parsed. Please confirm details.');
+        showToast.success('Resume parsed. Please check details.');
       }
 
       // Reset file input
@@ -201,6 +178,7 @@ export default function Candidates() {
       }
     } catch (err: any) {
       console.error('Failed to process resume:', err);
+      // Don't show error if it's just partial data, but here err is likely a real failure
       showToast.error(err.message || 'Failed to process resume. Please try again.');
     } finally {
       setLoading(false);

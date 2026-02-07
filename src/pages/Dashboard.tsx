@@ -63,10 +63,10 @@ export default function Dashboard() {
   };
 
   const stats = [
-    { label: 'Active Jobs', value: jobs.filter(j => j.status === 'active').length.toString(), icon: Briefcase, color: '#E91E63' },
-    { label: 'Candidates in Pipeline', value: candidates.length.toString(), icon: Users, color: '#6366F1' },
-    { label: 'Interviews Completed', value: candidates.filter(c => c.status === 'interview_complete' || c.interviewResult).length.toString(), icon: Video, color: '#3B82F6' },
-    { label: 'AI Recommendations', value: candidates.filter(c => c.interviewResult?.recommendation).length.toString(), icon: Sparkles, color: '#10B981' },
+    { label: 'Active Jobs', value: jobs.filter(j => j.status === 'active').length.toString(), icon: Briefcase, color: '#E91E63', link: '/dashboard/jobs' },
+    { label: 'Candidates in Pipeline', value: candidates.length.toString(), icon: Users, color: '#6366F1', link: '/dashboard/candidates' },
+    { label: 'Interviews Completed', value: candidates.filter(c => c.status === 'interview_complete' || c.interviewResult).length.toString(), icon: Video, color: '#3B82F6', link: '/dashboard/interviews' },
+    { label: 'AI Recommendations', value: candidates.filter(c => c.interviewResult?.recommendation).length.toString(), icon: Sparkles, color: '#10B981', link: '/dashboard/reports' },
   ];
 
   const jobsWithDNA = jobs.filter(j => j.jobDNA);
@@ -118,26 +118,38 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        {stats.map((stat, i) => (
-          <div key={i} className="card" style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                background: `${stat.color}15`,
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <stat.icon size={20} color={stat.color} />
+        {stats.map((stat, i) => {
+          const Content = (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  background: `${stat.color}15`,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <stat.icon size={20} color={stat.color} />
+                </div>
+                <TrendingUp size={14} color="#10B981" />
               </div>
-              <TrendingUp size={14} color="#10B981" />
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.125rem', color: stat.color }}>{stat.value}</p>
+              <p style={{ color: 'var(--gray-500)', fontSize: '0.95rem' }}>{stat.label}</p>
+            </>
+          );
+
+          return stat.link ? (
+            <Link key={i} to={stat.link} className="card" style={{ padding: '1rem', textDecoration: 'none', display: 'block', transition: 'transform 0.2s' }}>
+              {Content}
+            </Link>
+          ) : (
+            <div key={i} className="card" style={{ padding: '1rem' }}>
+              {Content}
             </div>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.125rem', color: stat.color }}>{stat.value}</p>
-            <p style={{ color: 'var(--gray-500)', fontSize: '0.95rem' }}>{stat.label}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Two Column Layout */}
@@ -190,9 +202,13 @@ export default function Dashboard() {
                     </div>
                     <p style={{ fontSize: '0.85rem', color: 'var(--gray-500)' }}>{job.department || 'No department'}</p>
                   </div>
-                  <span className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.95rem' }}>
-                    {job.status}
+                  <span
+                    className={`badge ${job.status === 'active' ? 'badge-success' : 'badge-warning'}`}
+                    style={{ fontSize: '0.95rem' }}
+                  >
+                    {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                   </span>
+
                 </Link>
               ))
             )}
