@@ -10,6 +10,7 @@ interface Candidate {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   status: string;
   interviewDate?: string;
   interviewDuration?: string;
@@ -59,6 +60,8 @@ export default function AnalysisReport() {
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [expandedQuestions, setExpandedQuestions] = useState<number[]>([]);
+  const [showAllQuestions, setShowAllQuestions] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadPDF = async () => {
@@ -96,42 +99,71 @@ export default function AnalysisReport() {
             }
           });
 
+          // Force expand all collapsed sections for PDF
+          const hiddenElements = element.querySelectorAll('[data-pdf-force-show]');
+          hiddenElements.forEach((el) => {
+            (el as HTMLElement).style.display = 'block';
+          });
+
+          // Hide interactive buttons in PDF
+          const interactiveElements = element.querySelectorAll('[data-pdf-hide]');
+          interactiveElements.forEach((el) => {
+            (el as HTMLElement).style.display = 'none';
+          });
+
           // --- INJECT TRANSCRIPT ---
           let transcript = reportData?.transcript || reportData?.data?.transcript || [];
+
+          // Helper for robust transcript parsing
+          const parseTranscriptString = (str: string) => {
+            const parsed: any[] = [];
+            // Regex to split by speaker patterns
+            const speakerPattern = /(agent|user|interviewer|candidate|ai):/gi;
+            const segments = str.split(speakerPattern).filter(s => s && s.trim());
+
+            for (let i = 0; i < segments.length; i += 2) {
+              const speaker = segments[i];
+              const text = segments[i + 1];
+
+              if (speaker && text) {
+                const speakerName = speaker.charAt(0).toUpperCase() + speaker.slice(1).toLowerCase();
+                parsed.push({
+                  speaker: speakerName,
+                  text: text.trim(),
+                  timestamp: ''
+                });
+              }
+            }
+
+            // Fallback to line-by-line if regex didn't work
+            if (parsed.length === 0) {
+              let current: any = null;
+              const lines = str.split('\n');
+
+              lines.forEach((line: string) => {
+                const match = line.match(/^(Agent|User|Interviewer|Candidate|AI):\s*(.*)$/i);
+                if (match) {
+                  if (current) parsed.push(current);
+                  current = {
+                    speaker: match[1],
+                    text: match[2],
+                    timestamp: ''
+                  };
+                } else if (current && line.trim()) {
+                  current.text += '\n' + line.trim();
+                }
+              });
+              if (current) parsed.push(current);
+            }
+            return parsed;
+          };
+
           // Parse string transcript if needed
           if (typeof transcript === 'string') {
-            const parsed: any[] = [];
-            let current: any = null;
-            const lines = transcript.split('\n');
-
-            lines.forEach(line => {
-              const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
-              if (match) {
-                if (current) parsed.push(current);
-                current = { speaker: match[1], text: match[2] };
-              } else if (current) {
-                current.text += '\n' + line.trim();
-              }
-            });
-            if (current) parsed.push(current);
-            transcript = parsed;
+            transcript = parseTranscriptString(transcript);
           } else if (reportData?.body?.call?.transcript && typeof reportData.body.call.transcript === 'string') {
             // Fallback to body.call.transcript
-            const parsed: any[] = [];
-            let current: any = null;
-            const lines = reportData.body.call.transcript.split('\n');
-
-            lines.forEach((line: string) => {
-              const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
-              if (match) {
-                if (current) parsed.push(current);
-                current = { speaker: match[1], text: match[2] };
-              } else if (current) {
-                current.text += '\n' + line.trim();
-              }
-            });
-            if (current) parsed.push(current);
-            transcript = parsed;
+            transcript = parseTranscriptString(reportData.body.call.transcript);
           }
 
           if (transcript && Array.isArray(transcript) && transcript.length > 0) {
@@ -186,56 +218,57 @@ export default function AnalysisReport() {
             });
           }
 
-          // --- PAGE BREAK LOGIC ---
-          // Calculate page height in pixels based on aspect ratio
+          // --- IMPROVED PAGE BREAK LOGIC ---
           const contentWidth = element.scrollWidth;
-          const fullPageHeight = contentWidth * 1.4142; // A4 Ratio (297/210)
-          const safePageHeight = fullPageHeight * 0.90; // Trigger break at 90%
+          const fullPageHeight = contentWidth * 1.4142; // A4 Aspect Ratio (Height/Width)
+          // Use 85% of page height as safe area to leave bottom margin
+          const safePageHeight = fullPageHeight * 0.85;
 
-          // Get container padding to start accumulator correctly
-          const containerStyle = window.getComputedStyle(element);
-          let currentHeight = parseFloat(containerStyle.paddingTop) || 0;
-
+          let currentHeight = 0;
           const children = Array.from(element.children) as HTMLElement[];
 
-          for (const child of children) {
+          children.forEach((child) => {
+            // Skip hidden elements in calculation
+            if (child.style.display === 'none' || child.hasAttribute('data-pdf-hide')) {
+              return;
+            }
+
             const style = window.getComputedStyle(child);
             const mt = parseFloat(style.marginTop) || 0;
             const mb = parseFloat(style.marginBottom) || 0;
-            const h = child.offsetHeight + mt + mb;
 
-            // If adding this child exceeds the SAFETY height (90%)
-            if (currentHeight + h > safePageHeight) {
-              // Calculate space needed to reach the EXACT bottom of the physical page
-              const spaceRemaining = fullPageHeight - currentHeight;
+            // Calculate total vertical space this element occupies
+            // Use scrollHeight to account for expanded content
+            const elementHeight = child.scrollHeight + mt + mb;
 
-              if (currentHeight > 0) {
+            // Check if adding this element exceeds the current page's safe limit
+            if (currentHeight + elementHeight > safePageHeight) {
+              // If the element itself is huge (larger than a page), we can't do much but let it break
+              // But if it fits on a page, we move it to the next one
+              if (elementHeight < safePageHeight) {
                 const spacer = clonedDoc.createElement('div');
-                // Fill exactly to the end of the page
-                spacer.style.height = `${spaceRemaining}px`;
+                // Ensure the spacer pushes exactly to the next page boundary
+                // We add a bit of extra margin to be safe
+                spacer.style.height = `${(fullPageHeight - currentHeight) + 20}px`;
                 spacer.style.width = '100%';
                 spacer.style.display = 'block';
                 spacer.setAttribute('data-pdf-spacer', 'true');
 
-                child.parentNode?.insertBefore(spacer, child);
+                // Insert spacer before the current child
+                element.insertBefore(spacer, child);
 
-                // Add a small top margin spacer for the next page so it doesn't touch the very top edge
-                const headerSpacer = clonedDoc.createElement('div');
-                headerSpacer.style.height = '40px'; // 40px top margin for new page
-                headerSpacer.style.width = '100%';
-                headerSpacer.style.display = 'block';
-                child.parentNode?.insertBefore(headerSpacer, child);
-
-                // Reset height for the new page
-                // We start at the child's height plus the header spacer we just added
-                currentHeight = h + 40;
-              } else {
-                currentHeight += h;
+                // Reset current height for the new page
+                currentHeight = 0;
               }
-            } else {
-              currentHeight += h;
             }
-          }
+
+            currentHeight += elementHeight;
+
+            // If strictly crossing a page boundary accumulator (rare with the reset logic above, but good for safety)
+            if (currentHeight >= fullPageHeight) {
+              currentHeight = currentHeight % fullPageHeight;
+            }
+          });
         }
       });
 
@@ -354,25 +387,53 @@ export default function AnalysisReport() {
     // Helper to parse string transcript
     if (typeof transcript === 'string') {
       const parsed: any[] = [];
-      let current: any = null;
-      const lines = transcript.split('\n');
 
-      lines.forEach(line => {
-        const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
-        if (match) {
-          if (current) parsed.push(current);
-          current = {
-            speaker: match[1],
-            text: match[2],
+      // First, try to split by speaker patterns (agent:, user:, etc.) appearing anywhere in the text
+      // This regex will match speaker labels followed by colon
+      const speakerPattern = /(agent|user|interviewer|candidate|ai):/gi;
+
+      // Split the transcript by speaker patterns while keeping the speaker labels
+      const segments = transcript.split(speakerPattern).filter(s => s && s.trim());
+
+      // Process segments in pairs: [speaker, text, speaker, text, ...]
+      for (let i = 0; i < segments.length; i += 2) {
+        const speaker = segments[i];
+        const text = segments[i + 1];
+
+        if (speaker && text) {
+          // Capitalize speaker name
+          const speakerName = speaker.charAt(0).toUpperCase() + speaker.slice(1).toLowerCase();
+
+          parsed.push({
+            speaker: speakerName,
+            text: text.trim(),
             timestamp: ''
-          };
-        } else if (current) {
-          // Append to previous message if it doesn't match start pattern
-          // This handles multi-line messages that were being dropped
-          current.text += '\n' + line.trim();
+          });
         }
-      });
-      if (current) parsed.push(current);
+      }
+
+      // If parsing by pattern didn't work well, fallback to line-by-line parsing
+      if (parsed.length === 0) {
+        let current: any = null;
+        const lines = transcript.split('\n');
+
+        lines.forEach(line => {
+          const match = line.match(/^(Agent|User|Interviewer|Candidate|AI):\s*(.*)$/i);
+          if (match) {
+            if (current) parsed.push(current);
+            current = {
+              speaker: match[1],
+              text: match[2],
+              timestamp: ''
+            };
+          } else if (current && line.trim()) {
+            // Append to previous message if it doesn't match start pattern
+            current.text += '\n' + line.trim();
+          }
+        });
+        if (current) parsed.push(current);
+      }
+
       transcript = parsed;
     }
 
@@ -381,23 +442,46 @@ export default function AnalysisReport() {
       const rawTrans = reportData.body.call.transcript;
       if (typeof rawTrans === 'string') {
         const parsed: any[] = [];
-        let current: any = null;
-        const lines = rawTrans.split('\n');
 
-        lines.forEach((line: string) => {
-          const match = line.match(/^(Agent|User|Interviewer|Candidate|AI): (.*)$/i);
-          if (match) {
-            if (current) parsed.push(current);
-            current = {
-              speaker: match[1],
-              text: match[2],
+        // Regex to split by speaker patterns
+        const speakerPattern = /(agent|user|interviewer|candidate|ai):/gi;
+        const segments = rawTrans.split(speakerPattern).filter(s => s && s.trim());
+
+        for (let i = 0; i < segments.length; i += 2) {
+          const speaker = segments[i];
+          const text = segments[i + 1];
+
+          if (speaker && text) {
+            const speakerName = speaker.charAt(0).toUpperCase() + speaker.slice(1).toLowerCase();
+            parsed.push({
+              speaker: speakerName,
+              text: text.trim(),
               timestamp: ''
-            };
-          } else if (current) {
-            current.text += '\n' + line.trim();
+            });
           }
-        });
-        if (current) parsed.push(current);
+        }
+
+        // Fallback to line-by-line if regex didn't work
+        if (parsed.length === 0) {
+          let current: any = null;
+          const lines = rawTrans.split('\n');
+
+          lines.forEach((line: string) => {
+            const match = line.match(/^(Agent|User|Interviewer|Candidate|AI):\s*(.*)$/i);
+            if (match) {
+              if (current) parsed.push(current);
+              current = {
+                speaker: match[1],
+                text: match[2],
+                timestamp: ''
+              };
+            } else if (current && line.trim()) {
+              current.text += '\n' + line.trim();
+            }
+          });
+          if (current) parsed.push(current);
+        }
+
         transcript = parsed;
       }
     }
@@ -406,6 +490,7 @@ export default function AnalysisReport() {
       firstName: info.fullName?.split(' ')[0] || 'Unknown',
       lastName: info.fullName?.split(' ').slice(1).join(' ') || '',
       email: info.email || '',
+      phone: info.phone || 'Not discussed',
       job: { title: info.positionAppliedFor || '' },
       interviewDate: info.interviewDate,
       interviewDuration: info.interviewDuration,
@@ -423,9 +508,12 @@ export default function AnalysisReport() {
   } else {
     // Using candidate route
     displayCandidate = candidate;
-    // Fix: Handle nested data structure (interviewAnalysis might contain 'data' wrapper)
+    // Fix: Prioritize 'candidate.analysis' which matches our Mongoose schema
+    const structuredAnalysis = (candidate as any)?.analysis;
     const analysisRaw = (candidate as any)?.interviewAnalysis;
-    interviewAnalysis = analysisRaw?.data || analysisRaw;
+
+    // Use structured analysis if available, otherwise raw
+    interviewAnalysis = structuredAnalysis || analysisRaw?.data || analysisRaw;
 
     // Also ensure displayCandidate properties that might be in analysis are populated if missing in candidate
     if (!displayCandidate.transcript && interviewAnalysis?.transcript) {
@@ -436,6 +524,40 @@ export default function AnalysisReport() {
     }
     console.log('Using Candidate Data - displayCandidate:', displayCandidate);
     console.log('Using Candidate Data - interviewAnalysis:', interviewAnalysis);
+  }
+
+  // --- TRANSCRIPT PARSING FOR Q&A mapping ---
+  // This behaves as a fallback for when the analysis object has repetitive/corrupted question text.
+  const transcriptQAMap = new Map<number, { question: string, answer: string }>();
+
+  if (displayCandidate?.transcript) {
+    let currentQNum = 0;
+
+    displayCandidate.transcript.forEach((t: any) => {
+      const text = t.text || '';
+      const speaker = (t.speaker || '').toLowerCase();
+      const isAgent = speaker.includes('agent') || speaker.includes('ai') || speaker.includes('interviewer');
+      const isCandidate = speaker.includes('user') || speaker.includes('candidate');
+
+      // Regex to find "Question X:"
+      const qMatch = text.match(/(?:^|\s)Question\s+(\d+)[:.]/i);
+
+      if (isAgent && qMatch) {
+        currentQNum = parseInt(qMatch[1]);
+        // Extract question text, removing the "Question X:" prefix
+        const cleanText = text.substring(text.indexOf(qMatch[0]) + qMatch[0].length).trim();
+        transcriptQAMap.set(currentQNum, { question: cleanText, answer: '' });
+      } else if (currentQNum > 0) {
+        // Append subsequent text to the current question's answer
+        const existing = transcriptQAMap.get(currentQNum);
+        if (existing) {
+          // If it's the candidate speaking, append to answer
+          if (isCandidate) {
+            existing.answer += (existing.answer ? '\n\n' : '') + text;
+          }
+        }
+      }
+    });
   }
 
   const { interviewResult } = displayCandidate as any;
@@ -492,11 +614,18 @@ export default function AnalysisReport() {
         return 0;
       };
 
-      const tech = parsePipeScore(interviewAnalysis.competencyAssessment?.technicalSkills);
-      const comm = parsePipeScore(interviewAnalysis.competencyAssessment?.communication);
-      const prob = parsePipeScore(interviewAnalysis.competencyAssessment?.problemSolving);
-      const exp = parsePipeScore(interviewAnalysis.competencyAssessment?.experienceRelevance);
-      const cult = parsePipeScore(interviewAnalysis.competencyAssessment?.culturalFit);
+      const comp = interviewAnalysis.competencyAssessment || {};
+      // Handle both nested 'details' structure (new) and flat structure (old)
+      const source = comp.details || comp;
+
+      const tech = parsePipeScore(source.technicalSkills);
+      const comm = parsePipeScore(source.communication);
+      const prob = parsePipeScore(source.problemSolving);
+      const exp = parsePipeScore(source.experienceRelevance);
+      const cult = parsePipeScore(source.culturalFit);
+      // For Behavioral DNA, we reuse Cultural Fit or fallback to empty
+      // In the legacy/flat mapping, it reused 'cult'. Let's stick to that or check behavioral explicitly if available.
+      // const behavioral = parsePipeScore(source.behavioralDNA); // If we had it
 
       console.log('🧬 DNA Scores Parsed:', {
         'Skill DNA (Technical)': tech.rawScore,
@@ -508,10 +637,18 @@ export default function AnalysisReport() {
 
       // Calculate overall score: Prioritize backend score, fallback to average
       let finalOverallScore = 0;
-      const backendOverallStr = interviewAnalysis.competencyAssessment?.overallScore;
 
-      if (backendOverallStr && backendOverallStr.includes('/')) {
-        finalOverallScore = parseOverallScore(backendOverallStr);
+      // Check for numeric score in 'scores' object or string score in flat object
+      const rawOverall = comp.scores?.overallScore ?? comp.overallScore;
+
+      if (rawOverall !== undefined && rawOverall !== null) {
+        if (typeof rawOverall === 'number') {
+          // Assuming raw number is sum out of 50 (5 categories * 10)
+          finalOverallScore = Math.round((rawOverall / 50) * 100);
+        } else {
+          // String format "32/50" or similar
+          finalOverallScore = parseOverallScore(rawOverall);
+        }
       } else {
         finalOverallScore = Math.round(
           (tech.score + exp.score + cult.score + comm.score + prob.score) / 5
@@ -521,9 +658,12 @@ export default function AnalysisReport() {
       return {
         overallScore: finalOverallScore,
         recommendation: interviewAnalysis.recommendation?.hiringRecommendation || 'Pending',
+        recommendationStatus: interviewAnalysis.recommendation?.status || '',
+        recommendationReasoning: interviewAnalysis.recommendation?.reasoning || '',
+        nextSteps: interviewAnalysis.recommendation?.nextSteps || [],
         confidence: 85, // Default/Placeholder
         summary: interviewAnalysis.executiveSummary || interviewAnalysis.overallAssessment?.summary || 'Analysis completed.',
-        keyStrengths: interviewAnalysis.keyDiscussionPoints?.technicalExperience || [],
+        keyStrengths: interviewAnalysis.strengthsObserved || interviewAnalysis.keyDiscussionPoints?.technicalExperience || [],
         keyConcerns: interviewAnalysis.areasOfConcern || interviewAnalysis.keyDiscussionPoints?.redFlags || [],
         dimensionEvaluations: {
           skillDNA: {
@@ -639,14 +779,14 @@ export default function AnalysisReport() {
       {/* Main Content */}
       <div ref={reportRef} data-report-container style={{ padding: '20px', background: 'var(--white)' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <Link to={isReportRoute ? "/dashboard/reports" : "/dashboard/candidates"} style={{ color: 'var(--gray-500)', display: 'flex' }}>
-              <ArrowLeft size={18} />
+              <ArrowLeft size={24} />
             </Link>
             <div style={{
-              width: '44px',
-              height: '44px',
+              width: '56px',
+              height: '56px',
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
               display: 'flex',
@@ -654,54 +794,107 @@ export default function AnalysisReport() {
               justifyContent: 'center',
               color: 'white',
               fontWeight: 700,
-              fontSize: '0.875rem'
+              fontSize: '1.25rem'
             }}>{initials}            </div>
             <div>
-              <h1 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--gray-900)' }}>
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)' }}>
                 {displayCandidate.firstName} {displayCandidate.lastName}
               </h1>
-              <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem' }}>{displayCandidate.job?.title || 'No job assigned'}</p>
+              <p style={{ color: 'var(--gray-500)', fontSize: '1rem' }}>
+                {displayCandidate.job?.title || 'No job assigned'}
+                {displayCandidate.phone && displayCandidate.phone !== 'Not discussed' && (
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', color: 'var(--gray-400)' }}>
+                    • {displayCandidate.phone}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Interview Details Bar */}
+        {/* Interview Details Bar */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '1.5rem',
-          padding: '0.75rem 1rem',
+          gap: '2rem',
+          padding: '1rem 1.5rem',
           background: 'var(--white)',
-          borderRadius: '0.5rem',
-          marginBottom: '1rem',
+          borderRadius: '0.75rem',
+          marginBottom: '1.5rem',
           border: '1px solid var(--gray-200)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Clock size={14} color="var(--gray-400)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{displayCandidate.interviewDate || 'Date not recorded'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Clock size={16} color="var(--gray-400)" />
+            <span style={{ fontSize: '1rem', color: 'var(--gray-600)' }}>{displayCandidate.interviewDate || 'Date not recorded'}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Video size={14} color="var(--gray-400)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{displayCandidate.interviewDuration || 'Duration not recorded'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Video size={16} color="var(--gray-400)" />
+            <span style={{ fontSize: '1rem', color: 'var(--gray-600)' }}>{displayCandidate.interviewDuration || 'Duration not recorded'}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Dna size={14} color="#E91E63" />
-            <span style={{ fontSize: '0.75rem', color: '#E91E63', fontWeight: 500 }}>Job DNA™ Analysis</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Dna size={16} color="#E91E63" />
+            <span style={{ fontSize: '1rem', color: '#E91E63', fontWeight: 600 }}>Job DNA™ Analysis</span>
           </div>
         </div>
 
+        {/* Candidate Information Card */}
+        {(displayCandidate.email || displayCandidate.phone || interviewAnalysis?.candidateInformation) && (
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Candidate Information</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', fontSize: '1rem' }}>
+              {(displayCandidate.email && displayCandidate.email !== 'Not discussed') && (
+                <div>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Email</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{displayCandidate.email}</p>
+                </div>
+              )}
+              {(displayCandidate.phone && displayCandidate.phone !== 'Not discussed') && (
+                <div>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Phone</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{displayCandidate.phone}</p>
+                </div>
+              )}
+              {displayCandidate.job?.title && (
+                <div>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Position Applied For</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{displayCandidate.job.title}</p>
+                </div>
+              )}
+              {interviewAnalysis?.metadata?.interviewType && (
+                <div>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Interview Type</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.metadata.interviewType}</p>
+                </div>
+              )}
+              {interviewAnalysis?.metadata?.interviewer && (
+                <div>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Interviewer</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.metadata.interviewer}</p>
+                </div>
+              )}
+              {interviewAnalysis?.metadata?.reportGenerated && (
+                <div>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Report Generated</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.metadata.reportGenerated}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* DNA Score Overview */}
-        <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <Dna size={16} color="#E91E63" />
-            <h2 style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--gray-900)' }}>DNA Match Overview</h2>
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <Dna size={20} color="#E91E63" />
+            <h2 style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--gray-900)' }}>DNA Match Overview</h2>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
             <div style={{
-              width: '120px',
-              height: '120px',
+              width: '140px',
+              height: '140px',
               borderRadius: '50%',
               background: `conic-gradient(${recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B'} ${recommendation.overallScore * 3.6}deg, var(--gray-100) 0deg)`,
               display: 'flex',
@@ -709,8 +902,8 @@ export default function AnalysisReport() {
               justifyContent: 'center'
             }}>
               <div style={{
-                width: '100px',
-                height: '100px',
+                width: '120px',
+                height: '120px',
                 borderRadius: '50%',
                 background: 'var(--white)',
                 display: 'flex',
@@ -718,10 +911,10 @@ export default function AnalysisReport() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <span style={{ fontSize: '2rem', fontWeight: 700, color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B' }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B' }}>
                   {Number(recommendation.overallScore / 10).toFixed(1)}
                 </span>
-                <span style={{ fontSize: '0.625rem', color: 'var(--gray-500)' }}>Overall Match</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', fontWeight: 600 }}>Overall Match</span>
               </div>
             </div>
           </div>
@@ -737,103 +930,158 @@ export default function AnalysisReport() {
             const scoreColor = score >= 90 ? '#10B981' : score >= 80 ? '#E91E63' : '#F59E0B';
 
             return (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <span style={{ width: '140px', fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 500 }}>
-                  {evalObj.dimension}
-                </span>
-                <div style={{ flex: 1, height: '12px', background: 'var(--gray-100)', borderRadius: '6px', overflow: 'hidden' }}>
-                  <div style={{
-                    width: `${score}%`,
-                    height: '100%',
-                    background: scoreColor,
-                    borderRadius: '6px',
-                    transition: 'width 0.5s ease'
-                  }} />
+              <div key={key} style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                  <span style={{ width: '160px', fontSize: '1rem', color: 'var(--gray-700)', fontWeight: 600 }}>
+                    {evalObj.dimension}
+                  </span>
+                  <div style={{ flex: 1, height: '14px', background: 'var(--gray-100)', borderRadius: '7px', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${score}%`,
+                      height: '100%',
+                      background: scoreColor,
+                      borderRadius: '7px',
+                      transition: 'width 0.5s ease'
+                    }} />
+                  </div>
+                  <span style={{
+                    width: '40px',
+                    textAlign: 'right',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    color: scoreColor
+                  }}>
+                    {rawScore}
+                  </span>
                 </div>
-                <span style={{
-                  width: '32px',
-                  textAlign: 'right',
-                  fontSize: '0.875rem',
-                  fontWeight: 700,
-                  color: scoreColor
-                }}>
-                  {rawScore}
-                </span>
+                {evalObj.traits?.[0]?.evidence && (
+                  <p style={{
+                    fontSize: '0.9rem',
+                    color: 'var(--gray-600)',
+                    paddingLeft: '176px',
+                    margin: 0,
+                    lineHeight: 1.5
+                  }}>
+                    {evalObj.traits[0].evidence}
+                  </p>
+                )}
               </div>
             );
           })}
         </div>
 
+        {/* Competency Assessment Summary */}
+        {interviewAnalysis?.competencyAssessment?.scores && (
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Competency Assessment Summary</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+              {Object.entries(interviewAnalysis.competencyAssessment.scores).map(([key, value]) => {
+                if (key === 'overallScore') return null;
+                const score = typeof value === 'number' ? value : 0;
+                const scoreColor = score >= 8 ? '#10B981' : score >= 6 ? '#F59E0B' : '#EF4444';
+                const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase());
+
+                return (
+                  <div key={key} style={{
+                    padding: '1rem',
+                    background: 'var(--gray-50)',
+                    borderRadius: '0.75rem',
+                    textAlign: 'center',
+                    border: '1px solid var(--gray-200)'
+                  }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', marginBottom: '0.5rem', fontWeight: 500 }}>{label}</p>
+                    <p style={{ fontSize: '1.5rem', fontWeight: 700, color: scoreColor }}>{score}<span style={{ fontSize: '0.875rem', color: 'var(--gray-400)' }}>/10</span></p>
+                  </div>
+                );
+              })}
+              {/* Overall Score */}
+              <div style={{
+                padding: '1rem',
+                background: 'linear-gradient(135deg, #E91E63 0%, #6366F1 100%)',
+                borderRadius: '0.75rem',
+                textAlign: 'center',
+                color: 'white'
+              }}>
+                <p style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.5rem', fontWeight: 500 }}>Overall Score</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                  {interviewAnalysis.competencyAssessment.scores.overallScore}
+                  <span style={{ fontSize: '0.875rem', opacity: 0.8 }}>/50</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Key Strengths & Concerns */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#10B981' }}>Key Strengths</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: '#10B981' }}>Key Strengths</h3>
             {recommendation.keyStrengths.length > 0 ? (
-              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#065F46' }}>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '1rem', color: '#065F46', lineHeight: 1.6 }}>
                 {recommendation.keyStrengths.map((s: string, i: number) => (
-                  <li key={i} style={{ marginBottom: '0.375rem' }}>{s}</li>
+                  <li key={i} style={{ marginBottom: '0.5rem' }}>{s}</li>
                 ))}
               </ul>
             ) : (
-              <p style={{ fontSize: '0.8125rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No strengths recorded</p>
+              <p style={{ fontSize: '1rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No strengths recorded</p>
             )}
           </div>
-          <div className="card" style={{ padding: '1rem', background: 'var(--white)' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: '#F59E0B' }}>Key Concerns</h3>
+          <div className="card" style={{ padding: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: '#F59E0B' }}>Key Concerns</h3>
             {recommendation.keyConcerns.length > 0 ? (
-              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#92400E' }}>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '1rem', color: '#92400E', lineHeight: 1.6 }}>
                 {recommendation.keyConcerns.map((c: string, i: number) => (
-                  <li key={i} style={{ marginBottom: '0.375rem' }}>{c}</li>
+                  <li key={i} style={{ marginBottom: '0.5rem' }}>{c}</li>
                 ))}
               </ul>
             ) : (
-              <p style={{ fontSize: '0.8125rem', color: '#065F46' }}>No significant concerns identified</p>
+              <p style={{ fontSize: '1rem', color: '#065F46' }}>No significant concerns identified</p>
             )}
           </div>
         </div>
 
         {/* Professional Profile */}
         {interviewAnalysis?.professionalProfile && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Professional Profile</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8125rem' }}>
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Professional Profile</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', fontSize: '1rem' }}>
               {interviewAnalysis.professionalProfile.currentRole && (
                 <div>
-                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Current Role</p>
-                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentRole}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 }}>Current Role</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.professionalProfile.currentRole}</p>
                 </div>
               )}
               {interviewAnalysis.professionalProfile.totalExperience && (
                 <div>
-                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Total Experience</p>
-                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.totalExperience}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 }}>Total Experience</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.professionalProfile.totalExperience}</p>
                 </div>
               )}
               {interviewAnalysis.professionalProfile.experienceLevel && (
                 <div>
-                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Experience Level</p>
-                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.experienceLevel}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 }}>Experience Level</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.professionalProfile.experienceLevel}</p>
                 </div>
               )}
               {interviewAnalysis.professionalProfile.currentCompany && (
                 <div>
-                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem' }}>Current Company</p>
-                  <p style={{ color: 'var(--gray-900)', fontWeight: 500 }}>{interviewAnalysis.professionalProfile.currentCompany}</p>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500 }}>Current Company</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.professionalProfile.currentCompany}</p>
                 </div>
               )}
             </div>
             {interviewAnalysis.professionalProfile.technicalStack && interviewAnalysis.professionalProfile.technicalStack.length > 0 && (
-              <div style={{ marginTop: '0.75rem' }}>
-                <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>Technical Stack</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ marginTop: '1rem' }}>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 500 }}>Technical Stack</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem' }}>
                   {interviewAnalysis.professionalProfile.technicalStack.map((tech: string, i: number) => (
                     <span key={i} style={{
-                      padding: '0.25rem 0.625rem',
+                      padding: '0.375rem 0.75rem',
                       background: '#E0E7FF',
                       color: '#4F46E5',
                       borderRadius: '0.375rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 500
+                      fontSize: '0.875rem',
+                      fontWeight: 600
                     }}>
                       {tech}
                     </span>
@@ -844,28 +1092,201 @@ export default function AnalysisReport() {
           </div>
         )}
 
+        {/* Technical Question Analysis */}
+        {interviewAnalysis?.technicalQuestionAnalysis && (
+          <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Technical Question Analysis</h3>
+
+            {/* Performance Summary */}
+            {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '1rem',
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                background: 'var(--gray-50)',
+                borderRadius: '0.75rem'
+              }}>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Total Questions</p>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--gray-900)' }}>
+                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.totalQuestionsAsked}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Correct</p>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10B981' }}>
+                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.correctAnswers}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Partial</p>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F59E0B' }}>
+                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.partiallyCorrect}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Accuracy</p>
+                  <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-700)', lineHeight: 1.4 }}>
+                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.technicalAccuracyRate}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Questions Visibility Toggle */}
+            <div data-pdf-hide style={{ display: 'flex', justifyContent: 'center', marginBottom: showAllQuestions ? '1.5rem' : 0 }}>
+              <button
+                onClick={() => setShowAllQuestions(!showAllQuestions)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  background: 'var(--white)',
+                  border: '1px solid var(--gray-300)',
+                  borderRadius: '2rem',
+                  color: 'var(--gray-700)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                }}
+              >
+                {showAllQuestions ? 'Hide Detailed Analysis' : 'View Detailed Answer Analysis'}
+                <ArrowLeft size={16} style={{ transform: showAllQuestions ? 'rotate(90deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
+              </button>
+            </div>
+
+            {/* Questions List */}
+            <div data-pdf-force-show style={{ display: showAllQuestions ? 'block' : 'none' }}>
+              {interviewAnalysis.technicalQuestionAnalysis.questionsAssessed?.map((q: any, i: number) => {
+                const qNum = q.questionNumber || i + 1;
+                const transcriptData = transcriptQAMap.get(qNum);
+
+                // PRIORITY: Use DB data first (q.question and q.candidateAnswer)
+                // Only fallback to transcript if DB data is empty
+                const displayQuestion = q.question || transcriptData?.question || '';
+                const displayAnswer = q.candidateAnswer || transcriptData?.answer || '';
+
+                const isExpanded = expandedQuestions.includes(qNum);
+
+                const toggleQuestion = () => {
+                  if (isExpanded) {
+                    setExpandedQuestions(prev => prev.filter(id => id !== qNum));
+                  } else {
+                    setExpandedQuestions(prev => [...prev, qNum]);
+                  }
+                };
+
+                return (
+                  <div key={i} style={{
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    border: '1px solid var(--gray-200)',
+                    borderRadius: '0.75rem',
+                    background: '#FFFFFF'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--gray-600)' }}>
+                          Question {qNum}: {q.topic}
+                        </span>
+                        <button
+                          data-pdf-hide
+                          onClick={toggleQuestion}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary)',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            textDecoration: 'underline'
+                          }}
+                        >
+                          {isExpanded ? 'Hide Details' : 'Show Details'}
+                        </button>
+                      </div>
+                      <span style={{
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        color: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#10B981' : q.correctness?.toLowerCase().includes('partial') ? '#B45309' : '#EF4444',
+                        padding: '0.25rem 0.75rem',
+                        background: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#ECFDF5' : q.correctness?.toLowerCase().includes('partial') ? '#FFFBEB' : '#FEF2F2',
+                        borderRadius: '0.5rem',
+                        border: '1px solid transparent',
+                        borderColor: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#A7F3D0' : q.correctness?.toLowerCase().includes('partial') ? '#FDE68A' : '#FECACA',
+                      }}>
+                        {q.score} - {q.correctness}
+                      </span>
+                    </div>
+
+                    <div data-pdf-force-show style={{
+                      marginTop: '1rem',
+                      borderTop: '1px solid var(--gray-100)',
+                      paddingTop: '1rem',
+                      display: isExpanded ? 'block' : 'none'
+                    }}>
+                      <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '1rem', lineHeight: 1.5 }}>
+                        {displayQuestion}
+                      </p>
+
+                      <div style={{ marginBottom: '1rem' }}>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 600 }}>Candidate Answer:</p>
+                        <p style={{ fontSize: '1rem', color: 'var(--gray-800)', background: 'var(--gray-50)', padding: '0.75rem', borderRadius: '0.5rem', lineHeight: 1.6, border: '1px solid var(--gray-100)', whiteSpace: 'pre-wrap' }}>
+                          {displayAnswer || 'No response recorded.'}
+                        </p>
+                      </div>
+
+                      {q.whatWasMissing && (
+                        <div style={{ marginBottom: '1rem' }}>
+                          <p style={{ fontSize: '0.9rem', color: '#B45309', marginBottom: '0.25rem', fontWeight: 600 }}>Missing / Improvements:</p>
+                          <p style={{ fontSize: '1rem', color: '#92400E', lineHeight: 1.6 }}>
+                            {q.whatWasMissing}
+                          </p>
+                        </div>
+                      )}
+                      {q.expectedKeyPoints && (
+                        <div style={{ padding: '0.75rem', background: '#ecfdf5', borderRadius: '0.375rem', border: '1px solid #a7f3d0' }}>
+                          <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#047857', marginBottom: '0.25rem' }}>Expected Key Points:</p>
+                          <p style={{ fontSize: '0.9rem', color: '#065f46', lineHeight: 1.5, margin: 0 }}>
+                            {q.expectedKeyPoints}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Key Discussion Points */}
         {interviewAnalysis?.keyDiscussionPoints && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Key Discussion Points</h3>
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Key Discussion Points</h3>
 
             {interviewAnalysis.keyDiscussionPoints.technicalExperience && interviewAnalysis.keyDiscussionPoints.technicalExperience.length > 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>Technical Experience</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.75rem' }}>Technical Experience</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '1rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>
                   {interviewAnalysis.keyDiscussionPoints.technicalExperience.map((item: string, i: number) => (
-                    <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
+                    <li key={i} style={{ marginBottom: '0.5rem' }}>{item}</li>
                   ))}
                 </ul>
               </div>
             )}
 
             {interviewAnalysis.keyDiscussionPoints.projectsDiscussed && interviewAnalysis.keyDiscussionPoints.projectsDiscussed.length > 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>Projects Discussed</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.75rem' }}>Projects Discussed</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '1rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>
                   {interviewAnalysis.keyDiscussionPoints.projectsDiscussed.map((item: string, i: number) => (
-                    <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
+                    <li key={i} style={{ marginBottom: '0.5rem' }}>{item}</li>
                   ))}
                 </ul>
               </div>
@@ -873,10 +1294,10 @@ export default function AnalysisReport() {
 
             {interviewAnalysis.keyDiscussionPoints.problemSolvingExamples && interviewAnalysis.keyDiscussionPoints.problemSolvingExamples.length > 0 && (
               <div>
-                <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>Problem Solving Examples</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.75rem' }}>Problem Solving Examples</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '1rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>
                   {interviewAnalysis.keyDiscussionPoints.problemSolvingExamples.map((item: string, i: number) => (
-                    <li key={i} style={{ marginBottom: '0.375rem' }}>{item}</li>
+                    <li key={i} style={{ marginBottom: '0.5rem' }}>{item}</li>
                   ))}
                 </ul>
               </div>
@@ -884,41 +1305,114 @@ export default function AnalysisReport() {
           </div>
         )}
 
-        {/* Recommendation Details */}
-        {interviewAnalysis?.recommendation && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Recommendation Details</h3>
+        {/* Notable Quotes */}
+        {interviewAnalysis?.notableQuotes && interviewAnalysis.notableQuotes.length > 0 && (
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Notable Quotes</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {interviewAnalysis.notableQuotes.map((quote: string, i: number) => (
+                <div key={i} style={{
+                  padding: '1rem',
+                  background: 'var(--gray-50)',
+                  borderLeft: '4px solid #6366F1',
+                  borderRadius: '0 0.5rem 0.5rem 0',
+                  fontStyle: 'italic',
+                  color: 'var(--gray-700)',
+                  fontSize: '1rem',
+                  lineHeight: 1.6
+                }}>
+                  "{quote}"
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-            {interviewAnalysis.recommendation.reasoning && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Reasoning</p>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>{interviewAnalysis.recommendation.reasoning}</p>
+        {/* Questions Asked by Candidate */}
+        {interviewAnalysis?.questionsAskedByCandidate && (
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Questions from Candidate</h3>
+            <p style={{ fontSize: '1rem', color: 'var(--gray-700)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+              {interviewAnalysis.questionsAskedByCandidate}
+            </p>
+          </div>
+        )}
+
+        {/* Additional Notes */}
+        {interviewAnalysis?.additionalNotes && (
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Additional Notes</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+              {Object.entries(interviewAnalysis.additionalNotes).map(([key, value]) => (
+                <div key={key}>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: 600, textTransform: 'capitalize' }}>
+                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                  </p>
+                  <p style={{ fontSize: '1rem', color: 'var(--gray-800)', fontWeight: 600 }}>
+                    {String(value)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Report Metadata */}
+        {interviewAnalysis?.metadata && (
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Report Details</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+              {Object.entries(interviewAnalysis.metadata).map(([key, value]) => (
+                <div key={key}>
+                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: 600, textTransform: 'capitalize' }}>
+                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                  </p>
+                  <p style={{ fontSize: '1rem', color: 'var(--gray-800)', fontWeight: 600 }}>
+                    {String(value)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recommendation Details */}
+        {(interviewAnalysis?.recommendation || recommendation.recommendationReasoning || recommendation.nextSteps?.length > 0) && (
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Recommendation Details</h3>
+
+            {(interviewAnalysis?.recommendation?.reasoning || recommendation.recommendationReasoning) && (
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600 }}>Reasoning</p>
+                <p style={{ fontSize: '1rem', color: 'var(--gray-800)', lineHeight: 1.6 }}>
+                  {interviewAnalysis?.recommendation?.reasoning || recommendation.recommendationReasoning}
+                </p>
               </div>
             )}
 
-            {interviewAnalysis.recommendation.status && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>Status</p>
+            {(interviewAnalysis?.recommendation?.status || recommendation.recommendationStatus) && (
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600 }}>Status</p>
                 <span style={{
                   display: 'inline-block',
-                  padding: '0.25rem 0.625rem',
+                  padding: '0.375rem 0.75rem',
                   background: '#DBEAFE',
                   color: '#1E40AF',
                   borderRadius: '0.375rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 500
+                  fontSize: '0.875rem',
+                  fontWeight: 600
                 }}>
-                  {interviewAnalysis.recommendation.status}
+                  {interviewAnalysis?.recommendation?.status || recommendation.recommendationStatus}
                 </span>
               </div>
             )}
 
-            {interviewAnalysis.recommendation.nextSteps && interviewAnalysis.recommendation.nextSteps.length > 0 && (
+            {((interviewAnalysis?.recommendation?.nextSteps?.length > 0) || (recommendation.nextSteps?.length > 0)) && (
               <div>
-                <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600 }}>Next Steps</p>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--gray-700)' }}>
-                  {interviewAnalysis.recommendation.nextSteps.map((step: string, i: number) => (
-                    <li key={i} style={{ marginBottom: '0.375rem' }}>{step}</li>
+                <p style={{ color: 'var(--gray-500)', marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: 600 }}>Next Steps</p>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '1rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>
+                  {(interviewAnalysis?.recommendation?.nextSteps || recommendation.nextSteps || []).map((step: string, i: number) => (
+                    <li key={i} style={{ marginBottom: '0.5rem' }}>{step}</li>
                   ))}
                 </ul>
               </div>
@@ -928,9 +1422,9 @@ export default function AnalysisReport() {
 
         {/* Executive Summary */}
         {interviewAnalysis?.executiveSummary && (
-          <div className="card" style={{ padding: '1rem', marginBottom: '1rem', background: 'var(--white)' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>Executive Summary</h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>{interviewAnalysis.executiveSummary}</p>
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Executive Summary</h3>
+            <p style={{ fontSize: '1rem', color: 'var(--gray-700)', lineHeight: 1.6 }}>{interviewAnalysis.executiveSummary}</p>
           </div>
         )}
       </div>
@@ -942,9 +1436,9 @@ export default function AnalysisReport() {
           <h3 style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--gray-900)' }}>AI Recommendation</h3>
           <div style={{
             padding: '1rem',
-            background: recommendation.recommendation === 'Hire'
+            background: recommendation.recommendation === 'HIRE' || recommendation.recommendation === 'Hire'
               ? 'rgba(16, 185, 129, 0.1)'
-              : recommendation.recommendation === 'Hold'
+              : recommendation.recommendation === 'MAYBE' || recommendation.recommendation === 'Hold'
                 ? 'rgba(245, 158, 11, 0.1)'
                 : 'rgba(239, 68, 68, 0.1)',
             borderRadius: '0.5rem',
@@ -954,11 +1448,29 @@ export default function AnalysisReport() {
             <p style={{
               fontSize: '1.5rem',
               fontWeight: 700,
-              color: recommendation.recommendation === 'Hire' ? '#10B981' : recommendation.recommendation === 'Hold' ? '#F59E0B' : '#EF4444'
+              color: recommendation.recommendation === 'HIRE' || recommendation.recommendation === 'Hire'
+                ? '#10B981'
+                : recommendation.recommendation === 'MAYBE' || recommendation.recommendation === 'Hold'
+                  ? '#F59E0B'
+                  : '#EF4444'
             }}>
               {recommendation.recommendation}
             </p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+            {recommendation.recommendationStatus && (
+              <span style={{
+                display: 'inline-block',
+                marginTop: '0.5rem',
+                padding: '0.25rem 0.5rem',
+                background: 'rgba(99, 102, 241, 0.1)',
+                color: '#6366F1',
+                borderRadius: '0.25rem',
+                fontSize: '0.75rem',
+                fontWeight: 600
+              }}>
+                {recommendation.recommendationStatus}
+              </span>
+            )}
+            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
               {recommendation.confidence}% confidence
             </p>
           </div>

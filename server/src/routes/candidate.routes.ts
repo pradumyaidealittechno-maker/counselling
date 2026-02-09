@@ -945,7 +945,13 @@ router.post('/:id/analysis', authenticate, async (req, res) => {
       recommendation: rec.hiringRecommendation || source.recommendation || '',
       summary: source.executiveSummary || assessment.summary || source.summary || '',
       keyInsights: source.keyInsights || [],
-      redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || []
+      redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || [],
+      technicalQuestionAnalysis: source.technicalQuestionAnalysis || null,
+      professionalProfile: source.professionalProfile || null,
+      keyDiscussionPoints: source.keyDiscussionPoints || null,
+      notableQuotes: source.notableQuotes || [],
+      questionsAskedByCandidate: source.questionsAskedByCandidate || '',
+      additionalNotes: source.additionalNotes || null
     };
     await candidate.save();
 
@@ -1025,7 +1031,13 @@ router.post('/webhook/result', async (req, res) => {
       recommendation: rec.hiringRecommendation || rec.decision || '',
       summary: dataObj.executiveSummary || assessment.summary || '',
       keyInsights: dataObj.strengthsObserved || [],
-      redFlags: dataObj.areasOfConcern || dataObj.keyDiscussionPoints?.redFlags || []
+      redFlags: dataObj.areasOfConcern || dataObj.keyDiscussionPoints?.redFlags || [],
+      technicalQuestionAnalysis: dataObj.technicalQuestionAnalysis || null,
+      professionalProfile: dataObj.professionalProfile || null,
+      keyDiscussionPoints: dataObj.keyDiscussionPoints || null,
+      notableQuotes: dataObj.notableQuotes || [],
+      questionsAskedByCandidate: dataObj.questionsAskedByCandidate || '',
+      additionalNotes: dataObj.additionalNotes || null
     };
 
     candidate.status = 'ai_analysis_ready';
@@ -1124,7 +1136,13 @@ router.post('/sync-analysis', authenticate, async (_req, res) => {
           recommendation: rec.hiringRecommendation || rec.decision || '',
           summary: dataObj.executiveSummary || assessment.summary || '',
           keyInsights: dataObj.strengthsObserved || [],
-          redFlags: dataObj.areasOfConcern || dataObj.keyDiscussionPoints?.redFlags || []
+          redFlags: dataObj.areasOfConcern || dataObj.keyDiscussionPoints?.redFlags || [],
+          technicalQuestionAnalysis: dataObj.technicalQuestionAnalysis || null,
+          professionalProfile: dataObj.professionalProfile || null,
+          keyDiscussionPoints: dataObj.keyDiscussionPoints || null,
+          notableQuotes: dataObj.notableQuotes || [],
+          questionsAskedByCandidate: dataObj.questionsAskedByCandidate || '',
+          additionalNotes: dataObj.additionalNotes || null
         };
 
         candidate.status = 'ai_analysis_ready';
@@ -1206,7 +1224,13 @@ router.post('/:id/sync-analysis', authenticate, async (req, res) => {
       recommendation: rec.hiringRecommendation || source.recommendation || '',
       summary: source.executiveSummary || assessment.summary || source.summary || '',
       keyInsights: source.keyInsights || [],
-      redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || []
+      redFlags: source.redFlags || source.areasOfConcern || source.keyDiscussionPoints?.redFlags || [],
+      technicalQuestionAnalysis: source.technicalQuestionAnalysis || null,
+      professionalProfile: source.professionalProfile || null,
+      keyDiscussionPoints: source.keyDiscussionPoints || null,
+      notableQuotes: source.notableQuotes || [],
+      questionsAskedByCandidate: source.questionsAskedByCandidate || '',
+      additionalNotes: source.additionalNotes || null
     };
 
     candidate.status = 'ai_analysis_ready';

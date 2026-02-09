@@ -16,7 +16,13 @@ interface Report {
       interviewDate?: string;
     };
     competencyAssessment?: {
-      overallScore: string;
+      overallScore?: string | number;
+      scores?: {
+        overallScore?: string | number;
+      };
+    };
+    interviewResult?: {
+      overallScore?: number;
     };
     recommendation?: {
       hiringRecommendation: string;
@@ -32,7 +38,13 @@ interface Report {
     interviewDate?: string;
   };
   competencyAssessment?: {
-    overallScore: string; // "18/50"
+    overallScore?: string | number; // "18/50" or number
+    scores?: {
+      overallScore?: string | number;
+    };
+  };
+  interviewResult?: {
+    overallScore?: number;
   };
   recommendation?: {
     hiringRecommendation: string;
@@ -40,6 +52,7 @@ interface Report {
   metadata?: {
     reportGenerated?: string;
   };
+  createdAt?: string;
 }
 
 export default function Reports() {
@@ -357,8 +370,17 @@ export default function Reports() {
                 const recomm = report.recommendation || report.data?.recommendation;
                 const meta = report.metadata || report.data?.metadata;
 
-                // Get raw score "18/50" directly
-                const rawScore = assess?.overallScore || 'N/A';
+                // Get raw score directly, handling nested structures and types
+                let rawScore =
+                  assess?.scores?.overallScore ||
+                  assess?.overallScore ||
+                  report.interviewResult?.overallScore ||
+                  report.data?.interviewResult?.overallScore ||
+                  'N/A';
+
+                if (typeof rawScore === 'number') {
+                  rawScore = rawScore.toString();
+                }
 
                 const recommendation = recomm?.hiringRecommendation || 'Pending';
                 const isRecommended = recommendation === 'Hire' || recommendation.toLowerCase() === 'recommended';

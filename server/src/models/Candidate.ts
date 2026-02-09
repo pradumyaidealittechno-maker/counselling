@@ -65,11 +65,29 @@ export interface ICandidate extends Document {
     technicalSkills: any;
     communication: any;
     problemSolving: any;
+    experienceRelevance?: any;
     culturalFit: any;
+    competencyDetails?: {
+      technicalSkills: string;
+      communication: string;
+      problemSolving: string;
+      experienceRelevance: string;
+      culturalFit: string;
+    };
     recommendation: string;
+    recommendationStatus?: string;
+    recommendationReasoning?: string;
+    nextSteps?: string[];
     summary: string;
     keyInsights: string[];
     redFlags: string[];
+    technicalQuestionAnalysis?: any;
+    professionalProfile?: any;
+    keyDiscussionPoints?: any;
+    notableQuotes?: string[];
+    questionsAskedByCandidate?: string[];
+    additionalNotes?: any;
+    metadata?: any;
   };
   resumeMatchScore?: number;
   resumeMatchAnalysis?: {
@@ -210,11 +228,29 @@ const candidateSchema = new Schema<ICandidate>(
       technicalSkills: Schema.Types.Mixed,
       communication: Schema.Types.Mixed,
       problemSolving: Schema.Types.Mixed,
+      experienceRelevance: Schema.Types.Mixed,
       culturalFit: Schema.Types.Mixed,
+      competencyDetails: {
+        technicalSkills: String,
+        communication: String,
+        problemSolving: String,
+        experienceRelevance: String,
+        culturalFit: String,
+      },
       recommendation: String,
+      recommendationStatus: String,
+      recommendationReasoning: String,
+      nextSteps: [String],
       summary: String,
       keyInsights: [String],
       redFlags: [String],
+      technicalQuestionAnalysis: Schema.Types.Mixed,
+      professionalProfile: Schema.Types.Mixed,
+      keyDiscussionPoints: Schema.Types.Mixed,
+      notableQuotes: [String],
+      questionsAskedByCandidate: [String],
+      additionalNotes: Schema.Types.Mixed,
+      metadata: Schema.Types.Mixed,
     },
     resumeMatchScore: Number,
     resumeMatchAnalysis: {
