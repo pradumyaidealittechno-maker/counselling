@@ -17,7 +17,7 @@ interface Candidate {
   interviewResult?: {
     overallScore: number;
     recommendation: string;
-    confidence: number;
+    confidence?: number;
     summary: string;
     keyStrengths: string[];
     keyConcerns: string[];
@@ -661,7 +661,7 @@ export default function AnalysisReport() {
         recommendationStatus: interviewAnalysis.recommendation?.status || '',
         recommendationReasoning: interviewAnalysis.recommendation?.reasoning || '',
         nextSteps: interviewAnalysis.recommendation?.nextSteps || [],
-        confidence: 85, // Default/Placeholder
+        confidence: undefined,
         summary: interviewAnalysis.executiveSummary || interviewAnalysis.overallAssessment?.summary || 'Analysis completed.',
         keyStrengths: interviewAnalysis.strengthsObserved || interviewAnalysis.keyDiscussionPoints?.technicalExperience || [],
         keyConcerns: interviewAnalysis.areasOfConcern || interviewAnalysis.keyDiscussionPoints?.redFlags || [],
@@ -827,7 +827,22 @@ export default function AnalysisReport() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Clock size={16} color="var(--gray-400)" />
-            <span style={{ fontSize: '1rem', color: 'var(--gray-600)' }}>{displayCandidate.interviewDate || 'Date not recorded'}</span>
+            <span style={{ fontSize: '1rem', color: 'var(--gray-600)' }}>
+              {(() => {
+                if (!displayCandidate.interviewDate) return 'Date not recorded';
+                const date = new Date(displayCandidate.interviewDate);
+                return isNaN(date.getTime())
+                  ? displayCandidate.interviewDate
+                  : date.toLocaleString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  });
+              })()}
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Video size={16} color="var(--gray-400)" />
@@ -877,7 +892,22 @@ export default function AnalysisReport() {
               {interviewAnalysis?.metadata?.reportGenerated && (
                 <div>
                   <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Report Generated</p>
-                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>{interviewAnalysis.metadata.reportGenerated}</p>
+                  <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>
+                    {(() => {
+                      if (!interviewAnalysis.metadata.reportGenerated) return 'N/A';
+                      const date = new Date(interviewAnalysis.metadata.reportGenerated);
+                      return isNaN(date.getTime())
+                        ? interviewAnalysis.metadata.reportGenerated
+                        : date.toLocaleString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        });
+                    })()}
+                  </p>
                 </div>
               )}
             </div>
@@ -1362,16 +1392,35 @@ export default function AnalysisReport() {
           <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--white)' }}>
             <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Report Details</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-              {Object.entries(interviewAnalysis.metadata).map(([key, value]) => (
-                <div key={key}>
-                  <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: 600, textTransform: 'capitalize' }}>
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </p>
-                  <p style={{ fontSize: '1rem', color: 'var(--gray-800)', fontWeight: 600 }}>
-                    {String(value)}
-                  </p>
-                </div>
-              ))}
+              {Object.entries(interviewAnalysis.metadata).map(([key, value]) => {
+                let displayValue = String(value);
+
+                // Format date if key is reportGenerated
+                if (key === 'reportGenerated' && typeof value === 'string') {
+                  const date = new Date(value);
+                  if (!isNaN(date.getTime())) {
+                    displayValue = date.toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    });
+                  }
+                }
+
+                return (
+                  <div key={key}>
+                    <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: 600, textTransform: 'capitalize' }}>
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </p>
+                    <p style={{ fontSize: '1rem', color: 'var(--gray-800)', fontWeight: 600 }}>
+                      {displayValue}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1470,9 +1519,11 @@ export default function AnalysisReport() {
                 {recommendation.recommendationStatus}
               </span>
             )}
-            <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
-              {recommendation.confidence}% confidence
-            </p>
+            {recommendation.confidence !== undefined && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.5rem' }}>
+                {recommendation.confidence}% confidence
+              </p>
+            )}
           </div>
           <p style={{ fontSize: '0.8125rem', color: 'var(--gray-600)', fontStyle: 'italic', lineHeight: 1.6 }}>
             "{recommendation.summary}"
