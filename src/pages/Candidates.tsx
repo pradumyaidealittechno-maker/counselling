@@ -49,6 +49,24 @@ const getStatusConfig = (status: string) => {
   return configs[status] || configs['new'];
 };
 
+const formatExperience = (exp: string | undefined): string => {
+  if (!exp) return 'N/A';
+  // Check if it already has text (e.g. "5 years" or "Fresher")
+  if (/[a-zA-Z]/.test(exp)) return exp;
+
+  const parts = exp.toString().split('.');
+  const years = parts[0] ? parseInt(parts[0]) : 0;
+  const months = parts[1] ? parseInt(parts[1]) : 0;
+
+  if (years === 0 && months === 0) return 'Fresher';
+
+  const result = [];
+  if (years > 0) result.push(`${years} Year${years > 1 ? 's' : ''}`);
+  if (months > 0) result.push(`${months} Month${months > 1 ? 's' : ''}`);
+
+  return result.join(' ');
+};
+
 export default function Candidates() {
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -604,7 +622,7 @@ export default function Candidates() {
                         onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}
                         style={{ padding: '0.6rem 1rem', fontSize: '1rem', color: 'var(--gray-600)', cursor: 'pointer' }}
                       >
-                        {candidate.experience || 'N/A'}
+                        {formatExperience(candidate.experience)}
                       </td>
                       <td
                         onClick={() => navigate(`/dashboard/candidates/${candidate._id}`)}

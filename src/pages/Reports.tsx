@@ -100,29 +100,20 @@ export default function Reports() {
   const confirmDelete = async () => {
     if (!reportToDelete) return;
 
-    // Try to get candidateId from various possible locations in the object structure
-    const candidateId = reportToDelete.candidateId ||
-      reportToDelete.data?.candidateId;
-
-    if (!candidateId) {
-      showToast.error('Could not identify candidate record to delete');
-      setDeleteModalOpen(false);
-      return;
-    }
-
     try {
       setIsDeleting(true);
-      await api.candidates.delete(candidateId);
+      // Use the new reports delete endpoint (Only deletes the report, keeps candidate)
+      await api.reports.delete(reportToDelete._id);
 
       // Update local state to remove the deleted report
       setReports(prev => prev.filter(r => r._id !== reportToDelete._id));
 
-      showToast.success('Candidate and report deleted successfully');
+      showToast.success('Report deleted successfully');
       setDeleteModalOpen(false);
       setReportToDelete(null);
     } catch (error: any) {
       console.error('Delete failed:', error);
-      showToast.error('Failed to delete candidate');
+      showToast.error('Failed to delete report');
     } finally {
       setIsDeleting(false);
     }

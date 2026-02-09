@@ -430,4 +430,55 @@ router.post('/:id/test-questions', authenticate, async (req, res) => {
   }
 });
 
+// Generate evaluation criteria for a specific question (protected)
+router.post('/:id/generate-criteria', authenticate, async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: 'Question text is required' });
+    }
+
+    const criteria = await aiService.generateEvaluationCriteria(question);
+    res.json(criteria);
+  } catch (error: any) {
+    console.error('Generate criteria error:', error);
+    res.status(500).json({ error: 'Failed to generate evaluation criteria' });
+  }
+});
+
+// Generate DNA mapping for a question (protected)
+router.post('/:id/generate-dna-mapping', authenticate, async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: 'Question text is required' });
+    }
+
+    // Fetch job to get existing DNA traits for context
+    const job = await Job.findById(req.params.id);
+
+    const mappings = await aiService.generateDnaMapping(question, job?.jobDNA);
+    res.json(mappings);
+  } catch (error: any) {
+    console.error('Generate DNA mapping error:', error);
+    res.status(500).json({ error: 'Failed to generate DNA mapping' });
+  }
+});
+
+// Generate follow-up questions (protected)
+router.post('/:id/generate-follow-ups', authenticate, async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: 'Question text is required' });
+    }
+
+    const questions = await aiService.generateFollowUpQuestions(question);
+    res.json(questions);
+  } catch (error: any) {
+    console.error('Generate follow-ups error:', error);
+    res.status(500).json({ error: 'Failed to generate follow-up questions' });
+  }
+});
+
 export default router;

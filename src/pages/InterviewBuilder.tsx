@@ -773,6 +773,7 @@ export default function InterviewBuilder() {
                 {categoryQuestions.map((q, i) => (
                   <QuestionCard
                     key={q.id || i}
+                    jobId={job._id}
                     question={q}
                     index={i}
                     isExpanded={expandedQuestion === (q.id || `${category}-${i}`)}
@@ -877,7 +878,7 @@ export default function InterviewBuilder() {
                 </>
               )}
             </button>
-            <button className="btn btn-ghost">Save as Draft</button>
+            {/* <button className="btn btn-ghost">Save as Draft</button> */}
           </div>
         </div>
       </div>
@@ -970,6 +971,7 @@ export default function InterviewBuilder() {
 }
 
 function QuestionCard({
+  jobId,
   question,
   index,
   isExpanded,
@@ -980,6 +982,7 @@ function QuestionCard({
   onSave,
   onCancel
 }: {
+  jobId: string;
   question: InterviewQuestion;
   index: number;
   isExpanded: boolean;
@@ -995,6 +998,68 @@ function QuestionCard({
   const [editedDnaMapping, setEditedDnaMapping] = useState(question.dnaMapping || []);
   const [editedEvaluationCriteria, setEditedEvaluationCriteria] = useState(question.evaluationCriteria || { excellent: '', good: '', average: '', poor: '' });
   const [editedFollowUpQuestions, setEditedFollowUpQuestions] = useState(question.followUpQuestions || []);
+  const [isGeneratingCriteria, setIsGeneratingCriteria] = useState(false);
+
+  const handleGenerateCriteria = async () => {
+    if (!editedText || !editedText.trim()) {
+      showToast.error('Please enter question text first');
+      return;
+    }
+
+    try {
+      setIsGeneratingCriteria(true);
+      const criteria = await api.jobs.generateEvaluationCriteria(jobId, editedText);
+      setEditedEvaluationCriteria(criteria);
+      showToast.success('Evaluation criteria generated');
+    } catch (err: any) {
+      console.error('Failed to generate criteria', err);
+      showToast.error('Failed to generate criteria');
+    } finally {
+      setIsGeneratingCriteria(false);
+    }
+  };
+
+  const [isGeneratingMapping, setIsGeneratingMapping] = useState(false);
+  const [isGeneratingFollowUps, setIsGeneratingFollowUps] = useState(false);
+
+  const isLastMappingValid = editedDnaMapping.length === 0 || (editedDnaMapping[editedDnaMapping.length - 1].trait && editedDnaMapping[editedDnaMapping.length - 1].trait.trim() !== '');
+  const isLastFollowUpValid = editedFollowUpQuestions.length === 0 || (editedFollowUpQuestions[editedFollowUpQuestions.length - 1] && editedFollowUpQuestions[editedFollowUpQuestions.length - 1].trim() !== '');
+
+  const handleGenerateMapping = async () => {
+    if (!editedText || !editedText.trim()) {
+      showToast.error('Please enter question text first');
+      return;
+    }
+    try {
+      setIsGeneratingMapping(true);
+      const mappings = await api.jobs.generateDnaMapping(jobId, editedText);
+      setEditedDnaMapping([...editedDnaMapping, ...mappings]);
+      showToast.success('DNA Mappings generated');
+    } catch (err: any) {
+      console.error('Failed to generate DNA mapping', err);
+      showToast.error('Failed to generate DNA mapping');
+    } finally {
+      setIsGeneratingMapping(false);
+    }
+  };
+
+  const handleGenerateFollowUps = async () => {
+    if (!editedText || !editedText.trim()) {
+      showToast.error('Please enter question text first');
+      return;
+    }
+    try {
+      setIsGeneratingFollowUps(true);
+      const questions = await api.jobs.generateFollowUpQuestions(jobId, editedText);
+      setEditedFollowUpQuestions([...editedFollowUpQuestions, ...questions]);
+      showToast.success('Follow-up questions generated');
+    } catch (err: any) {
+      console.error('Failed to generate follow-ups', err);
+      showToast.error('Failed to generate follow-up questions');
+    } finally {
+      setIsGeneratingFollowUps(false);
+    }
+  };
 
   useEffect(() => {
     setEditedText(question.text);
@@ -1118,14 +1183,28 @@ function QuestionCard({
               <div style={{ marginBottom: '1rem', padding: '1rem', background: 'white', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)' }}>DNA Trait Mappings</label>
-                  <button
-                    type="button"
-                    onClick={handleAddMapping}
-                    className="btn btn-ghost btn-sm"
-                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto' }}
-                  >
-                    <Plus size={14} /> Add Trait
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={handleGenerateMapping}
+                      className="btn btn-ghost btn-sm"
+                      disabled={isGeneratingMapping}
+                      title="Auto-generate traits using AI"
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#7C3AED' }}
+                    >
+                      {isGeneratingMapping ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Bot size={14} />}
+                      Auto-Generate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddMapping}
+                      disabled={!isLastMappingValid}
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto', opacity: isLastMappingValid ? 1 : 0.5, cursor: isLastMappingValid ? 'pointer' : 'not-allowed' }}
+                    >
+                      <Plus size={14} /> Add Trait
+                    </button>
+                  </div>
                 </div>
 
                 {editedDnaMapping.length === 0 && (
@@ -1210,7 +1289,20 @@ function QuestionCard({
 
               {/* Edit Evaluation Criteria */}
               <div style={{ marginBottom: '1rem', padding: '1rem', background: 'white', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>Evaluation Criteria</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>Evaluation Criteria</h4>
+                  <button
+                    type="button"
+                    onClick={handleGenerateCriteria}
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#7C3AED' }}
+                    disabled={isGeneratingCriteria}
+                    title="Auto-generate criteria using AI based on the question text"
+                  >
+                    {isGeneratingCriteria ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Bot size={14} />}
+                    Auto-Generate Criteria
+                  </button>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   {['excellent', 'good', 'average', 'poor'].map((level) => (
                     <div key={level}>
@@ -1231,14 +1323,28 @@ function QuestionCard({
               <div style={{ marginBottom: '1rem', padding: '1rem', background: 'white', borderRadius: '0.5rem', border: '1px solid #E5E7EB' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)' }}>Follow-up Questions</label>
-                  <button
-                    type="button"
-                    onClick={handleAddFollowUp}
-                    className="btn btn-ghost btn-sm"
-                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto' }}
-                  >
-                    <Plus size={14} /> Add
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={handleGenerateFollowUps}
+                      className="btn btn-ghost btn-sm"
+                      disabled={isGeneratingFollowUps}
+                      title="Auto-generate follow-up questions using AI"
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto', display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#7C3AED' }}
+                    >
+                      {isGeneratingFollowUps ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Bot size={14} />}
+                      Auto-Generate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddFollowUp}
+                      disabled={!isLastFollowUpValid}
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', height: 'auto', opacity: isLastFollowUpValid ? 1 : 0.5, cursor: isLastFollowUpValid ? 'pointer' : 'not-allowed' }}
+                    >
+                      <Plus size={14} /> Add
+                    </button>
+                  </div>
                 </div>
                 {editedFollowUpQuestions.length === 0 && (
                   <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>No follow-up questions added.</p>

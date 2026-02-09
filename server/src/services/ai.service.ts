@@ -773,6 +773,210 @@ Output JSON Format:
     ];
   }
 
+  async generateEvaluationCriteria(question: string): Promise<{
+    excellent: string;
+    good: string;
+    average: string;
+    poor: string;
+  }> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      return {
+        excellent: "Demonstrates deep understanding with comprehensive examples and covers edge cases.",
+        good: "Shows solid understanding and provides a clear explanation.",
+        average: "Basic understanding but lacks depth or specific examples.",
+        poor: "Incorrect, vague, or irrelevant answer."
+      };
+    }
+
+    try {
+      const prompt = `You are an expert technical interviewer. Create evaluation criteria for the following interview question:
+      
+      Question: "${question}"
+      
+      Provide criteria for 4 levels: Excellent, Good, Average, Poor.
+      
+      Output JSON format:
+      {
+        "excellent": "...",
+        "good": "...",
+        "average": "...",
+        "poor": "..."
+      }`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert interviewer creating structured evaluation criteria.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000,
+        }
+      );
+
+      return JSON.parse(response.data.choices[0].message.content);
+    } catch (error: any) {
+      console.error('❌ Failed to generate evaluation criteria:', error.response?.data || error.message);
+
+      if (error.response?.data?.error?.type === 'invalid_request_error') {
+        return {
+          excellent: "Demonstrates deep understanding with comprehensive examples and covers edge cases.",
+          good: "Shows solid understanding and provides a clear explanation.",
+          average: "Basic understanding but lacks depth or specific examples.",
+          poor: "Incorrect, vague, or irrelevant answer."
+        };
+      }
+
+      throw new Error('Failed to generate evaluation criteria');
+    }
+  }
+
+  async generateDnaMapping(question: string, jobDNA?: any): Promise<any[]> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      return [
+        {
+          dimension: "Skill",
+          trait: "Technical Proficiency",
+          importance: "high",
+          signalsToEvaluate: ["Technical accuracy", "Depth of knowledge"]
+        }
+      ];
+    }
+
+    try {
+      const prompt = `You are an expert technical interviewer. Map the following interview question to the most relevant Job DNA trait.
+      
+      Question: "${question}"
+      
+      ${jobDNA ? `Available Job DNA Traits:
+      - Skill: ${jobDNA.skillDNA?.map((t: any) => t.name).join(', ')}
+      - Experience: ${jobDNA.experienceDNA?.map((t: any) => t.name).join(', ')}
+      - Behavioral: ${jobDNA.behavioralDNA?.map((t: any) => t.name).join(', ')}
+      - Communication: ${jobDNA.communicationDNA?.map((t: any) => t.name).join(', ')}
+      ` : ''}
+      
+      Output JSON format:
+      {
+        "mappings": [
+          {
+            "dimension": "Skill|Experience|Behavioral|Communication|Cultural",
+            "trait": "Name of the trait (use one from available list if possible)",
+            "importance": "critical|high|medium|low",
+            "signalsToEvaluate": ["signal1", "signal2"]
+          }
+        ]
+      }`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            { role: 'system', content: 'You are an expert interviewer.' },
+            { role: 'user', content: prompt }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000,
+        }
+      );
+
+      const result = JSON.parse(response.data.choices[0].message.content);
+      return result.mappings || [];
+    } catch (error: any) {
+      console.error('❌ Failed to generate DNA mapping:', error.response?.data || error.message);
+      if (error.response?.data?.error?.type === 'invalid_request_error') {
+        return [
+          {
+            dimension: "Skill",
+            trait: "Technical Proficiency",
+            importance: "high",
+            signalsToEvaluate: ["Technical accuracy", "Depth of knowledge"]
+          }
+        ];
+      }
+      throw new Error('Failed to generate DNA mapping');
+    }
+  }
+
+  async generateFollowUpQuestions(question: string): Promise<string[]> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      return [
+        "Can you provide more specific examples?",
+        "How would you handle edge cases in this scenario?"
+      ];
+    }
+
+    try {
+      const prompt = `Generate 2 follow-up interview questions for the following question:
+      "${question}"
+      
+      Output JSON format:
+      {
+        "questions": ["Follow-up question 1", "Follow-up question 2"]
+      }`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            { role: 'system', content: 'You are an expert interviewer.' },
+            { role: 'user', content: prompt }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000,
+        }
+      );
+
+      const result = JSON.parse(response.data.choices[0].message.content);
+      return result.questions || [];
+    } catch (error: any) {
+      console.error('❌ Failed to generate follow-up questions:', error.response?.data || error.message);
+      if (error.response?.data?.error?.type === 'invalid_request_error') {
+        return [
+          "Can you provide more specific examples?",
+          "How would you handle edge cases in this scenario?"
+        ];
+      }
+      throw new Error('Failed to generate follow-up questions');
+    }
+  }
+
   /**
    * AI Chat Assistant for DNA/Hiring/Candidate questions
    */

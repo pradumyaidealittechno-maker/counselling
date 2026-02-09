@@ -60,6 +60,31 @@ export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selecte
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+
+        if (name === 'experience') {
+            // Allow empty value
+            if (value === '') {
+                setFormData(prev => ({ ...prev, [name]: value }));
+                return;
+            }
+
+            // Only allow numbers and MAX one decimal digit
+            if (/^\d*\.?\d{0,1}$/.test(value)) {
+                // Allow single decimal point even if it's not a full number yet
+                if (value === '.') {
+                    setFormData(prev => ({ ...prev, [name]: value }));
+                    return;
+                }
+
+                // Check if value is within range (<= 20)
+                const num = parseFloat(value);
+                if (!isNaN(num) && num <= 20) {
+                    setFormData(prev => ({ ...prev, [name]: value }));
+                }
+            }
+            return;
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -209,14 +234,37 @@ export default function AddCandidateDialog({ isOpen, onClose, onSuccess, selecte
                             <Briefcase size={16} color="#9CA3AF" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                             <input
                                 type="text"
+                                inputMode="decimal"
                                 name="experience"
                                 className="input"
                                 required
-                                placeholder="e.g., 3 years, 5+ years, Fresher"
+                                placeholder="e.g., 2.6 (Max 20 years)"
                                 value={formData.experience}
                                 onChange={handleChange}
                                 style={{ paddingLeft: '36px' }}
                             />
+                            {formData.experience && formData.experience !== '.' && (
+                                <span style={{
+                                    position: 'absolute',
+                                    right: '10px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: '#6B7280',
+                                    fontSize: '0.875rem',
+                                    pointerEvents: 'none',
+                                    backgroundColor: 'rgba(255,255,255,0.9)',
+                                    paddingLeft: '0.5rem'
+                                }}>
+                                    {(() => {
+                                        const parts = formData.experience.split('.');
+                                        const years = parts[0] ? parseInt(parts[0]) : 0;
+                                        const months = parts[1] ? parseInt(parts[1]) : 0;
+                                        const yText = years > 0 ? `${years} Year${years > 1 ? 's' : ''}` : '';
+                                        const mText = months > 0 ? `${months} Month${months > 1 ? 's' : ''}` : '';
+                                        return `${yText} ${mText}`.trim() || (parts[0] === '0' ? 'Fresher' : '');
+                                    })()}
+                                </span>
+                            )}
                         </div>
                     </div>
 

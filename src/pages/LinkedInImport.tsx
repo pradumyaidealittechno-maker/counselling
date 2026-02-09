@@ -11,14 +11,23 @@ export default function LinkedInImport() {
   const [error, setError] = useState<string | null>(null);
 
   const handleFetch = async () => {
-    if (!linkedInUrl.trim()) {
+    const url = linkedInUrl.trim();
+
+    if (!url) {
       setError('Please enter a LinkedIn job URL');
+      return;
+    }
+
+    // Validate LinkedIn URL pattern
+    const linkedInPattern = /^https?:\/\/(www\.)?linkedin\.com\/jobs\//i;
+    if (!linkedInPattern.test(url)) {
+      setError('Invalid URL. Please enter a valid LinkedIn Job URL (e.g., https://www.linkedin.com/jobs/view/...)');
       return;
     }
 
     setStep('fetching');
     setError(null);
-    
+
     // Simulate progress while creating job
     let progress = 0;
     const interval = setInterval(() => {
@@ -30,22 +39,22 @@ export default function LinkedInImport() {
       // Create a new job with the LinkedIn URL as source
       const jobData = {
         title: 'Imported Job',
-        description: `Job imported from LinkedIn: ${linkedInUrl}\n\nPlease update the job details and generate Job DNA.`,
+        description: `Job imported from LinkedIn: ${url}\n\nPlease update the job details and generate Job DNA.`,
         department: 'To be updated',
         location: 'To be updated',
         employmentType: 'full-time',
         experienceLevel: 'mid',
         source: {
           type: 'linkedin',
-          linkedInUrl: linkedInUrl
+          linkedInUrl: url
         }
       };
 
       const job = await api.jobs.create(jobData);
-      
+
       clearInterval(interval);
       setFetchProgress(100);
-      
+
       // Navigate to job DNA page with the new job
       setTimeout(() => {
         navigate(`/dashboard/jobs/${job._id}/job-dna`);

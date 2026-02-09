@@ -303,4 +303,27 @@ router.patch('/:id/decision', authenticate, async (req, res) => {
   }
 });
 
+// Delete report and associated candidate (protected)
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const result = await CandidateResult.findById(reportId);
+
+    if (!result) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+
+
+    // Delete ONLY the report by ID (Keep candidate intact as per user request)
+    await CandidateResult.findByIdAndDelete(reportId);
+    console.log('🗑️ Deleted report (CandidateResult) only:', reportId);
+
+    res.json({ message: 'Report deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete report error:', error);
+    res.status(500).json({ error: 'Failed to delete report' });
+  }
+});
+
 export default router;

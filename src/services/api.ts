@@ -215,6 +215,12 @@ export const api = {
         body: JSON.stringify({ finalDecision: decision, notes }),
       });
     },
+
+    delete: async (id: string) => {
+      return authFetch(`/api/reports/${id}`, {
+        method: 'DELETE',
+      });
+    },
   },
 
   // Job APIs
@@ -257,6 +263,27 @@ export const api = {
       return authFetch(`/api/jobs/${id}/generate-questions`, {
         method: 'POST',
         body: JSON.stringify(options || {}),
+      });
+    },
+
+    generateEvaluationCriteria: async (id: string, question: string) => {
+      return authFetch(`/api/jobs/${id}/generate-criteria`, {
+        method: 'POST',
+        body: JSON.stringify({ question }),
+      });
+    },
+
+    generateDnaMapping: async (id: string, question: string) => {
+      return authFetch(`/api/jobs/${id}/generate-dna-mapping`, {
+        method: 'POST',
+        body: JSON.stringify({ question }),
+      });
+    },
+
+    generateFollowUpQuestions: async (id: string, question: string) => {
+      return authFetch(`/api/jobs/${id}/generate-follow-ups`, {
+        method: 'POST',
+        body: JSON.stringify({ question }),
       });
     },
 
