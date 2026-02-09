@@ -522,8 +522,24 @@ export default function AnalysisReport() {
     if (!displayCandidate.recordingUrl && interviewAnalysis?.recordingUrl) {
       displayCandidate.recordingUrl = interviewAnalysis.recordingUrl;
     }
+
     console.log('Using Candidate Data - displayCandidate:', displayCandidate);
     console.log('Using Candidate Data - interviewAnalysis:', interviewAnalysis);
+  }
+
+  // Ensure displayData exists
+  if (displayCandidate) {
+    // Robust date/time fallback logic: if interviewDate is missing or just a date (midnight),
+    // use createdAt or other metadata that likely has a specific time.
+    const rawDate = displayCandidate.interviewDate;
+    if (!rawDate) {
+      displayCandidate.interviewDate = (reportData || candidate)?.createdAt || (reportData || candidate)?.updatedAt;
+    } else {
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime()) || (d.getHours() === 0 && d.getMinutes() === 0)) {
+        displayCandidate.interviewDate = (reportData || candidate)?.createdAt || (reportData || candidate)?.updatedAt || rawDate;
+      }
+    }
   }
 
   // --- TRANSCRIPT PARSING FOR Q&A mapping ---
@@ -894,10 +910,12 @@ export default function AnalysisReport() {
                   <p style={{ color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.9rem' }}>Report Generated</p>
                   <p style={{ color: 'var(--gray-900)', fontWeight: 600 }}>
                     {(() => {
-                      if (!interviewAnalysis.metadata.reportGenerated) return 'N/A';
-                      const date = new Date(interviewAnalysis.metadata.reportGenerated);
+                      // Use interviewDate to match the top section as per user request
+                      const dateSource = displayCandidate.interviewDate || interviewAnalysis.metadata.reportGenerated;
+                      if (!dateSource) return 'N/A';
+                      const date = new Date(dateSource);
                       return isNaN(date.getTime())
-                        ? interviewAnalysis.metadata.reportGenerated
+                        ? dateSource
                         : date.toLocaleString('en-GB', {
                           day: '2-digit',
                           month: '2-digit',
@@ -1396,8 +1414,10 @@ export default function AnalysisReport() {
                 let displayValue = String(value);
 
                 // Format date if key is reportGenerated
-                if (key === 'reportGenerated' && typeof value === 'string') {
-                  const date = new Date(value);
+                if (key === 'reportGenerated') {
+                  // Override with interview date to match top section as per user request
+                  const dateSource = displayCandidate.interviewDate || (typeof value === 'string' ? value : '');
+                  const date = new Date(dateSource);
                   if (!isNaN(date.getTime())) {
                     displayValue = date.toLocaleString('en-GB', {
                       day: '2-digit',
