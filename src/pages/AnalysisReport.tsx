@@ -987,7 +987,7 @@ export default function AnalysisReport() {
                 <span style={{ fontSize: '2.5rem', fontWeight: 800, color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#6366F1' : '#F59E0B' }}>
                   {Number(recommendation.overallScore / 10).toFixed(1)}
                 </span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', fontWeight: 600 }}>Overall Match</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', fontWeight: 600 }}>DNA Match Score</span>
               </div>
             </div>
           </div>
@@ -1553,13 +1553,13 @@ export default function AnalysisReport() {
                 <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--gray-900)' }}>
                   {interviewAnalysis?.competencyAssessment?.scores?.overallScore || recommendation.overallScore}
                 </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>/ 50 Overall</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>/ 50 DNA Match Score</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '4px', marginTop: '0.25rem' }}>
                 <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6366F1' }}>
                   {technicalScoreSummary.total > 0 ? Math.round((technicalScoreSummary.earned / technicalScoreSummary.total) * 100) : 0}
                 </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--gray-500)', fontWeight: 600 }}>/ 100 Technical</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--gray-500)', fontWeight: 600 }}>/ 100 Technical Match Score</span>
               </div>
             </div>
 
