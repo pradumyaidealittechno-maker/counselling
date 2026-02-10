@@ -103,7 +103,7 @@ Provide a detailed analysis in the following JSON format:
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4-turbo-preview',
+          model: 'gpt-5-mini',
           messages: [
             {
               role: 'system',
@@ -216,7 +216,7 @@ Guidelines:
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4-turbo-preview',
+          model: 'gpt-5-mini',
           messages: [
             {
               role: 'system',
@@ -402,8 +402,8 @@ Guidelines:
 
           console.log(`🔹 [Batch ${i + 1}/${batches}] Requesting ${countStr} questions...`);
 
-          const prompt = `You are an expert technical interviewer creating a comprehensive interview script.
-
+          const prompt = `You are an expert technical interviewer creating a comprehensive, deep-dive interview script.
+          
 Job Context:
 Title: ${jobData.jobTitle}
 Description: ${jobData.jobDescription}
@@ -421,12 +421,18 @@ ${jobData.customPrompt ? `Custom User Instructions:
 ${jobData.customPrompt}
 ` : ''}
 
+STRICT TECHNICAL REQUIREMENTS:
+1. For TECHNICAL questions, go DEEP into the specific languages and frameworks mentioned (e.g., if React is mentioned, ask about reconciliation internals, hooks lifecycle, or concurrent rendering; if Node.js, ask about the event loop phases, worker threads, or stream internals).
+2. Questions must be high-signal and evaluate deep architectural understanding, performance optimization, and language-specific best practices.
+3. Avoid surface-level questions. Frame questions in a way that requires solving a complex scenario or explaining "why" and "how" things work under the hood.
+4. Ensure the technical depth is perfectly aligned with the ${jobData.experienceLevel} level.
+
 TASK Checklist:
-1. Generate EXACTLY ${countStr} distinct interview questions.
+1. Generate EXACTLY ${countStr} distinct, high-quality interview questions.
 2. Ensure strict sequential numbering in IDs (e.g., "q-1", "q-2", ... "q-${countStr}").
-3. Cover diversified categories: technical, behavioral, situational, and communication.
+3. Cover diversified categories: technical (deep-dive), behavioral, situational, and communication.
 4. Directly assess the specific Skills and Job DNA traits provided above.
-5. Provide clear evaluation criteria for each question.
+5. Provide clear, granular evaluation criteria for each question.
 
 Output JSON Format:
 {
@@ -458,7 +464,7 @@ Output JSON Format:
           const response = await axios.post(
             `${this.baseUrl}/chat/completions`,
             {
-              model: 'gpt-4-turbo-preview',
+              model: 'gpt-5-mini',
               messages: [
                 {
                   role: 'system',
@@ -808,7 +814,7 @@ Output JSON Format:
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4-turbo-preview',
+          model: 'gpt-5-mini',
           messages: [
             {
               role: 'system',
@@ -889,7 +895,7 @@ Output JSON Format:
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4-turbo-preview',
+          model: 'gpt-5-mini',
           messages: [
             { role: 'system', content: 'You are an expert interviewer.' },
             { role: 'user', content: prompt }
@@ -946,7 +952,7 @@ Output JSON Format:
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4-turbo-preview',
+          model: 'gpt-5-mini',
           messages: [
             { role: 'system', content: 'You are an expert interviewer.' },
             { role: 'user', content: prompt }
@@ -1098,7 +1104,7 @@ User Question: "${message}"`;
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4',
+          model: 'gpt-5-mini',
           messages,
           temperature: 0.7,
           max_tokens: 500,
@@ -1161,7 +1167,7 @@ CRITICAL RULES:
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4o',
+          model: 'gpt-5-mini',
           messages: [
             {
               role: 'system',
@@ -1251,7 +1257,7 @@ SCORING CRITERIA:
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
-          model: 'gpt-4o',
+          model: 'gpt-5-mini',
           messages: [
             {
               role: 'system',

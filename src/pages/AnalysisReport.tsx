@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Link, useParams, useLocation } from 'react-router-dom';
@@ -578,20 +578,28 @@ export default function AnalysisReport() {
 
   const { interviewResult } = displayCandidate as any;
 
-  // Calculate technical score summary
+  // Use technical score summary from database record
   const technicalScoreSummary = (() => {
-    if (!interviewAnalysis?.technicalQuestionAnalysis?.questionsAssessed) return { earned: 0, total: 0 };
+    const summary = interviewAnalysis?.technicalQuestionAnalysis?.technicalPerformanceSummary || {};
+    const questions = interviewAnalysis?.technicalQuestionAnalysis?.questionsAssessed || [];
 
-    const questions = interviewAnalysis.technicalQuestionAnalysis.questionsAssessed;
-    const earned = questions.reduce((sum: number, q: any) => {
-      const scoreStr = q.score || "0/10";
-      const [val] = scoreStr.split('/').map(Number);
+    // Prioritize direct database values for counts
+    const correct = summary.correctAnswers ?? 0;
+    const partial = summary.partiallyCorrect ?? 0;
+    const count = summary.totalQuestionsAsked ?? questions.length;
+
+    // Calculate earned score from questions array as fallback
+    const earned = summary.totalScoreEarned ?? questions.reduce((sum: number, q: any) => {
+      const val = parseInt(q.score || "0");
       return sum + (isNaN(val) ? 0 : val);
     }, 0);
 
     return {
       earned,
-      total: questions.length * 10
+      total: count * 10,
+      correct,
+      partial,
+      count
     };
   })();
 
@@ -961,7 +969,7 @@ export default function AnalysisReport() {
               width: '140px',
               height: '140px',
               borderRadius: '50%',
-              background: `conic-gradient(${recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B'} ${recommendation.overallScore * 3.6}deg, var(--gray-100) 0deg)`,
+              background: `conic-gradient(${recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#6366F1' : '#F59E0B'} ${recommendation.overallScore * 3.6}deg, var(--gray-100) 0deg)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -976,7 +984,7 @@ export default function AnalysisReport() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#E91E63' : '#F59E0B' }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: recommendation.overallScore >= 90 ? '#10B981' : recommendation.overallScore >= 80 ? '#6366F1' : '#F59E0B' }}>
                   {Number(recommendation.overallScore / 10).toFixed(1)}
                 </span>
                 <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', fontWeight: 600 }}>Overall Match</span>
@@ -984,15 +992,16 @@ export default function AnalysisReport() {
             </div>
           </div>
 
-          {/* Dimension Bars */}
           {Object.entries(dimensionEvaluations).map(([key, evaluation]) => {
             if (!evaluation) return null;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const evalObj = evaluation as any;
+
+            // Skip Skill DNA as per user request
+            if (evalObj.dimension === 'Skill DNA') return null;
+
             const score = evalObj.overallScore;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const rawScore = (evaluation as any).rawScore || `${Math.round(score)}%`;
-            const scoreColor = score >= 90 ? '#10B981' : score >= 80 ? '#E91E63' : '#F59E0B';
+            const scoreColor = score >= 90 ? '#10B981' : score >= 80 ? '#6366F1' : '#F59E0B';
 
             return (
               <div key={key} style={{ marginBottom: '1.25rem' }}>
@@ -1163,42 +1172,40 @@ export default function AnalysisReport() {
             <h3 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--gray-900)' }}>Technical Question Analysis</h3>
 
             {/* Performance Summary */}
-            {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '1rem',
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                background: 'var(--gray-50)',
-                borderRadius: '0.75rem'
-              }}>
-                <div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Total Questions</p>
-                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--gray-900)' }}>
-                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.totalQuestionsAsked}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Correct</p>
-                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10B981' }}>
-                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.correctAnswers}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Partial</p>
-                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F59E0B' }}>
-                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.partiallyCorrect}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Total Score</p>
-                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#6366F1' }}>
-                    {technicalScoreSummary.earned}/{technicalScoreSummary.total}
-                  </p>
-                </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '1rem',
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              background: 'var(--gray-50)',
+              borderRadius: '0.75rem'
+            }}>
+              <div>
+                <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Total Questions</p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--gray-900)' }}>
+                  {technicalScoreSummary.count}
+                </p>
               </div>
-            )}
+              <div>
+                <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Correct</p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10B981' }}>
+                  {technicalScoreSummary.correct}
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Partial</p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F59E0B' }}>
+                  {technicalScoreSummary.partial}
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Total Score</p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#6366F1' }}>
+                  {technicalScoreSummary.earned}/{technicalScoreSummary.total}
+                </p>
+              </div>
+            </div>
 
             {/* Questions Visibility Toggle */}
             <div data-pdf-hide style={{ display: 'flex', justifyContent: 'center', marginBottom: showAllQuestions ? '1.5rem' : 0 }}>
@@ -1220,112 +1227,109 @@ export default function AnalysisReport() {
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}
               >
-                {showAllQuestions ? 'Hide Detailed Analysis' : 'View Detailed Answer Analysis'}
+                {showAllQuestions ? 'Hide Analysis' : 'Show More'}
                 <ArrowLeft size={16} style={{ transform: showAllQuestions ? 'rotate(90deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
               </button>
             </div>
 
             {/* Questions List */}
-            <div data-pdf-force-show style={{ display: showAllQuestions ? 'block' : 'none' }}>
-              {interviewAnalysis.technicalQuestionAnalysis.questionsAssessed?.map((q: any, i: number) => {
-                const qNum = q.questionNumber || i + 1;
-                const transcriptData = transcriptQAMap.get(qNum);
+            <div data-pdf-force-show style={{ overflowX: 'auto', display: showAllQuestions ? 'block' : 'none', marginTop: showAllQuestions ? '1.5rem' : 0 }}>
+              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--gray-200)', borderRadius: '0.75rem' }}>
+                <thead style={{ background: 'var(--gray-50)' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', borderBottom: '1px solid var(--gray-200)' }}>Q#</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', borderBottom: '1px solid var(--gray-200)' }}>Topic</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', borderBottom: '1px solid var(--gray-200)' }}>Score</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', borderBottom: '1px solid var(--gray-200)' }}>Correctness</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: 'var(--gray-700)', borderBottom: '1px solid var(--gray-200)' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {interviewAnalysis.technicalQuestionAnalysis.questionsAssessed?.map((q: any, i: number) => {
+                    const qNum = q.questionNumber || i + 1;
+                    const transcriptData = transcriptQAMap.get(qNum);
+                    const displayQuestion = q.question || transcriptData?.question || '';
+                    const displayAnswer = q.candidateAnswer || transcriptData?.answer || '';
+                    const isExpanded = expandedQuestions.includes(qNum);
 
-                // PRIORITY: Use DB data first (q.question and q.candidateAnswer)
-                // Only fallback to transcript if DB data is empty
-                const displayQuestion = q.question || transcriptData?.question || '';
-                const displayAnswer = q.candidateAnswer || transcriptData?.answer || '';
+                    const toggleQuestion = () => {
+                      if (isExpanded) {
+                        setExpandedQuestions(prev => prev.filter(id => id !== qNum));
+                      } else {
+                        setExpandedQuestions(prev => [...prev, qNum]);
+                      }
+                    };
 
-                const isExpanded = expandedQuestions.includes(qNum);
-
-                const toggleQuestion = () => {
-                  if (isExpanded) {
-                    setExpandedQuestions(prev => prev.filter(id => id !== qNum));
-                  } else {
-                    setExpandedQuestions(prev => [...prev, qNum]);
-                  }
-                };
-
-                return (
-                  <div key={i} style={{
-                    marginBottom: '1.5rem',
-                    padding: '1rem',
-                    border: '1px solid var(--gray-200)',
-                    borderRadius: '0.75rem',
-                    background: '#FFFFFF'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--gray-600)' }}>
-                          Question {qNum}: {q.topic}
-                        </span>
-                        <button
-                          data-pdf-hide
-                          onClick={toggleQuestion}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--primary)',
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            textDecoration: 'underline'
-                          }}
-                        >
-                          {isExpanded ? 'Hide Details' : 'Show Details'}
-                        </button>
-                      </div>
-                      <span style={{
-                        fontSize: '0.9rem',
-                        fontWeight: 700,
-                        color: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#10B981' : q.correctness?.toLowerCase().includes('partial') ? '#B45309' : '#EF4444',
-                        padding: '0.25rem 0.75rem',
-                        background: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#ECFDF5' : q.correctness?.toLowerCase().includes('partial') ? '#FFFBEB' : '#FEF2F2',
-                        borderRadius: '0.5rem',
-                        border: '1px solid transparent',
-                        borderColor: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#A7F3D0' : q.correctness?.toLowerCase().includes('partial') ? '#FDE68A' : '#FECACA',
-                      }}>
-                        {q.score} - {q.correctness}
-                      </span>
-                    </div>
-
-                    <div data-pdf-force-show style={{
-                      marginTop: '1rem',
-                      borderTop: '1px solid var(--gray-100)',
-                      paddingTop: '1rem',
-                      display: isExpanded ? 'block' : 'none'
-                    }}>
-                      <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '1rem', lineHeight: 1.5 }}>
-                        {displayQuestion}
-                      </p>
-
-                      <div style={{ marginBottom: '1rem' }}>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 600 }}>Candidate Answer:</p>
-                        <p style={{ fontSize: '1rem', color: 'var(--gray-800)', background: 'var(--gray-50)', padding: '0.75rem', borderRadius: '0.5rem', lineHeight: 1.6, border: '1px solid var(--gray-100)', whiteSpace: 'pre-wrap' }}>
-                          {displayAnswer || 'No response recorded.'}
-                        </p>
-                      </div>
-
-                      {q.whatWasMissing && (
-                        <div style={{ marginBottom: '1rem' }}>
-                          <p style={{ fontSize: '0.9rem', color: '#B45309', marginBottom: '0.25rem', fontWeight: 600 }}>Missing / Improvements:</p>
-                          <p style={{ fontSize: '1rem', color: '#92400E', lineHeight: 1.6 }}>
-                            {q.whatWasMissing}
-                          </p>
-                        </div>
-                      )}
-                      {q.expectedKeyPoints && (
-                        <div style={{ padding: '0.75rem', background: '#ecfdf5', borderRadius: '0.375rem', border: '1px solid #a7f3d0' }}>
-                          <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#047857', marginBottom: '0.25rem' }}>Expected Key Points:</p>
-                          <p style={{ fontSize: '0.9rem', color: '#065f46', lineHeight: 1.5, margin: 0 }}>
-                            {q.expectedKeyPoints}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                    return (
+                      <Fragment key={`row-group-${i}`}>
+                        <tr key={`row-${i}`} style={{ background: i % 2 === 0 ? 'white' : 'var(--gray-50)' }}>
+                          <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--gray-900)', borderBottom: '1px solid var(--gray-200)' }}>{qNum}</td>
+                          <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--gray-900)', fontWeight: 500, borderBottom: '1px solid var(--gray-200)' }}>{q.topic}</td>
+                          <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--gray-700)', borderBottom: '1px solid var(--gray-200)' }}>{q.score}</td>
+                          <td style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--gray-200)' }}>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              color: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#10B981' : q.correctness?.toLowerCase().includes('partial') ? '#B45309' : '#EF4444',
+                              padding: '0.25rem 0.5rem',
+                              background: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#ECFDF5' : q.correctness?.toLowerCase().includes('partial') ? '#FFFBEB' : '#FEF2F2',
+                              borderRadius: '0.375rem',
+                              border: '1px solid transparent',
+                              borderColor: q.correctness?.toLowerCase().includes('correct') && !q.correctness?.toLowerCase().includes('partial') ? '#A7F3D0' : q.correctness?.toLowerCase().includes('partial') ? '#FDE68A' : '#FECACA',
+                            }}>
+                              {q.correctness}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'center', borderBottom: '1px solid var(--gray-200)' }}>
+                            <button
+                              data-pdf-hide
+                              onClick={toggleQuestion}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--primary)',
+                                fontSize: '0.875rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                textDecoration: 'underline'
+                              }}
+                            >
+                              {isExpanded ? 'Hide' : 'View'}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`expanded-${i}`}>
+                            <td colSpan={5} style={{ padding: '1.5rem', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
+                              <div style={{ borderLeft: '4px solid var(--primary)', paddingLeft: '1rem' }}>
+                                <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '1rem' }}>Question: {displayQuestion}</p>
+                                <div style={{ marginBottom: '1rem' }}>
+                                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', marginBottom: '0.25rem', fontWeight: 600 }}>Candidate Answer:</p>
+                                  <p style={{ fontSize: '0.925rem', color: 'var(--gray-800)', background: 'white', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--gray-200)', whiteSpace: 'pre-wrap' }}>
+                                    {displayAnswer || 'No response recorded.'}
+                                  </p>
+                                </div>
+                                {q.whatWasMissing && (
+                                  <div style={{ marginBottom: '1rem' }}>
+                                    <p style={{ fontSize: '0.875rem', color: '#B45309', marginBottom: '0.25rem', fontWeight: 600 }}>Missing / Improvements:</p>
+                                    <p style={{ fontSize: '0.925rem', color: '#92400E' }}>{q.whatWasMissing}</p>
+                                  </div>
+                                )}
+                                {q.expectedKeyPoints && (
+                                  <div style={{ padding: '0.75rem', background: '#ecfdf5', borderRadius: '0.375rem', border: '1px solid #a7f3d0' }}>
+                                    <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#047857', marginBottom: '0.25rem' }}>Expected Key Points:</p>
+                                    <p style={{ fontSize: '0.9rem', color: '#065f46', margin: 0 }}>{q.expectedKeyPoints}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -1525,7 +1529,7 @@ export default function AnalysisReport() {
             background: recommendation.recommendation === 'HIRE' || recommendation.recommendation === 'Hire'
               ? 'rgba(16, 185, 129, 0.1)'
               : recommendation.recommendation === 'MAYBE' || recommendation.recommendation === 'Hold'
-                ? 'rgba(245, 158, 11, 0.1)'
+                ? 'rgba(99, 102, 241, 0.1)'
                 : 'rgba(239, 68, 68, 0.1)',
             borderRadius: '0.5rem',
             textAlign: 'center',
@@ -1537,21 +1541,48 @@ export default function AnalysisReport() {
               color: recommendation.recommendation === 'HIRE' || recommendation.recommendation === 'Hire'
                 ? '#10B981'
                 : recommendation.recommendation === 'MAYBE' || recommendation.recommendation === 'Hold'
-                  ? '#F59E0B'
+                  ? '#6366F1'
                   : '#EF4444'
             }}>
               {recommendation.recommendation}
             </p>
+
+            {/* Overall and Technical Scores as requested */}
+            <div style={{ marginTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '4px' }}>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--gray-900)' }}>
+                  {interviewAnalysis?.competencyAssessment?.scores?.overallScore || recommendation.overallScore}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', fontWeight: 600 }}>/ 50 Overall</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '4px', marginTop: '0.25rem' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6366F1' }}>
+                  {technicalScoreSummary.total > 0 ? Math.round((technicalScoreSummary.earned / technicalScoreSummary.total) * 100) : 0}
+                </span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--gray-500)', fontWeight: 600 }}>/ 100 Technical</span>
+              </div>
+            </div>
+
             {recommendation.recommendationStatus && (
               <span style={{
                 display: 'inline-block',
                 marginTop: '0.5rem',
-                padding: '0.25rem 0.5rem',
-                background: 'rgba(99, 102, 241, 0.1)',
-                color: '#6366F1',
+                padding: '0.25rem 0.625rem',
+                background: recommendation.recommendation === 'HIRE' || recommendation.recommendation === 'Hire'
+                  ? 'rgba(16, 185, 129, 0.1)'
+                  : recommendation.recommendation === 'MAYBE' || recommendation.recommendation === 'Hold'
+                    ? 'rgba(99, 102, 241, 0.2)'
+                    : 'rgba(239, 68, 68, 0.1)',
+                color: recommendation.recommendation === 'HIRE' || recommendation.recommendation === 'Hire'
+                  ? '#10B981'
+                  : recommendation.recommendation === 'MAYBE' || recommendation.recommendation === 'Hold'
+                    ? '#6366F1'
+                    : '#EF4444',
                 borderRadius: '0.25rem',
-                fontSize: '0.75rem',
-                fontWeight: 600
+                fontSize: '0.675rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.025em'
               }}>
                 {recommendation.recommendationStatus}
               </span>
@@ -1607,7 +1638,7 @@ export default function AnalysisReport() {
               <span style={{ color: 'var(--gray-500)' }}>90%+ Excellent Match</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: '#E91E63' }} />
+              <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: '#6366F1' }} />
               <span style={{ color: 'var(--gray-500)' }}>80-89% Good Match</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
