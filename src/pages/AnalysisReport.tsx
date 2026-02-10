@@ -578,6 +578,23 @@ export default function AnalysisReport() {
 
   const { interviewResult } = displayCandidate as any;
 
+  // Calculate technical score summary
+  const technicalScoreSummary = (() => {
+    if (!interviewAnalysis?.technicalQuestionAnalysis?.questionsAssessed) return { earned: 0, total: 0 };
+
+    const questions = interviewAnalysis.technicalQuestionAnalysis.questionsAssessed;
+    const earned = questions.reduce((sum: number, q: any) => {
+      const scoreStr = q.score || "0/10";
+      const [val] = scoreStr.split('/').map(Number);
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+
+    return {
+      earned,
+      total: questions.length * 10
+    };
+  })();
+
   // Construct recommendation object from either legacy result or new analysis
   const recommendation = (() => {
     if (interviewAnalysis) {
@@ -1175,9 +1192,9 @@ export default function AnalysisReport() {
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Accuracy</p>
-                  <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-700)', lineHeight: 1.4 }}>
-                    {interviewAnalysis.technicalQuestionAnalysis.technicalPerformanceSummary.technicalAccuracyRate}
+                  <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontWeight: 500 }}>Total Score</p>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#6366F1' }}>
+                    {technicalScoreSummary.earned}/{technicalScoreSummary.total}
                   </p>
                 </div>
               </div>
