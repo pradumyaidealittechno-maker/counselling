@@ -68,7 +68,7 @@ export default function Analytics() {
         : 10;
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ padding: '2rem', width: '100%', minHeight: '100vh' }}>
             <div style={{ marginBottom: '2rem' }}>
                 <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--gray-900)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <BarChart3 size={32} className="text-primary-600" />

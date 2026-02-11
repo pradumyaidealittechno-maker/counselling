@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { Plus, Search, Calendar, TrendingUp, Users, Clock, BookOpen, GraduationCap, School, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Calendar, TrendingUp, Users, Clock, BookOpen, GraduationCap, School, FileText, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_STUDENTS, Student } from '../data/mockStudentData';
+import api from '../services/api';
 
 export default function Students() {
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [students, setStudents] = useState<any[]>([]);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [gradeFilter, setGradeFilter] = useState('all');
@@ -20,6 +22,22 @@ export default function Students() {
         enrolledCourse: ''
     });
 
+    useEffect(() => {
+        fetchStudents();
+    }, []);
+
+    const fetchStudents = async () => {
+        setLoading(true);
+        try {
+            const data = await api.students.getAll();
+            setStudents(data);
+        } catch (error) {
+            console.error('Failed to fetch students:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const coursesList = [
         'Career Planning Fundamentals',
         'Advanced Interview Mastery',
@@ -28,7 +46,7 @@ export default function Students() {
     ];
 
     // Filter students
-    const filteredStudents = MOCK_STUDENTS.filter(student => {
+    const filteredStudents = students.filter((student: any) => {
         const matchesSearch =
             student.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             student.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -42,10 +60,16 @@ export default function Students() {
 
     // Calculate stats
     const stats = {
-        totalStudents: MOCK_STUDENTS.length,
-        activeSessions: MOCK_STUDENTS.filter((s: Student) => s.nextSessionDate).length,
-        sessionsThisWeek: 8,
-        pendingFollowUps: 3
+        totalStudents: students.length,
+        activeSessions: students.filter((s: any) => s.nextSessionDate).length,
+        sessionsThisWeek: students.filter((s: any) => {
+            if (!s.nextSessionDate) return false;
+            const sessionDate = new Date(s.nextSessionDate);
+            const today = new Date();
+            const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+            return sessionDate >= today && sessionDate <= weekFromNow;
+        }).length,
+        pendingFollowUps: students.filter((s: any) => s.status === 'pending').length
     };
 
     const formatDate = (dateStr: string | null) => {
@@ -237,160 +261,166 @@ export default function Students() {
             </div>
 
             {/* Students Table */}
-            <div style={{ background: 'white', borderRadius: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid var(--gray-200)', margin: '0 2rem 2rem' }}>
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: 'var(--gray-50)' }}>
-                                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Student</th>
-                                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grade & School</th>
-                                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enrolled Course</th>
-                                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Score</th>
-                                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Session</th>
-                                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredStudents.map((student: Student, idx: number) => {
-                                const gradeColors = getGradeColor(student.currentGrade);
-                                return (
-                                    <tr
-                                        key={student.id}
-                                        style={{
-                                            borderBottom: idx !== filteredStudents.length - 1 ? '1px solid var(--gray-200)' : 'none',
-                                            cursor: 'pointer',
-                                            transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                                        onClick={() => navigate(`/dashboard/students/${student.id}`)}
-                                    >
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <div
-                                                    style={{
-                                                        width: '48px',
-                                                        height: '48px',
-                                                        borderRadius: '50%',
-                                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        color: 'white',
-                                                        fontWeight: 700,
-                                                        fontSize: '1rem',
-                                                        flexShrink: 0
-                                                    }}
-                                                >
-                                                    {getInitials(student.firstName, student.lastName)}
-                                                </div>
-                                                <div style={{ minWidth: 0 }}>
-                                                    <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
-                                                        {student.firstName} {student.lastName}
-                                                    </p>
-                                                    <p style={{ fontSize: '0.75rem', color: 'var(--gray-600)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{student.email}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                                    <span style={{
-                                                        padding: '0.25rem 0.75rem',
-                                                        background: gradeColors.bg,
-                                                        color: gradeColors.text,
-                                                        borderRadius: '0.5rem',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600
-                                                    }}>
-                                                        {student.currentGrade}
-                                                    </span>
-                                                </div>
-                                                <p style={{ fontSize: '0.875rem', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                    <School size={14} />
-                                                    {student.currentSchool}
-                                                </p>
-                                                <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{student.currentBoard} Board</p>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            {student.enrolledCourse ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <BookOpen size={14} style={{ color: 'var(--primary-500)' }} />
-                                                    <span style={{ fontSize: '0.875rem', color: 'var(--gray-700)', fontWeight: 500 }}>
-                                                        {student.enrolledCourse}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>
-                                                    None
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <div style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                width: '46px',
-                                                height: '46px',
-                                                borderRadius: '50%',
-                                                background: (student.overallScore || 0) >= 85 ? 'var(--success-50)' : (student.overallScore || 0) >= 70 ? 'var(--warning-50)' : 'var(--error-50)',
-                                                border: `2px solid ${(student.overallScore || 0) >= 85 ? 'var(--success-500)' : (student.overallScore || 0) >= 70 ? 'var(--warning-500)' : 'var(--error-500)'}`,
-                                                fontWeight: 700,
-                                                fontSize: '0.875rem',
-                                                color: (student.overallScore || 0) >= 85 ? 'var(--success-700)' : (student.overallScore || 0) >= 70 ? 'var(--warning-700)' : 'var(--error-700)'
-                                            }}>
-                                                {student.overallScore}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <Clock size={14} style={{ color: 'var(--gray-400)' }} />
-                                                {formatDate(student.lastSessionDate)}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigate(`/dashboard/students/${student.id}`);
-                                                    }}
-                                                    className="btn btn-sm btn-ghost"
-                                                    style={{ padding: '0.5rem' }}
-                                                    title="View Profile"
-                                                >
-                                                    <FileText size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigate(`/dashboard/sessions/schedule?studentId=${student.id}`);
-                                                    }}
-                                                    className="btn btn-sm btn-primary"
-                                                    style={{ fontSize: '0.75rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
-                                                >
-                                                    <Calendar size={14} />
-                                                    Schedule
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+                    <Loader size={48} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-600)' }} />
                 </div>
-
-                {filteredStudents.length === 0 && (
-                    <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-                        <BookOpen size={64} style={{ color: 'var(--gray-300)', margin: '0 auto 1rem' }} />
-                        <p style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>No students found</p>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>Try adjusting your search or filters</p>
+            ) : (
+                <div style={{ background: 'white', borderRadius: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid var(--gray-200)', margin: '0 2rem 2rem' }}>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: 'var(--gray-50)' }}>
+                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Student</th>
+                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grade & School</th>
+                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enrolled Course</th>
+                                    <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Score</th>
+                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Session</th>
+                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredStudents.map((student: any, idx: number) => {
+                                    const gradeColors = getGradeColor(student.currentGrade);
+                                    return (
+                                        <tr
+                                            key={student.id}
+                                            style={{
+                                                borderBottom: idx !== filteredStudents.length - 1 ? '1px solid var(--gray-200)' : 'none',
+                                                cursor: 'pointer',
+                                                transition: 'background 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                            onClick={() => navigate(`/dashboard/students/${student.id}`)}
+                                        >
+                                            <td style={{ padding: '1rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <div
+                                                        style={{
+                                                            width: '48px',
+                                                            height: '48px',
+                                                            borderRadius: '50%',
+                                                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            color: 'white',
+                                                            fontWeight: 700,
+                                                            fontSize: '1rem',
+                                                            flexShrink: 0
+                                                        }}
+                                                    >
+                                                        {getInitials(student.firstName, student.lastName)}
+                                                    </div>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-900)', marginBottom: '0.25rem' }}>
+                                                            {student.firstName} {student.lastName}
+                                                        </p>
+                                                        <p style={{ fontSize: '0.75rem', color: 'var(--gray-600)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{student.email}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                                        <span style={{
+                                                            padding: '0.25rem 0.75rem',
+                                                            background: gradeColors.bg,
+                                                            color: gradeColors.text,
+                                                            borderRadius: '0.5rem',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            {student.currentGrade}
+                                                        </span>
+                                                    </div>
+                                                    <p style={{ fontSize: '0.875rem', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                        <School size={14} />
+                                                        {student.currentSchool}
+                                                    </p>
+                                                    <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{student.currentBoard} Board</p>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1rem' }}>
+                                                {student.enrolledCourse ? (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <BookOpen size={14} style={{ color: 'var(--primary-500)' }} />
+                                                        <span style={{ fontSize: '0.875rem', color: 'var(--gray-700)', fontWeight: 500 }}>
+                                                            {student.enrolledCourse}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)', fontStyle: 'italic' }}>
+                                                        None
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                <div style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    width: '46px',
+                                                    height: '46px',
+                                                    borderRadius: '50%',
+                                                    background: (student.overallScore || 0) >= 85 ? 'var(--success-50)' : (student.overallScore || 0) >= 70 ? 'var(--warning-50)' : 'var(--error-50)',
+                                                    border: `2px solid ${(student.overallScore || 0) >= 85 ? 'var(--success-500)' : (student.overallScore || 0) >= 70 ? 'var(--warning-500)' : 'var(--error-500)'}`,
+                                                    fontWeight: 700,
+                                                    fontSize: '0.875rem',
+                                                    color: (student.overallScore || 0) >= 85 ? 'var(--success-700)' : (student.overallScore || 0) >= 70 ? 'var(--warning-700)' : 'var(--error-700)'
+                                                }}>
+                                                    {student.overallScore}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Clock size={14} style={{ color: 'var(--gray-400)' }} />
+                                                    {formatDate(student.lastSessionDate)}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/dashboard/students/${student.id}`);
+                                                        }}
+                                                        className="btn btn-sm btn-ghost"
+                                                        style={{ padding: '0.5rem' }}
+                                                        title="View Profile"
+                                                    >
+                                                        <FileText size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/dashboard/sessions/schedule?studentId=${student.id}`);
+                                                        }}
+                                                        className="btn btn-sm btn-primary"
+                                                        style={{ fontSize: '0.75rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                                                    >
+                                                        <Calendar size={14} />
+                                                        Schedule
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-                )}
-            </div>
+
+                    {filteredStudents.length === 0 && (
+                        <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+                            <BookOpen size={64} style={{ color: 'var(--gray-300)', margin: '0 auto 1rem' }} />
+                            <p style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem' }}>No students found</p>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>Try adjusting your search or filters</p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Add Student Modal */}
             {isAddModalOpen && (

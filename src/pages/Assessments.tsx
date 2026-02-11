@@ -65,7 +65,7 @@ export default function Assessments() {
     });
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ padding: '2rem', width: '100%', minHeight: '100vh' }}>
             {/* Header */}
             <div style={{
                 background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
