@@ -43,10 +43,10 @@ const recruitmentNavigation = [
 const counsellingNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Students', href: '/dashboard/students', icon: GraduationCap },
-  { name: 'Courses', href: '/dashboard/courses', icon: BookMarked },
+  { name: 'Courses', href: '/dashboard/courses', icon: BookOpen },
   { name: 'Sessions', href: '/dashboard/sessions', icon: Calendar },
   { name: 'Assessments', href: '/dashboard/assessments', icon: BarChart3 },
-  { name: 'Resources', href: '/dashboard/resources', icon: BookOpen },
+  { name: 'Resources', href: '/dashboard/resources', icon: BookMarked },
   { name: 'Analytics', href: '/dashboard/analytics', icon: FileText },
   { name: 'Settings', href: '/dashboard/profile', icon: Settings },
 ];

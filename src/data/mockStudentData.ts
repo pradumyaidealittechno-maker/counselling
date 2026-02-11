@@ -14,6 +14,7 @@ export interface Student {
     totalSessions: number;
     careerInterests: string[];
     overallScore: number;
+    enrolledCourse?: string;
 }
 
 export const MOCK_STUDENTS: Student[] = [
@@ -32,7 +33,8 @@ export const MOCK_STUDENTS: Student[] = [
         enrollmentDate: '2025-09-01',
         totalSessions: 12,
         careerInterests: ['Engineering', 'Technology'],
-        overallScore: 85
+        overallScore: 85,
+        enrolledCourse: 'Career Planning Fundamentals'
     },
     {
         id: '2',
@@ -49,7 +51,8 @@ export const MOCK_STUDENTS: Student[] = [
         enrollmentDate: '2025-08-15',
         totalSessions: 8,
         careerInterests: ['Medicine', 'Healthcare'],
-        overallScore: 92
+        overallScore: 92,
+        enrolledCourse: 'Career Planning Fundamentals'
     },
     {
         id: '3',
@@ -66,7 +69,8 @@ export const MOCK_STUDENTS: Student[] = [
         enrollmentDate: '2025-10-01',
         totalSessions: 5,
         careerInterests: ['Commerce', 'Business'],
-        overallScore: 78
+        overallScore: 78,
+        enrolledCourse: 'Advanced Interview Mastery'
     },
     {
         id: '4',
@@ -83,7 +87,8 @@ export const MOCK_STUDENTS: Student[] = [
         enrollmentDate: '2025-07-20',
         totalSessions: 15,
         careerInterests: ['Arts', 'Design', 'Media'],
-        overallScore: 88
+        overallScore: 88,
+        enrolledCourse: 'Public Speaking Workshop'
     },
     {
         id: '5',
@@ -100,6 +105,7 @@ export const MOCK_STUDENTS: Student[] = [
         enrollmentDate: '2025-09-10',
         totalSessions: 9,
         careerInterests: ['Science', 'Research'],
-        overallScore: 90
+        overallScore: 90,
+        enrolledCourse: 'Technical Skills Bootcamp'
     }
 ];

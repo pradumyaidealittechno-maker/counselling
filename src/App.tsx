@@ -31,6 +31,7 @@ import DashboardRouter from './components/DashboardRouter';
 import Students from './pages/Students';
 import AddStudent from './pages/AddStudent';
 import StudentProfile from './pages/StudentProfile';
+import CreateCourse from './pages/CreateCourse';
 import Courses from './pages/Courses';
 import Sessions from './pages/Sessions';
 import ScheduleSession from './pages/ScheduleSession';
@@ -115,6 +116,7 @@ function App() {
           <Route path="students" element={<Students />} />
           <Route path="students/new" element={<AddStudent />} />
           <Route path="students/:id" element={<StudentProfile />} />
+          <Route path="courses/create" element={<CreateCourse />} />
           <Route path="courses" element={<Courses />} />
           <Route path="sessions" element={<Sessions />} />
           <Route path="sessions/schedule" element={<ScheduleSession />} />

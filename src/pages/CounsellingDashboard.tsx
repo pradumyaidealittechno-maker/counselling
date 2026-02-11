@@ -1,6 +1,5 @@
-import { Calendar, Users, BarChart3, Clock, ArrowRight, TrendingUp } from 'lucide-react';
+import { Calendar, Users, BarChart3, Clock, ArrowRight, TrendingUp, BookOpen, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
 
 export default function CounsellingDashboard() {
     const navigate = useNavigate();
@@ -39,6 +38,14 @@ export default function CounsellingDashboard() {
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button
+                            onClick={() => navigate('/dashboard/courses/create')}
+                            className="btn btn-primary"
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <BookOpen size={18} />
+                            Create Course
+                        </button>
                         <button
                             onClick={() => navigate('/dashboard/sessions/schedule')}
                             className="btn btn-ghost"
