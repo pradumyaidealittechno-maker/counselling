@@ -1,26 +1,74 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, User, ArrowLeft, Save, Video, FileText } from 'lucide-react';
-import { MOCK_STUDENTS } from '../data/mockStudentData';
+import { Calendar, Clock, User, ArrowLeft, Save, FileText, Loader } from 'lucide-react';
+import api from '../services/api';
+import { showToast } from '../utils/toast';
+
+interface Student {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    currentGrade: string;
+}
 
 export default function ScheduleSession() {
     const navigate = useNavigate();
+    const [students, setStudents] = useState<Student[]>([]);
+    const [fetchingStudents, setFetchingStudents] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
     const [formData, setFormData] = useState({
         studentId: '',
         date: '',
         time: '',
-        duration: '45 min',
-        type: 'Career Guidance',
+        duration: '45',
+        sessionType: 'career',
+        sessionMode: 'video',
         notes: '',
         sendInvite: true
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    useEffect(() => {
+        const fetchStudents = async () => {
+            try {
+                const data = await api.students.getAll();
+                setStudents(data);
+            } catch (error) {
+                console.error('Failed to fetch students:', error);
+                showToast.error('Could not load students list');
+            } finally {
+                setFetchingStudents(false);
+            }
+        };
+        fetchStudents();
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Scheduling session:', formData);
-        // In a real app, this would be an API call
-        alert('Session scheduled successfully! (Mock)');
-        navigate('/dashboard/sessions');
+        setSubmitting(true);
+
+        try {
+            // Combine date and time into a single ISO string
+            const scheduledAt = new Date(`${formData.date}T${formData.time}:00`).toISOString();
+
+            const payload = {
+                studentId: formData.studentId,
+                scheduledAt,
+                duration: parseInt(formData.duration),
+                sessionType: formData.sessionType,
+                sessionMode: formData.sessionMode,
+                preSessionNotes: formData.notes
+            };
+
+            await api.sessions.create(payload);
+            showToast.success('Session scheduled successfully!');
+            navigate('/dashboard/sessions');
+        } catch (error: any) {
+            console.error('Error scheduling session:', error);
+            showToast.error(error.message || 'Failed to schedule session');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -51,16 +99,18 @@ export default function ScheduleSession() {
                     <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <User size={16} />
                         Select Student
+                        {fetchingStudents && <Loader className="animate-spin" size={12} />}
                     </label>
                     <select
                         className="input"
                         required
+                        disabled={fetchingStudents}
                         value={formData.studentId}
                         onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                     >
                         <option value="">-- Choose a student --</option>
-                        {MOCK_STUDENTS.map(student => (
-                            <option key={student.id} value={student.id}>
+                        {students.map(student => (
+                            <option key={student._id} value={student._id}>
                                 {student.firstName} {student.lastName} ({student.currentGrade})
                             </option>
                         ))}
@@ -101,31 +151,48 @@ export default function ScheduleSession() {
                 {/* Duration & Type */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                     <div>
-                        <label className="label">Duration</label>
+                        <label className="label">Duration (minutes)</label>
                         <select
                             className="input"
                             value={formData.duration}
                             onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                         >
-                            <option value="15 min">15 min</option>
-                            <option value="30 min">30 min</option>
-                            <option value="45 min">45 min</option>
-                            <option value="60 min">1 hour</option>
-                            <option value="90 min">1.5 hours</option>
+                            <option value="15">15 min</option>
+                            <option value="30">30 min</option>
+                            <option value="45">45 min</option>
+                            <option value="60">1 hour</option>
+                            <option value="90">1.5 hours</option>
                         </select>
                     </div>
                     <div>
                         <label className="label">Session Type</label>
                         <select
                             className="input"
-                            value={formData.type}
-                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                            value={formData.sessionType}
+                            onChange={(e) => setFormData({ ...formData, sessionType: e.target.value })}
                         >
-                            <option value="Career Guidance">Career Guidance</option>
-                            <option value="Academic Planning">Academic Planning</option>
-                            <option value="Personal Counselling">Personal Counselling</option>
-                            <option value="Parent Meeting">Parent Meeting</option>
-                            <option value="Follow-up">Follow-up</option>
+                            <option value="career">Career Guidance</option>
+                            <option value="academic">Academic Planning</option>
+                            <option value="personal">Personal Counselling</option>
+                            <option value="assessment">Assessment Review</option>
+                            <option value="follow-up">Follow-up</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Mode & Invite */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                    <div>
+                        <label className="label">Session Mode</label>
+                        <select
+                            className="input"
+                            value={formData.sessionMode}
+                            onChange={(e) => setFormData({ ...formData, sessionMode: e.target.value as any })}
+                        >
+                            <option value="video">Video Call</option>
+                            <option value="voice">Voice Call</option>
+                            <option value="chat">Chat Session</option>
+                            <option value="in-person">In Person</option>
                         </select>
                     </div>
                 </div>
@@ -145,30 +212,12 @@ export default function ScheduleSession() {
                     />
                 </div>
 
-                {/* Video Link Option */}
-                <div style={{ marginBottom: '2rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={formData.sendInvite}
-                            onChange={(e) => setFormData({ ...formData, sendInvite: e.target.checked })}
-                            style={{ width: '1.25rem', height: '1.25rem', accentColor: 'var(--primary-600)' }}
-                        />
-                        <span style={{ fontSize: '0.95rem', color: 'var(--gray-700)', fontWeight: 500 }}>
-                            Send calendar invite with Google Meet link
-                        </span>
-                        <Video size={16} className="text-gray-400" />
-                    </label>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginLeft: '2rem', marginTop: '0.25rem' }}>
-                        An email invitation will be sent to the student automatically.
-                    </p>
-                </div>
-
                 {/* Actions */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--gray-200)' }}>
                     <button
                         type="button"
                         className="btn btn-ghost"
+                        disabled={submitting}
                         onClick={() => navigate('/dashboard/sessions')}
                     >
                         Cancel
@@ -176,9 +225,10 @@ export default function ScheduleSession() {
                     <button
                         type="submit"
                         className="btn btn-primary"
+                        disabled={submitting || fetchingStudents}
                         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                     >
-                        <Save size={18} />
+                        {submitting ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
                         Schedule Session
                     </button>
                 </div>

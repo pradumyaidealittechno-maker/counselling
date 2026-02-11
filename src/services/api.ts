@@ -522,6 +522,90 @@ export const api = {
     },
   },
 
+  // Student APIs
+  students: {
+    getAll: async (params?: any) => {
+      const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+      return authFetch(`/api/students${queryString}`);
+    },
+    getById: async (id: string) => {
+      return authFetch(`/api/students/${id}`);
+    },
+    create: async (data: any) => {
+      return authFetch('/api/students', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    update: async (id: string, data: any) => {
+      return authFetch(`/api/students/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    delete: async (id: string) => {
+      return authFetch(`/api/students/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  // Session APIs
+  sessions: {
+    getAll: async (params?: any) => {
+      const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+      return authFetch(`/api/sessions${queryString}`);
+    },
+    getById: async (id: string) => {
+      return authFetch(`/api/sessions/${id}`);
+    },
+    create: async (data: any) => {
+      return authFetch('/api/sessions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    update: async (id: string, data: any) => {
+      return authFetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    delete: async (id: string) => {
+      return authFetch(`/api/sessions/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  // Course APIs
+  courses: {
+    getAll: async (params?: any) => {
+      const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+      return authFetch(`/api/courses${queryString}`);
+    },
+    getById: async (id: string) => {
+      return authFetch(`/api/courses/${id}`);
+    },
+    create: async (data: any) => {
+      return authFetch('/api/courses', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    update: async (id: string, data: any) => {
+      return authFetch(`/api/courses/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    delete: async (id: string) => {
+      return authFetch(`/api/courses/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
   // Admin APIs
   admin: {
     getUsers: async () => {

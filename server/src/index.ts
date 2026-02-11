@@ -32,8 +32,11 @@ import reportRoutes from './routes/reports.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import sessionRoutes from './routes/session.routes.js';
+import courseRoutes from './routes/course.routes.js';
 import { authenticate } from './middleware/auth.js';
 import adminRoutes from './routes/admin.routes.js';
+import studentRoutes from './routes/student.routes.js';
 import { seedAdmin } from './services/seeder.js';
 
 const app = express();
@@ -98,6 +101,12 @@ app.use('/api/notifications', authenticate, notificationRoutes);
 console.log('   ✅ /api/notifications - Notification routes');
 app.use('/api/admin', adminRoutes);
 console.log('   ✅ /api/admin - Admin routes');
+app.use('/api/students', studentRoutes);
+console.log('   ✅ /api/students - Student routes');
+app.use('/api/sessions', sessionRoutes);
+console.log('   ✅ /api/sessions - Session routes');
+app.use('/api/courses', courseRoutes);
+console.log('   ✅ /api/courses - Course routes');
 console.log('─'.repeat(60) + '\n');
 
 // Error handling

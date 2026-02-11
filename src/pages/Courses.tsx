@@ -1,93 +1,79 @@
-import { useState } from 'react';
-import { Plus, Search, BookOpen, Clock, FileText, DollarSign, BarChart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, BookOpen, Clock, FileText, DollarSign, BarChart, Loader, X } from 'lucide-react';
+import api from '../services/api';
+import { showToast } from '../utils/toast';
 
 interface Course {
-    id: string;
+    _id: string;
     title: string;
     description: string;
-    duration: string;
-    level: 'Beginner' | 'Intermediate' | 'Advanced';
-    fees: string;
     category: string;
-    enrolledStudents: number;
-    status: 'Published' | 'Draft';
+    duration: string;
+    level: 'beginner' | 'intermediate' | 'advanced';
+    fees: number;
+    currency: string;
+    status: 'draft' | 'published' | 'archived';
+    enrolledStudentsCount: number;
 }
 
-const MOCK_COURSES: Course[] = [
-    {
-        id: '1',
-        title: 'Career Planning Fundamentals',
-        description: 'A comprehensive guide to choosing the right career path based on skills and interests.',
-        duration: '4 Weeks',
-        level: 'Beginner',
-        fees: '₹2,500',
-        category: 'Career Guidance',
-        enrolledStudents: 120,
-        status: 'Published'
-    },
-    {
-        id: '2',
-        title: 'Advanced Interview Mastery',
-        description: 'Master the art of cracking interviews with mock sessions and expert tips.',
-        duration: '6 Weeks',
-        level: 'Advanced',
-        fees: '₹5,000',
-        category: 'Soft Skills',
-        enrolledStudents: 85,
-        status: 'Published'
-    },
-    {
-        id: '3',
-        title: 'Public Speaking Workshop',
-        description: 'Build confidence and learn effective public speaking techniques.',
-        duration: '2 Weeks',
-        level: 'Intermediate',
-        fees: '₹1,500',
-        category: 'Communication',
-        enrolledStudents: 45,
-        status: 'Draft'
-    }
-];
-
 export default function Courses() {
-    const [courses, setCourses] = useState<Course[]>(MOCK_COURSES);
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     // New Course Form State
-    const [newCourse, setNewCourse] = useState<Partial<Course>>({
+    const [newCourse, setNewCourse] = useState({
         title: '',
+        description: '',
         category: 'Career Guidance',
-        level: 'Beginner',
-        status: 'Draft',
         duration: '',
-        fees: ''
+        level: 'beginner' as const,
+        fees: 0,
+        status: 'draft' as const
     });
 
-    const handleAddCourse = (e: React.FormEvent) => {
-        e.preventDefault();
-        const course: Course = {
-            id: Date.now().toString(),
-            title: newCourse.title || 'Untitled Course',
-            description: newCourse.description || '',
-            duration: newCourse.duration || 'TBD',
-            level: newCourse.level as any,
-            fees: newCourse.fees || 'Free',
-            category: newCourse.category || 'General',
-            enrolledStudents: 0,
-            status: newCourse.status as any
-        };
+    useEffect(() => {
+        fetchCourses();
+    }, []);
 
-        setCourses([course, ...courses]);
-        setShowAddModal(false);
-        setNewCourse({
-            title: '',
-            category: 'Career Guidance',
-            level: 'Beginner',
-            status: 'Draft',
-            duration: '',
-            fees: ''
-        });
+    const fetchCourses = async () => {
+        setLoading(true);
+        try {
+            const data = await api.courses.getAll();
+            setCourses(data);
+        } catch (error) {
+            console.error('Failed to fetch courses:', error);
+            showToast.error('Could not load courses');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddCourse = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            await api.courses.create(newCourse);
+            showToast.success('Course created successfully!');
+            setShowAddModal(false);
+            fetchCourses();
+            setNewCourse({
+                title: '',
+                description: '',
+                category: 'Career Guidance',
+                duration: '',
+                level: 'beginner',
+                fees: 0,
+                status: 'draft'
+            });
+        } catch (error: any) {
+            console.error('Error creating course:', error);
+            showToast.error(error.message || 'Failed to create course');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const filteredCourses = courses.filter(course =>
@@ -102,10 +88,10 @@ export default function Courses() {
                 <div>
                     <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--gray-900)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <BookOpen size={32} style={{ color: 'var(--primary-600)' }} />
-                        Courses
+                        Courses Catalog
                     </h1>
                     <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
-                        Manage your counselling courses and workshops
+                        Manage your counselling courses, curriculum, and workshops
                     </p>
                 </div>
                 <button
@@ -124,7 +110,7 @@ export default function Courses() {
                     <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)' }} />
                     <input
                         type="text"
-                        placeholder="Search courses..."
+                        placeholder="Search courses by title or category..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{
@@ -139,78 +125,102 @@ export default function Courses() {
                 </div>
             </div>
 
-            {/* Courses Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-                {filteredCourses.map(course => (
-                    <div key={course.id} style={{ background: 'white', borderRadius: '1rem', border: '1px solid var(--gray-200)', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
-                        <div style={{ padding: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                                <span style={{
-                                    padding: '0.25rem 0.75rem',
-                                    background: 'var(--primary-50)',
-                                    color: 'var(--primary-700)',
-                                    borderRadius: '1rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600
-                                }}>
-                                    {course.category}
-                                </span>
-                                <span style={{
-                                    padding: '0.25rem 0.75rem',
-                                    background: course.status === 'Published' ? 'var(--success-50)' : 'var(--gray-100)',
-                                    color: course.status === 'Published' ? 'var(--success-700)' : 'var(--gray-600)',
-                                    borderRadius: '0.375rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600
-                                }}>
-                                    {course.status}
-                                </span>
-                            </div>
+            {/* Content Area */}
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+                    <Loader className="animate-spin text-primary-600" size={48} />
+                </div>
+            ) : filteredCourses.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.5rem' }}>
+                    {filteredCourses.map(course => (
+                        <div key={course._id} className="card overflow-hidden hover:shadow-lg transition-shadow">
+                            <div style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                    <span style={{
+                                        padding: '0.25rem 0.75rem',
+                                        background: 'var(--primary-50)',
+                                        color: 'var(--primary-700)',
+                                        borderRadius: '1rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        textTransform: 'capitalize'
+                                    }}>
+                                        {course.category}
+                                    </span>
+                                    <span style={{
+                                        padding: '0.25rem 0.75rem',
+                                        background: course.status === 'published' ? 'var(--success-50)' : 'var(--gray-100)',
+                                        color: course.status === 'published' ? 'var(--success-700)' : 'var(--gray-600)',
+                                        borderRadius: '0.375rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        textTransform: 'capitalize'
+                                    }}>
+                                        {course.status}
+                                    </span>
+                                </div>
 
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>{course.title}</h3>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                                {course.description}
-                            </p>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>{course.title}</h3>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)', marginBottom: '1.5rem', lineHeight: '1.5', height: '3rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                    {course.description}
+                                </p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
-                                    <Clock size={16} className="text-gray-400" />
-                                    {course.duration}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
+                                        <Clock size={16} className="text-gray-400" />
+                                        {course.duration}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)', textTransform: 'capitalize' }}>
+                                        <BarChart size={16} className="text-gray-400" />
+                                        {course.level}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
+                                        <DollarSign size={16} className="text-gray-400" />
+                                        {course.fees === 0 ? 'Free' : `₹${course.fees}`}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
+                                        <FileText size={16} className="text-gray-400" />
+                                        {course.enrolledStudentsCount} Enrolled
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
-                                    <BarChart size={16} className="text-gray-400" />
-                                    {course.level}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
-                                    <DollarSign size={16} className="text-gray-400" />
-                                    {course.fees}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
-                                    <FileText size={16} className="text-gray-400" />
-                                    {course.enrolledStudents} Enrolled
-                                </div>
-                            </div>
 
-                            <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--gray-100)' }}>
-                                <button className="btn btn-outline btn-sm" style={{ flex: 1 }}>Edit</button>
-                                <button className="btn btn-primary btn-sm" style={{ flex: 1 }}>View Details</button>
+                                <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--gray-100)' }}>
+                                    <button className="btn btn-outline btn-sm flex-1">Edit</button>
+                                    <button className="btn btn-primary btn-sm flex-1">View Details</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="card text-center p-12">
+                    <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
+                    <p className="text-gray-500 mb-6">Start by creating your first counselling course or workshop.</p>
+                    <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+                        Add New Course
+                    </button>
+                </div>
+            )}
 
             {/* Add Course Modal */}
             {showAddModal && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-                    <div style={{ background: 'white', borderRadius: '1rem', padding: '2rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem' }}>Add New Course</h2>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+                    <div className="card w-full max-w-lg animate-in fade-in zoom-in duration-200" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Add New Course</h2>
+                            <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+
                         <form onSubmit={handleAddCourse}>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label className="label">Course Title</label>
+                                <label className="label">Course Title *</label>
                                 <input
                                     type="text"
-                                    className="input"
+                                    className="input w-full"
+                                    placeholder="e.g. Master Your Career Path"
                                     value={newCourse.title}
                                     onChange={e => setNewCourse({ ...newCourse, title: e.target.value })}
                                     required
@@ -218,9 +228,9 @@ export default function Courses() {
                             </div>
 
                             <div style={{ marginBottom: '1rem' }}>
-                                <label className="label">Category</label>
+                                <label className="label">Category *</label>
                                 <select
-                                    className="input"
+                                    className="input w-full"
                                     value={newCourse.category}
                                     onChange={e => setNewCourse({ ...newCourse, category: e.target.value })}
                                 >
@@ -228,65 +238,83 @@ export default function Courses() {
                                     <option>Soft Skills</option>
                                     <option>Technical Skills</option>
                                     <option>Communication</option>
+                                    <option>Personal Development</option>
                                 </select>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
-                                    <label className="label">Duration</label>
+                                    <label className="label">Duration *</label>
                                     <input
                                         type="text"
-                                        className="input"
+                                        className="input w-full"
                                         placeholder="e.g. 4 Weeks"
                                         value={newCourse.duration}
                                         onChange={e => setNewCourse({ ...newCourse, duration: e.target.value })}
+                                        required
                                     />
                                 </div>
                                 <div>
-                                    <label className="label">Fees</label>
+                                    <label className="label">Fees (INR)</label>
                                     <input
-                                        type="text"
-                                        className="input"
-                                        placeholder="e.g. ₹2,500"
+                                        type="number"
+                                        className="input w-full"
+                                        placeholder="0 for Free"
                                         value={newCourse.fees}
-                                        onChange={e => setNewCourse({ ...newCourse, fees: e.target.value })}
+                                        onChange={e => setNewCourse({ ...newCourse, fees: parseInt(e.target.value) || 0 })}
                                     />
                                 </div>
                             </div>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label className="label">Level</label>
-                                <select
-                                    className="input"
-                                    value={newCourse.level}
-                                    onChange={e => setNewCourse({ ...newCourse, level: e.target.value as any })}
-                                >
-                                    <option>Beginner</option>
-                                    <option>Intermediate</option>
-                                    <option>Advanced</option>
-                                </select>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label className="label">Level</label>
+                                    <select
+                                        className="input w-full"
+                                        value={newCourse.level}
+                                        onChange={e => setNewCourse({ ...newCourse, level: e.target.value as any })}
+                                    >
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="advanced">Advanced</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="label">Initial Status</label>
+                                    <select
+                                        className="input w-full"
+                                        value={newCourse.status}
+                                        onChange={e => setNewCourse({ ...newCourse, status: e.target.value as any })}
+                                    >
+                                        <option value="draft">Draft</option>
+                                        <option value="published">Published</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label className="label">Description</label>
+                                <label className="label">Description *</label>
                                 <textarea
-                                    className="input"
-                                    rows={3}
+                                    className="input w-full"
+                                    rows={4}
+                                    placeholder="Summarize what students will learn..."
                                     value={newCourse.description}
                                     onChange={e => setNewCourse({ ...newCourse, description: e.target.value })}
+                                    required
                                 ></textarea>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--gray-100)' }}>
                                 <button
                                     type="button"
                                     className="btn btn-ghost"
                                     onClick={() => setShowAddModal(false)}
+                                    disabled={submitting}
                                 >
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary">
-                                    Create Course
+                                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                                    {submitting ? <Loader className="animate-spin" size={18} /> : 'Create Course'}
                                 </button>
                             </div>
                         </form>

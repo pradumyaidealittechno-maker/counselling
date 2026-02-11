@@ -55,6 +55,7 @@ const counsellingNavigation = [
 const studentNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Schedule', href: '/dashboard/sessions', icon: Calendar },
+  { name: 'My Assessments', href: '/dashboard/assessments', icon: BarChart3 },
   { name: 'My Courses', href: '/dashboard/courses', icon: GraduationCap },
   { name: 'Resources', href: '/dashboard/resources', icon: BookOpen },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
