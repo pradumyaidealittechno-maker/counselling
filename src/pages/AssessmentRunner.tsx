@@ -1,64 +1,68 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle, ChevronRight, ChevronLeft, Award } from 'lucide-react';
+import { Clock, CheckCircle, ChevronRight, ChevronLeft, Award, Loader } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import api from '../services/api';
+import { showToast } from '../utils/toast';
 
 interface Question {
-    id: number;
     text: string;
     options: string[];
     correctAnswer: number;
 }
 
-const MOCK_QUESTIONS: Question[] = [
-    {
-        id: 1,
-        text: "You enjoy solving complex mathematical puzzles more than reading literature.",
-        options: ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"],
-        correctAnswer: -1 // Personality question, no correct answer
-    },
-    {
-        id: 2,
-        text: "If a car travels 60km in 1.5 hours, what is its average speed?",
-        options: ["30 km/h", "40 km/h", "45 km/h", "60 km/h"],
-        correctAnswer: 1
-    },
-    {
-        id: 3,
-        text: "Which programming language is known as the language of the web?",
-        options: ["Python", "Java", "JavaScript", "C++"],
-        correctAnswer: 2
-    },
-    {
-        id: 4,
-        text: "You prefer working in a team rather than working alone.",
-        options: ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"],
-        correctAnswer: -1
-    },
-    {
-        id: 5,
-        text: "What is the powerhouse of the cell?",
-        options: ["Nucleus", "Mitochondria", "Ribosome", "Golgi Apparatus"],
-        correctAnswer: 1
-    }
-];
-
 export default function AssessmentRunner() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [assessment, setAssessment] = useState<any>(null);
+    const [questions, setQuestions] = useState<Question[]>([]);
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [answers, setAnswers] = useState<Record<number, number>>({});
-    const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes
+    const [timeLeft, setTimeLeft] = useState(30 * 60);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (timeLeft > 0 && !isSubmitted) {
+        if (id) {
+            fetchAssessment();
+        }
+    }, [id]);
+
+    const fetchAssessment = async () => {
+        try {
+            // In a real app, you'd have a getById for assessments
+            // For now, we'll fetch all and filter or assume there's an endpoint
+            const res = await fetch(`/api/assessments/${id}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const data = await res.json();
+
+            setAssessment(data);
+            if (data.questions && data.questions.length > 0) {
+                setQuestions(data.questions);
+            } else {
+                // Fallback to mock if none assigned
+                setQuestions([
+                    { text: "How would you describe your interest in mathematics?", options: ["Extremely High", "High", "Moderate", "Low", "None"], correctAnswer: -1 },
+                    { text: "Do you enjoy working with people or data?", options: ["Strictly People", "Mainly People", "Both Equally", "Mainly Data", "Strictly Data"], correctAnswer: -1 }
+                ]);
+            }
+            setLoading(false);
+        } catch (error) {
+            console.error('Failed to fetch assessment:', error);
+            showToast.error('Could not load assessment');
+            navigate('/dashboard/assessments');
+        }
+    };
+
+    useEffect(() => {
+        if (timeLeft > 0 && !isSubmitted && !loading) {
             const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
             return () => clearInterval(timer);
         } else if (timeLeft === 0 && !isSubmitted) {
             handleSubmit();
         }
-    }, [timeLeft, isSubmitted]);
+    }, [timeLeft, isSubmitted, loading]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -69,71 +73,47 @@ export default function AssessmentRunner() {
     const handleAnswer = (optionIndex: number) => {
         setAnswers(prev => ({
             ...prev,
-            [MOCK_QUESTIONS[currentQuestion].id]: optionIndex
+            [currentQuestion]: optionIndex
         }));
     };
 
-    const handleSubmit = () => {
-        setIsSubmitted(true);
-        confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-        });
+    const handleSubmit = async () => {
+        try {
+            const payloads = {
+                questionResponses: Object.entries(answers).map(([qIdx, ansIdx]) => ({
+                    questionText: questions[parseInt(qIdx)].text,
+                    selectedOption: questions[parseInt(qIdx)].options[ansIdx],
+                    isCorrect: ansIdx === questions[parseInt(qIdx)].correctAnswer
+                })),
+                score: Object.entries(answers).filter(([qIdx, ansIdx]) => ansIdx === questions[parseInt(qIdx)].correctAnswer).length,
+                maxScore: questions.length
+            };
+
+            await api.assessments.submit(id!, payloads);
+            setIsSubmitted(true);
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        } catch (error) {
+            showToast.error('Failed to submit assessment');
+        }
     };
+
+    if (loading) {
+        return <div className="flex h-screen items-center justify-center"><Loader className="animate-spin text-primary-600" size={48} /></div>;
+    }
 
     if (isSubmitted) {
         return (
-            <div style={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'linear-gradient(135deg, #fdfbf7 0%, #fff 100%)',
-                padding: '2rem'
-            }}>
-                <div style={{
-                    maxWidth: '500px',
-                    width: '100%',
-                    textAlign: 'center',
-                    background: 'white',
-                    padding: '3rem',
-                    borderRadius: '2rem',
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                }}>
-                    <div style={{
-                        width: '80px',
-                        height: '80px',
-                        background: 'var(--success-100)',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 1.5rem',
-                        color: 'var(--success-600)'
-                    }}>
-                        <Award size={40} />
-                    </div>
-                    <h2 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--gray-900)' }}>
-                        Assessment Completed!
-                    </h2>
-                    <p style={{ color: 'var(--gray-600)', marginBottom: '2rem', fontSize: '1.125rem' }}>
-                        Great job! Your responses have been recorded. Our AI is analyzing your performance.
-                    </p>
-
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-                        <button
-                            onClick={() => navigate('/dashboard/assessments')}
-                            className="btn btn-primary"
-                        >
-                            Back to Assessments
-                        </button>
-                        <button
-                            onClick={() => navigate('/dashboard/reports')}
-                            className="btn btn-outline"
-                        >
-                            View Report
-                        </button>
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gray-50)', padding: '2rem' }}>
+                <div className="card text-center p-12 max-w-lg w-full">
+                    <div className="w-20 h-20 bg-success-100 text-success-600 rounded-full flex items-center justify-center mx-auto mb-6"><Award size={40} /></div>
+                    <h2 className="text-3xl font-bold mb-4">Assessment Completed!</h2>
+                    <p className="text-gray-600 mb-8">Well done! Your counsellor will review the AI analysis shortly.</p>
+                    <div className="flex gap-4 justify-center">
+                        <button onClick={() => navigate('/dashboard/assessments')} className="btn btn-primary">Back to Hub</button>
                     </div>
                 </div>
             </div>
@@ -142,102 +122,50 @@ export default function AssessmentRunner() {
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--gray-50)', display: 'flex', flexDirection: 'column' }}>
-            {/* Header */}
-            <header style={{ background: 'white', borderBottom: '1px solid var(--gray-200)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
+            <header className="bg-white border-b p-4 px-8 flex justify-between items-center sticky top-0 z-10">
                 <div>
-                    <h1 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Stream Selector Test #{id}</h1>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>Section 1 of 1</p>
+                    <h1 className="text-xl font-bold">{assessment?.title}</h1>
+                    <p className="text-sm text-gray-500">Class {assessment?.studentId?.currentGrade || '10th'}</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--orange-50)', padding: '0.5rem 1rem', borderRadius: '0.5rem', color: 'var(--orange-700)', fontWeight: 600 }}>
-                        <Clock size={18} />
-                        {formatTime(timeLeft)}
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 bg-orange-50 px-4 py-2 rounded-lg text-orange-700 font-bold">
+                        <Clock size={18} /> {formatTime(timeLeft)}
                     </div>
-                    <button onClick={handleSubmit} className="btn btn-primary btn-sm">Submit Test</button>
+                    <button onClick={handleSubmit} className="btn btn-primary btn-sm">Submit</button>
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main style={{ flex: 1, padding: '2rem', maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
-
-                {/* Progress Bar */}
-                <div style={{ marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-600)' }}>
-                        <span>Question {currentQuestion + 1} of {MOCK_QUESTIONS.length}</span>
-                        <span>{Math.round(((currentQuestion + 1) / MOCK_QUESTIONS.length) * 100)}% Completed</span>
+            <main className="flex-1 p-8 max-w-4xl mx-auto w-full">
+                <div className="mb-8">
+                    <div className="flex justify-between mb-2 text-sm text-gray-600">
+                        <span>Question {currentQuestion + 1} of {questions.length}</span>
+                        <span>{Math.round(((currentQuestion + 1) / questions.length) * 100)}%</span>
                     </div>
-                    <div style={{ width: '100%', height: '8px', background: 'var(--gray-200)', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${((currentQuestion + 1) / MOCK_QUESTIONS.length) * 100}%`, height: '100%', background: 'var(--primary-600)', transition: 'width 0.3s ease' }} />
+                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary-600 transition-all duration-300" style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }} />
                     </div>
                 </div>
 
-                {/* Question Card */}
-                <div style={{ background: 'white', borderRadius: '1.5rem', padding: '3rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 500, marginBottom: '2rem', lineHeight: '1.4' }}>
-                        {MOCK_QUESTIONS[currentQuestion].text}
-                    </h2>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {MOCK_QUESTIONS[currentQuestion].options.map((option, index) => (
-                            <label
-                                key={index}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    padding: '1.25rem',
-                                    borderRadius: '1rem',
-                                    border: answers[MOCK_QUESTIONS[currentQuestion].id] === index ? '2px solid var(--primary-600)' : '2px solid var(--gray-200)',
-                                    background: answers[MOCK_QUESTIONS[currentQuestion].id] === index ? 'var(--primary-50)' : 'white',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <div style={{
-                                    width: '24px',
-                                    height: '24px',
-                                    borderRadius: '50%',
-                                    border: answers[MOCK_QUESTIONS[currentQuestion].id] === index ? '6px solid var(--primary-600)' : '2px solid var(--gray-300)',
-                                    marginRight: '1rem',
-                                    flexShrink: 0
-                                }} />
-                                <input
-                                    type="radio"
-                                    name={`question-${currentQuestion}`}
-                                    checked={answers[MOCK_QUESTIONS[currentQuestion].id] === index}
-                                    onChange={() => handleAnswer(index)}
-                                    style={{ display: 'none' }}
-                                />
-                                <span style={{ fontSize: '1.125rem', color: 'var(--gray-800)' }}>{option}</span>
+                <div className="card p-12 shadow-xl">
+                    <h2 className="text-2xl font-medium mb-8 leading-tight">{questions[currentQuestion].text}</h2>
+                    <div className="space-y-4">
+                        {questions[currentQuestion].options.map((option, index) => (
+                            <label key={index} className={`flex items-center p-5 rounded-2xl border-2 transition-all cursor-pointer ${answers[currentQuestion] === index ? 'border-primary-600 bg-primary-50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}>
+                                <div className={`w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center ${answers[currentQuestion] === index ? 'border-primary-600' : 'border-gray-300'}`}>
+                                    {answers[currentQuestion] === index && <div className="w-3 h-3 bg-primary-600 rounded-full" />}
+                                </div>
+                                <input type="radio" name="option" checked={answers[currentQuestion] === index} onChange={() => handleAnswer(index)} className="hidden" />
+                                <span className="text-lg text-gray-800">{option}</span>
                             </label>
                         ))}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem' }}>
-                        <button
-                            className="btn btn-outline"
-                            disabled={currentQuestion === 0}
-                            onClick={() => setCurrentQuestion(prev => prev - 1)}
-                            style={{ paddingLeft: '1.5rem', paddingRight: '2rem' }}
-                        >
-                            <ChevronLeft size={20} style={{ marginRight: '0.5rem' }} /> Previous
-                        </button>
-
-                        {currentQuestion === MOCK_QUESTIONS.length - 1 ? (
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleSubmit}
-                                style={{ paddingLeft: '2rem', paddingRight: '1.5rem' }}
-                            >
-                                Finish Assessment <CheckCircle size={20} style={{ marginLeft: '0.5rem' }} />
-                            </button>
+                    <div className="flex justify-between mt-12 pt-8 border-t border-gray-100">
+                        <button className="btn btn-ghost" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion(prev => prev - 1)}><ChevronLeft size={20} className="mr-2" /> Previous</button>
+                        {currentQuestion === questions.length - 1 ? (
+                            <button className="btn btn-primary" onClick={handleSubmit}>Finish <CheckCircle size={20} className="ml-2" /></button>
                         ) : (
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => setCurrentQuestion(prev => prev + 1)}
-                                style={{ paddingLeft: '2rem', paddingRight: '1.5rem' }}
-                            >
-                                Next Question <ChevronRight size={20} style={{ marginLeft: '0.5rem' }} />
-                            </button>
+                            <button className="btn btn-primary" onClick={() => setCurrentQuestion(prev => prev + 1)}>Next <ChevronRight size={20} className="ml-2" /></button>
                         )}
                     </div>
                 </div>

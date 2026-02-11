@@ -22,6 +22,13 @@ export interface IAssessment extends Document {
         timeTaken?: number;
     }[];
 
+    // Added field for template questions
+    questions?: {
+        text: string;
+        options: string[];
+        correctAnswer: number;
+    }[];
+
     // AI Analysis of Result
     aiAnalysis?: {
         strengths: string[];
@@ -64,6 +71,12 @@ const assessmentSchema = new Schema<IAssessment>(
             correctOption: String,
             isCorrect: Boolean,
             timeTaken: Number
+        }],
+
+        questions: [{
+            text: String,
+            options: [String],
+            correctAnswer: Number
         }],
 
         aiAnalysis: {

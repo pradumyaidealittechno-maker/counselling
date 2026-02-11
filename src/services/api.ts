@@ -606,6 +606,58 @@ export const api = {
     },
   },
 
+  // Resource APIs
+  resources: {
+    getAll: async (params?: any) => {
+      const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+      return authFetch(`/api/resources${queryString}`);
+    },
+    create: async (data: any) => {
+      return authFetch('/api/resources', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    update: async (id: string, data: any) => {
+      return authFetch(`/api/resources/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    delete: async (id: string) => {
+      return authFetch(`/api/resources/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  // Assessment APIs
+  assessments: {
+    getAll: async (params?: any) => {
+      const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+      return authFetch(`/api/assessments${queryString}`);
+    },
+    assign: async (data: any) => {
+      return authFetch('/api/assessments/assign', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    submit: async (id: string, data: any) => {
+      return authFetch(`/api/assessments/${id}/submit`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
+  // Counselling Dashboard APIs
+  counsellingDashboard: {
+    getStats: async () => {
+      return authFetch('/api/counselling-dashboard/stats');
+    },
+  },
+
   // Admin APIs
   admin: {
     getUsers: async () => {

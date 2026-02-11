@@ -34,6 +34,9 @@ import aiRoutes from './routes/ai.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import sessionRoutes from './routes/session.routes.js';
 import courseRoutes from './routes/course.routes.js';
+import resourceRoutes from './routes/resource.routes.js';
+import assessmentRoutes from './routes/assessment.routes.js';
+import counsellingDashboardRoutes from './routes/counselling-dashboard.routes.js';
 import { authenticate } from './middleware/auth.js';
 import adminRoutes from './routes/admin.routes.js';
 import studentRoutes from './routes/student.routes.js';
@@ -107,6 +110,12 @@ app.use('/api/sessions', sessionRoutes);
 console.log('   ✅ /api/sessions - Session routes');
 app.use('/api/courses', courseRoutes);
 console.log('   ✅ /api/courses - Course routes');
+app.use('/api/resources', resourceRoutes);
+console.log('   ✅ /api/resources - Resource routes');
+app.use('/api/assessments', assessmentRoutes);
+console.log('   ✅ /api/assessments - Assessment routes');
+app.use('/api/counselling-dashboard', counsellingDashboardRoutes);
+console.log('   ✅ /api/counselling-dashboard - Dashboard routes');
 console.log('─'.repeat(60) + '\n');
 
 // Error handling
