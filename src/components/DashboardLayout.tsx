@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
+  User,
   LayoutDashboard,
   Briefcase,
   Users,
@@ -15,20 +16,48 @@ import {
   Moon,
   Sun,
   Menu,
-  X
+  X,
+  GraduationCap,
+  Calendar,
+  BarChart3,
+  BookOpen,
+  RefreshCw,
+  BookMarked
 } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import ChatbotDialog from './ChatbotDialog';
 import NotificationDropdown from './NotificationDropdown';
 import api from '../services/api';
 
-const navigation = [
+// Recruitment Module Navigation
+const recruitmentNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Jobs', href: '/dashboard/jobs', icon: Briefcase },
   { name: 'Candidates', href: '/dashboard/candidates', icon: Users },
   { name: 'Interviews', href: '/dashboard/interviews', icon: Video },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Settings', href: '/dashboard/profile', icon: Settings },
+];
+
+// Counselling Module Navigation
+const counsellingNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Students', href: '/dashboard/students', icon: GraduationCap },
+  { name: 'Courses', href: '/dashboard/courses', icon: BookMarked },
+  { name: 'Sessions', href: '/dashboard/sessions', icon: Calendar },
+  { name: 'Assessments', href: '/dashboard/assessments', icon: BarChart3 },
+  { name: 'Resources', href: '/dashboard/resources', icon: BookOpen },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: FileText },
+  { name: 'Settings', href: '/dashboard/profile', icon: Settings },
+];
+
+// Student Portal Navigation
+const studentNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'My Schedule', href: '/dashboard/sessions', icon: Calendar },
+  { name: 'My Courses', href: '/dashboard/courses', icon: GraduationCap },
+  { name: 'Resources', href: '/dashboard/resources', icon: BookOpen },
+  { name: 'Profile', href: '/dashboard/profile', icon: User },
 ];
 
 export default function DashboardLayout() {
@@ -40,7 +69,38 @@ export default function DashboardLayout() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [chatbotOpen, setChatbotOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<'recruitment' | 'counselling'>(
+    (localStorage.getItem('selected_module') as 'recruitment' | 'counselling') || 'recruitment'
+  );
+  const userRole = localStorage.getItem('user_role') || 'staff';
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (userRole === 'student') {
+      setUserName('Rahul Sharma');
+      setUserInitials('RS');
+    }
+  }, [userRole]);
+
+  // Check if current page needs full-width content (no padding)
+  const isFullWidthContent = location.pathname === '/dashboard/students' ||
+    (location.pathname === '/dashboard' && selectedModule === 'counselling');
+
+  // Get navigation based on selected module & role
+  let navigation = userRole === 'student' ? studentNavigation : (selectedModule === 'recruitment' ? recruitmentNavigation : counsellingNavigation);
+
+  // Handle module switch
+  const handleModuleSwitch = () => {
+    if (userRole === 'student') return;
+    const newModule = selectedModule === 'recruitment' ? 'counselling' : 'recruitment';
+    setSelectedModule(newModule);
+    localStorage.setItem('selected_module', newModule);
+
+    // Dispatch custom event to notify DashboardRouter
+    window.dispatchEvent(new Event('moduleChanged'));
+
+    navigate('/dashboard');
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -254,6 +314,45 @@ export default function DashboardLayout() {
               Ask AI
             </button>
           </div>
+
+
+          {/* Module Switcher - Only for Staff */}
+          {userRole !== 'student' && (
+            <div style={{
+              background: selectedModule === 'recruitment' ? 'linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)' : 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+              borderRadius: '1rem',
+              padding: '1.25rem',
+              border: selectedModule === 'recruitment' ? '1px solid rgba(233, 30, 99, 0.3)' : '1px solid rgba(102, 126, 234, 0.3)',
+              marginTop: '1rem'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '0.75rem'
+              }}>
+                {selectedModule === 'recruitment' ? (
+                  <Briefcase size={18} color="#E91E63" />
+                ) : (
+                  <GraduationCap size={18} color="#667eea" />
+                )}
+                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-900)' }}>
+                  {selectedModule === 'recruitment' ? 'Recruitment' : 'Counselling'} Module
+                </span>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
+                Switch to {selectedModule === 'recruitment' ? 'Counselling' : 'Recruitment'} module
+              </p>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                onClick={() => { handleModuleSwitch(); setIsMobileMenuOpen(false); }}
+              >
+                <RefreshCw size={14} />
+                Switch Module
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Main Content */}
@@ -389,7 +488,12 @@ export default function DashboardLayout() {
           </header>
 
           {/* Page Content */}
-          <main style={{ flex: 1, padding: '1.5rem', overflow: 'auto', background: 'var(--gray-50)' }}>
+          <main style={{
+            flex: 1,
+            padding: isFullWidthContent ? '0' : '1.5rem',
+            overflow: 'auto',
+            background: 'var(--gray-50)'
+          }}>
             <Outlet />
           </main>
         </div>

@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Mail, Lock, ArrowRight, Dna, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Mail, Lock, ArrowRight, Dna, CheckCircle, AlertCircle, Eye, EyeOff, Briefcase, GraduationCap } from 'lucide-react';
 import api from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [module, setModule] = useState<'recruitment' | 'counselling'>('recruitment');
   const [showPassword, setShowPassword] = useState(false);
+  const [isStudent, setIsStudent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,11 +20,16 @@ export default function Login() {
 
     console.log('%c🔐 Login Form Submitted', 'color: #8B5CF6; font-weight: bold;');
     console.log('   Email:', email);
+    console.log('   Module:', module);
 
     try {
       console.log('%c📡 Calling API...', 'color: #3B82F6;');
       const result = await api.auth.login(email, password);
       console.log('%c✅ Login successful!', 'color: #10B981; font-weight: bold;', result);
+
+      // Store selected module & role in localStorage
+      localStorage.setItem('selected_module', module);
+      localStorage.setItem('user_role', isStudent ? 'student' : 'staff');
 
       if (result.user.role === 'admin') {
         navigate('/admin');
@@ -256,6 +263,48 @@ export default function Login() {
               </button>
             </div>
           </div>
+
+          <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={isStudent}
+                onChange={(e) => setIsStudent(e.target.checked)}
+                style={{ width: '1.25rem', height: '1.25rem', accentColor: 'var(--primary-600)' }}
+              />
+              <span style={{ fontSize: '0.95rem', color: 'var(--gray-800)', fontWeight: 500 }}>Login as Student</span>
+            </label>
+          </div>
+
+          {!isStudent && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="label">Select Module</label>
+              <div style={{ position: 'relative' }}>
+                <select
+                  className="input"
+                  style={{
+                    paddingLeft: '40px',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L2 4h8z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center'
+                  }}
+                  value={module}
+                  onChange={(e) => setModule(e.target.value as 'recruitment' | 'counselling')}
+                  disabled={loading}
+                >
+                  <option value="recruitment">Recruitment Module</option>
+                  <option value="counselling">Counselling Module</option>
+                </select>
+                {module === 'recruitment' ? (
+                  <Briefcase size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                ) : (
+                  <GraduationCap size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                )}
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input type="checkbox" disabled={loading} />
@@ -276,8 +325,8 @@ export default function Login() {
           >
             {loading ? 'Signing in...' : 'Sign in'} <ArrowRight size={18} />
           </button>
-        </form>
-      </div>
-    </div>
+        </form >
+      </div >
+    </div >
   );
 }

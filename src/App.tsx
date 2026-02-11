@@ -4,7 +4,6 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import VerifyOtp from './pages/VerifyOtp';
 import Onboarding from './pages/Onboarding';
-import Dashboard from './pages/Dashboard';
 import Jobs from './pages/Jobs';
 import CreateJob from './pages/CreateJob';
 import LinkedInImport from './pages/LinkedInImport';
@@ -28,6 +27,15 @@ import CandidateDetails from './pages/CandidateDetails';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLayout from './components/AdminLayout';
 import DashboardLayout from './components/DashboardLayout';
+import DashboardRouter from './components/DashboardRouter';
+import Students from './pages/Students';
+import StudentProfile from './pages/StudentProfile';
+import Courses from './pages/Courses';
+import Sessions from './pages/Sessions';
+import ScheduleSession from './pages/ScheduleSession';
+import SessionDetails from './pages/SessionDetails';
+import Analytics from './pages/Analytics';
+import Resources from './pages/Resources';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
@@ -78,7 +86,7 @@ function App() {
 
         {/* Dashboard Routes */}
         <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<Dashboard />} />
+          <Route index element={<DashboardRouter />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/create" element={<CreateJob />} />
           <Route path="jobs/linkedin-import" element={<LinkedInImport />} />
@@ -98,6 +106,14 @@ function App() {
           <Route path="candidates/:id/feedback" element={<CandidateFeedback />} />
           <Route path="candidates/:id/decision" element={<FinalDecision />} />
           <Route path="interviews" element={<InterviewManagement />} />
+          <Route path="students" element={<Students />} />
+          <Route path="students/:id" element={<StudentProfile />} />
+          <Route path="courses" element={<Courses />} />
+          <Route path="sessions" element={<Sessions />} />
+          <Route path="sessions/schedule" element={<ScheduleSession />} />
+          <Route path="sessions/:id" element={<SessionDetails />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="resources" element={<Resources />} />
           <Route path="profile" element={<Profile />} />
           <Route path="profile/edit" element={<EditProfile />} />
         </Route>
