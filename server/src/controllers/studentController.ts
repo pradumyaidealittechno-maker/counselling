@@ -49,6 +49,9 @@ export const getStudents = async (req: Request, res: Response) => {
 // Get single student
 export const getStudentById = async (req: Request, res: Response) => {
     try {
+        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
         const student = await Student.findById(req.params.id)
             .populate('counsellorId', 'firstName lastName email');
 

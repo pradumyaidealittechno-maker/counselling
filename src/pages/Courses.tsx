@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, BookOpen, Clock, FileText, BarChart, Loader } from 'lucide-react';
+import { Plus, Search, BookOpen, Clock, FileText, BarChart, Loader, Trash2, Edit2 } from 'lucide-react';
 import api from '../services/api';
+import { showToast, confirmDelete } from '../utils/toast';
 
 export default function Courses() {
     const navigate = useNavigate();
@@ -22,6 +23,25 @@ export default function Courses() {
             console.error('Failed to fetch courses:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteCourse = async (course: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const confirmed = await confirmDelete({
+            entityType: 'Course',
+            entityName: course.title
+        });
+
+        if (confirmed) {
+            try {
+                await api.courses.delete(course._id);
+                showToast.success('Course deleted successfully!');
+                fetchCourses(); // Refresh list
+            } catch (error) {
+                console.error('Failed to delete course:', error);
+                showToast.error('Failed to delete course');
+            }
         }
     };
 
@@ -83,7 +103,7 @@ export default function Courses() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.5rem' }}>
                     {filteredCourses.map(course => (
                         <div key={course._id} style={{ background: 'white', borderRadius: '1rem', border: '1px solid var(--gray-200)', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
-                            <div style={{ padding: '1.5rem' }}>
+                            <div style={{ padding: '1.5rem', position: 'relative' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
                                     <span style={{
                                         padding: '0.25rem 0.75rem',
@@ -96,6 +116,32 @@ export default function Courses() {
                                     }}>
                                         {course.category}
                                     </span>
+                                    <button
+                                        onClick={(e) => handleDeleteCourse(course, e)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            padding: '0.25rem',
+                                            color: '#EF4444',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: '0.375rem',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title="Delete Course"
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                            e.currentTarget.style.color = '#DC2626';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'none';
+                                            e.currentTarget.style.color = '#EF4444';
+                                        }}
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
                                 </div>
 
                                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>{course.title}</h3>
@@ -123,8 +169,21 @@ export default function Courses() {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--gray-100)' }}>
-                                    <button className="btn btn-outline btn-sm" style={{ flex: 1 }}>Edit</button>
-                                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }}>View Details</button>
+                                    <button
+                                        onClick={() => navigate(`/dashboard/courses/edit/${course._id}`)}
+                                        className="btn btn-outline btn-sm"
+                                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(`/dashboard/courses/${course._id}`)}
+                                        className="btn btn-primary btn-sm"
+                                        style={{ flex: 1 }}
+                                    >
+                                        View Details
+                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -6,7 +6,14 @@ export const getStudentAssessments = async (req: Request, res: Response) => {
     try {
         const { studentId } = req.query;
         const filter: any = {};
-        if (studentId) filter.studentId = studentId;
+
+        // Handle studentId filter if present and valid
+        if (studentId && typeof studentId === 'string' && studentId !== 'undefined' && studentId !== 'null') {
+            // Only add to filter if it's a valid ObjectId to prevent CastError
+            if (studentId.match(/^[0-9a-fA-F]{24}$/)) {
+                filter.studentId = studentId;
+            }
+        }
 
         const assessments = await Assessment.find(filter).sort({ createdAt: -1 });
         res.json(assessments);

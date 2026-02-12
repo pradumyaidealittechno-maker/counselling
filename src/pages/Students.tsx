@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, BookOpen, GraduationCap, School, FileText, Loader, Clock } from 'lucide-react';
+import { Plus, Search, Calendar, BookOpen, GraduationCap, School, FileText, Loader, Clock, Edit, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { showToast, confirmDelete } from '../utils/toast';
 
 export default function Students() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [students, setStudents] = useState<any[]>([]);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [gradeFilter, setGradeFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -53,33 +55,41 @@ export default function Students() {
         e.preventDefault();
         setLoading(true);
         try {
-            // 1. Create student in DB
-            const student = await api.students.create(newStudent);
+            if (editingStudentId) {
+                // Update existing student
+                await api.students.update(editingStudentId, newStudent);
+                showToast.success('Student updated successfully!');
+            } else {
+                // 1. Create student in DB
+                const student = await api.students.create(newStudent);
 
-            // 2. Trigger Counseling Webhook with both Student and Course data
-            try {
-                const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_COUNSELLING;
-                if (webhookUrl) {
-                    // Find course details from the title
-                    const enrolledCourseData = availableCourses.find(c => c.title === newStudent.enrolledCourse);
+                // 2. Trigger Counseling Webhook with both Student and Course data
+                try {
+                    const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_COUNSELLING;
+                    if (webhookUrl) {
+                        // Find course details from the title
+                        const enrolledCourseData = availableCourses.find(c => c.title === newStudent.enrolledCourse);
 
-                    await fetch(webhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            event: 'student_added',
-                            timestamp: new Date().toISOString(),
-                            student: student,
-                            course: enrolledCourseData || { title: newStudent.enrolledCourse }
-                        })
-                    });
+                        await fetch(webhookUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                event: 'student_added',
+                                timestamp: new Date().toISOString(),
+                                student: student,
+                                course: enrolledCourseData || { title: newStudent.enrolledCourse }
+                            })
+                        });
+                    }
+                } catch (webhookError) {
+                    console.error('Webhook notification failed:', webhookError);
                 }
-            } catch (webhookError) {
-                console.error('Webhook notification failed:', webhookError);
+                showToast.success('Student added successfully!');
             }
 
             // 3. Refresh list and close modal
             setIsAddModalOpen(false);
+            setEditingStudentId(null);
             fetchStudents();
             setNewStudent({
                 firstName: '',
@@ -91,13 +101,47 @@ export default function Students() {
                 currentBoard: 'CBSE',
                 enrolledCourse: ''
             });
-            alert('Student added successfully!');
         } catch (error: any) {
-            console.error('Failed to add student:', error);
-            alert(error.message || 'Failed to add student');
+            console.error('Failed to save student:', error);
+            showToast.error(error.message || 'Failed to save student');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleDeleteStudent = async (student: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const confirmed = await confirmDelete({
+            entityType: 'Student',
+            entityName: `${student.firstName} ${student.lastName}`
+        });
+
+        if (confirmed) {
+            try {
+                await api.students.delete(student._id || student.id);
+                showToast.success('Student deleted successfully!');
+                fetchStudents(); // Refresh list
+            } catch (error) {
+                console.error('Failed to delete student:', error);
+                showToast.error('Failed to delete student');
+            }
+        }
+    };
+
+    const openEditModal = (student: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setNewStudent({
+            firstName: student.firstName,
+            lastName: student.lastName,
+            email: student.email,
+            phone: student.phone || '',
+            currentGrade: student.currentGrade,
+            currentSchool: student.currentSchool || '',
+            currentBoard: student.currentBoard || 'CBSE',
+            enrolledCourse: student.enrolledCourse || ''
+        });
+        setEditingStudentId(student._id || student.id);
+        setIsAddModalOpen(true);
     };
 
     // Filter students
@@ -146,7 +190,20 @@ export default function Students() {
                         </p>
                     </div>
                     <button
-                        onClick={() => setIsAddModalOpen(true)}
+                        onClick={() => {
+                            setEditingStudentId(null);
+                            setNewStudent({
+                                firstName: '',
+                                lastName: '',
+                                email: '',
+                                phone: '',
+                                currentGrade: '11th',
+                                currentSchool: '',
+                                currentBoard: 'CBSE',
+                                enrolledCourse: ''
+                            });
+                            setIsAddModalOpen(true);
+                        }}
                         className="btn btn-primary"
                         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                     >
@@ -240,6 +297,7 @@ export default function Students() {
                                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enrolled Course</th>
                                     <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Score</th>
                                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Session</th>
+                                    <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Schedule</th>
                                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
                                 </tr>
                             </thead>
@@ -343,12 +401,25 @@ export default function Students() {
                                                     {formatDate(student.lastSessionDate)}
                                                 </div>
                                             </td>
+                                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/dashboard/sessions/schedule?studentId=${student._id || student.id}`);
+                                                    }}
+                                                    className="btn btn-sm btn-primary"
+                                                    style={{ fontSize: '0.75rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                                                >
+                                                    <Calendar size={14} />
+                                                    Schedule
+                                                </button>
+                                            </td>
                                             <td style={{ padding: '1rem' }}>
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            navigate(`/dashboard/students/${student.id}`);
+                                                            navigate(`/dashboard/students/${student._id || student.id}`);
                                                         }}
                                                         className="btn btn-sm btn-ghost"
                                                         style={{ padding: '0.5rem' }}
@@ -357,15 +428,20 @@ export default function Students() {
                                                         <FileText size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            navigate(`/dashboard/sessions/schedule?studentId=${student.id}`);
-                                                        }}
-                                                        className="btn btn-sm btn-primary"
-                                                        style={{ fontSize: '0.75rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                                                        onClick={(e) => openEditModal(student, e)}
+                                                        className="btn btn-sm btn-ghost"
+                                                        style={{ padding: '0.5rem', color: 'var(--primary-600)' }}
+                                                        title="Edit Student"
                                                     >
-                                                        <Calendar size={14} />
-                                                        Schedule
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDeleteStudent(student, e)}
+                                                        className="btn btn-sm btn-ghost"
+                                                        style={{ padding: '0.5rem', color: 'var(--error-600)' }}
+                                                        title="Delete Student"
+                                                    >
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -408,7 +484,9 @@ export default function Students() {
                         padding: '2rem'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)' }}>Add New Student</h2>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gray-900)' }}>
+                                {editingStudentId ? 'Edit Student' : 'Add New Student'}
+                            </h2>
                             <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--gray-500)' }}>&times;</button>
                         </div>
 
@@ -522,7 +600,7 @@ export default function Students() {
                                     className="btn btn-primary"
                                     style={{ flex: 1 }}
                                 >
-                                    Add Student
+                                    {editingStudentId ? 'Update Student' : 'Add Student'}
                                 </button>
                             </div>
                         </form>

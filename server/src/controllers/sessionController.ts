@@ -26,13 +26,19 @@ export const getSessions = async (req: any, res: Response) => {
         // Filter by counsellor - only show sessions assigned to current user
         filter.counsellorId = userId;
 
-        if (req.query.studentId) filter.studentId = req.query.studentId;
-        if (req.query.status) filter.status = req.query.status;
-        if (req.query.date) {
-            const date = new Date(req.query.date);
-            const nextDay = new Date(date);
-            nextDay.setDate(date.getDate() + 1);
-            filter.scheduledAt = { $gte: date, $lt: nextDay };
+        if (req.query.studentId && typeof req.query.studentId === 'string' && req.query.studentId !== 'undefined' && req.query.studentId !== 'null') {
+            if (req.query.studentId.match(/^[0-9a-fA-F]{24}$/)) {
+                filter.studentId = req.query.studentId;
+            }
+        }
+        if (req.query.status && req.query.status !== 'undefined') filter.status = req.query.status;
+        if (req.query.date && req.query.date !== 'undefined') {
+            const date = new Date(req.query.date as string);
+            if (!isNaN(date.getTime())) {
+                const nextDay = new Date(date);
+                nextDay.setDate(date.getDate() + 1);
+                filter.scheduledAt = { $gte: date, $lt: nextDay };
+            }
         }
 
         // Add logic to restrict students to see only their sessions if user is student
@@ -51,6 +57,9 @@ export const getSessions = async (req: any, res: Response) => {
 // Get single session
 export const getSessionById = async (req: Request, res: Response) => {
     try {
+        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(404).json({ message: 'Session not found' });
+        }
         const session = await CounsellingSession.findById(req.params.id)
             .populate('studentId', 'firstName lastName email')
             .populate('counsellorId', 'firstName lastName email');

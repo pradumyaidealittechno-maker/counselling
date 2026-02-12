@@ -390,7 +390,7 @@ export default function DashboardLayout() {
               </button>
 
               {/* Search */}
-              <div className="header-search" style={{
+              {/* <div className="header-search" style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem',
@@ -413,7 +413,7 @@ export default function DashboardLayout() {
                     color: 'var(--gray-900)',
                   }}
                 />
-              </div>
+              </div> */}
             </div>
 
             {/* Right Section */}

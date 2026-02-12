@@ -21,7 +21,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showToast = (type: ToastType, message: string) => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, type, message }]);
-    
+
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000);
@@ -52,11 +52,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      
+
       {/* Toast Container */}
       <div style={{
         position: 'fixed',
-        top: '1rem',
+        bottom: '1rem',
         right: '1rem',
         zIndex: 9999,
         display: 'flex',
@@ -85,11 +85,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div style={{ color: colors.bg }}>
                 {getIcon(toast.type)}
               </div>
-              <p style={{ 
-                flex: 1, 
-                fontSize: '0.875rem', 
+              <p style={{
+                flex: 1,
+                fontSize: '0.875rem',
                 color: '#374151',
-                margin: 0 
+                margin: 0
               }}>
                 {toast.message}
               </p>

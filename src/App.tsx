@@ -33,6 +33,8 @@ import AddStudent from './pages/AddStudent';
 import StudentProfile from './pages/StudentProfile';
 import CreateCourse from './pages/CreateCourse';
 import Courses from './pages/Courses';
+import CourseDetails from './pages/CourseDetails';
+import EditCourse from './pages/EditCourse';
 import Sessions from './pages/Sessions';
 import ScheduleSession from './pages/ScheduleSession';
 import SessionDetails from './pages/SessionDetails';
@@ -118,6 +120,8 @@ function App() {
           <Route path="students/:id" element={<StudentProfile />} />
           <Route path="courses/create" element={<CreateCourse />} />
           <Route path="courses" element={<Courses />} />
+          <Route path="courses/:id" element={<CourseDetails />} />
+          <Route path="courses/edit/:id" element={<EditCourse />} />
           <Route path="sessions" element={<Sessions />} />
           <Route path="sessions/schedule" element={<ScheduleSession />} />
           <Route path="sessions/:id" element={<SessionDetails />} />
