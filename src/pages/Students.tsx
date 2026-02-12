@@ -358,7 +358,7 @@ export default function Students() {
                                                         </span>
                                                     </div>
                                                     <p style={{ fontSize: '0.875rem', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                        <School size={14} />
+                                                        {/* <School size={14} /> */}
                                                         {student.currentSchool}
                                                     </p>
                                                     <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{student.currentBoard} Board</p>

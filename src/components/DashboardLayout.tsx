@@ -42,8 +42,8 @@ const recruitmentNavigation = [
 // Counselling Module Navigation
 const counsellingNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Students', href: '/dashboard/students', icon: GraduationCap },
   { name: 'Courses', href: '/dashboard/courses', icon: BookOpen },
+  { name: 'Students', href: '/dashboard/students', icon: GraduationCap },
   { name: 'Sessions', href: '/dashboard/sessions', icon: Calendar },
   { name: 'Assessments', href: '/dashboard/assessments', icon: BarChart3 },
   { name: 'Resources', href: '/dashboard/resources', icon: BookMarked },

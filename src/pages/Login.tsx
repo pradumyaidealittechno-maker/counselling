@@ -279,7 +279,7 @@ export default function Login() {
           {!isStudent && (
             <div style={{ marginBottom: '1.5rem' }}>
               <label className="label">Select Module</label>
-              <div style={{ position: 'relative' }}>
+              {/* <div style={{ position: 'relative' }}>
                 <select
                   className="input"
                   style={{
@@ -302,7 +302,7 @@ export default function Login() {
                 ) : (
                   <GraduationCap size={18} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                 )}
-              </div>
+              </div> */}
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
