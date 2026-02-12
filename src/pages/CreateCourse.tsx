@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader, AlertCircle, PenTool, Music, Upload, FileText, X, File, Dna } from 'lucide-react';
+import { ArrowRight, Loader, AlertCircle, PenTool, Music, Upload, FileText, X, File, Dna, Banknote, BookOpen } from 'lucide-react';
 import api from '../services/api';
 import { showToast } from '../utils/toast';
 
@@ -21,7 +21,10 @@ export default function CreateCourse() {
         level: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
         prerequisites: '',
         description: '',
+        fees: '',
+        syllabus: '',
         audioUrl: '',
+        audioTranscript: '',
         resources: [] as Array<{ name: string; url: string }>
     });
 
@@ -36,22 +39,37 @@ export default function CreateCourse() {
 
         setError(null);
         setAudioUploading(true);
+        showToast.loading('AI is transcribing & analyzing the counselling session...');
 
         try {
-            const result = await api.upload.file(file, 'course-audio');
-            if (result && result.url) {
-                const fileName = file.name.replace(/\.[^/.]+$/, '').replace(/-/g, ' ');
+            // 1. First analyze the audio with AI
+            const analysis = await api.courses.analyzeAudio(file);
+
+            // 2. Upload to S3 for storage
+            const uploadResult = await api.upload.file(file, 'course-audio');
+
+            if (analysis && analysis.extractedDetails) {
+                const details = analysis.extractedDetails;
                 setCourseDetails(prev => ({
                     ...prev,
-                    title: prev.title || fileName || 'Counselling Session',
-                    audioUrl: result.url
+                    title: details.title || prev.title,
+                    description: details.description || prev.description,
+                    category: details.category || prev.category,
+                    duration: details.duration || prev.duration,
+                    level: (details.level || prev.level) as any,
+                    fees: details.fees || prev.fees,
+                    syllabus: details.syllabus || prev.syllabus,
+                    prerequisites: details.prerequisites || prev.prerequisites,
+                    audioUrl: uploadResult.url,
+                    audioTranscript: analysis.transcript
                 }));
                 setShowDetailsForm(true);
-                showToast.success('Audio file uploaded successfully!');
+                showToast.success('AI has successfully extracted course details from the counselling session!');
             }
         } catch (err: any) {
-            console.error('Failed to upload audio:', err);
-            showToast.error('Failed to upload audio file');
+            console.error('Failed to process audio:', err);
+            showToast.error('Analysis failed. Please fill details manually.');
+            setShowDetailsForm(true);
         } finally {
             setAudioUploading(false);
             if (audioInputRef.current) audioInputRef.current.value = '';
@@ -246,6 +264,49 @@ export default function CreateCourse() {
                             </div>
 
                             <div>
+                                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>Prerequisites</label>
+                                <input type="text" className="input" value={courseDetails.prerequisites} onChange={(e) => setCourseDetails(prev => ({ ...prev, prerequisites: e.target.value }))} placeholder="e.g., Basic Math, Graduation" />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                <div>
+                                    <label style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Banknote size={18} /> Fees
+                                    </label>
+                                    <input type="text" className="input" value={courseDetails.fees} onChange={(e) => setCourseDetails(prev => ({ ...prev, fees: e.target.value }))} placeholder="e.g., $499 or Free" />
+                                </div>
+                                <div>
+                                    <label style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <BookOpen size={18} /> Syllabus
+                                    </label>
+                                    <input type="text" className="input" value={courseDetails.syllabus} onChange={(e) => setCourseDetails(prev => ({ ...prev, syllabus: e.target.value }))} placeholder="Link to syllabus or summary" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Music size={18} /> Counselling Recording (Context for AI)
+                                </label>
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => audioInputRef.current?.click()}
+                                        disabled={audioUploading}
+                                        style={{ flex: 1 }}
+                                    >
+                                        {audioUploading ? <Loader size={18} className="animate-spin" /> : <Upload size={18} />}
+                                        {courseDetails.audioUrl ? 'Change Recording' : 'Upload Recording'}
+                                    </button>
+                                    {courseDetails.audioUrl && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'var(--success-light)', color: 'white', borderRadius: 'var(--radius-md)', fontSize: '0.875rem' }}>
+                                            <Music size={16} /> Attached
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
                                 <label style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <FileText size={18} /> Course Resources & Syllabus
                                 </label>
@@ -276,7 +337,7 @@ export default function CreateCourse() {
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button type="button" className="btn btn-secondary" onClick={() => setShowDetailsForm(false)} disabled={uploading}>Back</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1, background: 'linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%)' }} disabled={uploading || resourceUploading}>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1, background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)' }} disabled={uploading || resourceUploading}>
                                     {uploading ? <><Loader size={18} className="animate-spin" /> Creating...</> : <><Dna size={18} /> Create & Generate DNA <ArrowRight size={18} /></>}
                                 </button>
                             </div>

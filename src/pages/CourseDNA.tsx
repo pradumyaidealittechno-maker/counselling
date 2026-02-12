@@ -19,6 +19,9 @@ interface CourseDNAData {
     title: string;
     category: string;
     description: string;
+    fees?: string;
+    syllabus?: string;
+    audioTranscript?: string;
     courseDNA?: {
         academicDNA: DNATrait[];
         skillDNA: DNATrait[];
@@ -198,7 +201,7 @@ export default function CourseDNA() {
                     </div>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>Generate Course DNA</h2>
                     <p style={{ color: 'var(--gray-600)', maxWidth: '500px', margin: '0 auto 2rem', lineHeight: 1.6 }}>
-                        Our AI will analyze the course description and resources to create a multi-dimensional student alignment profile.
+                        Our AI will analyze the course description, fees, syllabus, and counselling audio to create a multi-dimensional student alignment profile.
                     </p>
                     {error && (
                         <div style={{ color: '#EF4444', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>

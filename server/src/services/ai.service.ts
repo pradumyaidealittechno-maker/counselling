@@ -1444,6 +1444,101 @@ Guidelines:
     }
   }
 
+  async transcribeAudio(buffer: Buffer, filename: string): Promise<string> {
+    const apiKey = this.getApiKey();
+    if (this.shouldUseMock()) {
+      return "This is a mock transcript of the counselling session. The student is interested in a career in data science and is looking for a course that covers Python, Machine Learning, and SQL. They have a budget of $500 and a duration of 3 months.";
+    }
+
+    try {
+      const formData = new FormData();
+      const blob = new Blob([buffer], { type: 'audio/mpeg' });
+      formData.append('file', blob, filename);
+      formData.append('model', 'whisper-1');
+
+      const response = await axios.post(
+        `${this.baseUrl}/audio/transcriptions`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      return response.data.text;
+    } catch (error: any) {
+      console.error('❌ Failed to transcribe audio:', error.response?.data || error.message);
+      throw new Error('Failed to transcribe audio session');
+    }
+  }
+
+  async extractCourseDetailsFromTranscript(transcriptText: string): Promise<any> {
+    const apiKey = this.getApiKey();
+    if (this.shouldUseMock()) {
+      return {
+        title: "Introduction to Data Science",
+        description: "A comprehensive course covering Python, Machine Learning, and SQL for aspiring data scientists.",
+        category: "Technical Skills",
+        duration: "3 Months",
+        level: "beginner",
+        fees: "$500",
+        syllabus: "Python Basics, Data Analysis with Pandas, Machine Learning Models, SQL Queries"
+      };
+    }
+
+    try {
+      const prompt = `You are an expert educational consultant. Analyze the following transcript from a counselling session and extract formal course details. 
+If certain details are not explicitly mentioned, infer them realistically based on the context.
+
+Transcript:
+"${transcriptText}"
+
+Extract the following details in JSON format:
+{
+  "title": "A concise and professional course title",
+  "description": "A detailed course description (2-3 paragraphs) including target audience and learning outcomes",
+  "category": "One of: Career Guidance, Soft Skills, Technical Skills",
+  "duration": "Estimated duration (e.g., 4 Weeks, 3 Months)",
+  "level": "beginner, intermediate, or advanced",
+  "fees": "Estimated fees or price range mentioned",
+  "syllabus": "A summary of key topics or modules",
+  "prerequisites": "Academic or skill requirements"
+}`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-5-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a specialized AI that extracts course information from student counselling transcripts.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return JSON.parse(response.data.choices[0].message.content);
+    } catch (error: any) {
+      console.error('❌ Failed to extract course details:', error.response?.data || error.message);
+      throw new Error('Failed to analyze session content');
+    }
+  }
+
   private generateMockCourseDNA(): any {
     return {
       academicDNA: [

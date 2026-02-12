@@ -4,7 +4,34 @@ import aiService from '../services/ai.service.js';
 
 // ... (existing code)
 
-// Generate Course DNA
+// Analyze Course Audio
+export const analyzeCourseAudio = async (req: any, res: Response) => {
+    try {
+        const file = req.file;
+        if (!file) {
+            return res.status(400).json({ message: 'No audio file uploaded' });
+        }
+
+        console.log('🎙️ [CourseController] Analyzing audio:', file.originalname);
+
+        // 1. Transcribe the audio
+        const transcript = await aiService.transcribeAudio(file.buffer, file.originalname);
+
+        // 2. Extract details
+        const extractedDetails = await aiService.extractCourseDetailsFromTranscript(transcript);
+
+        res.json({
+            success: true,
+            transcript,
+            extractedDetails
+        });
+    } catch (error: any) {
+        console.error('❌ [CourseController] Audio analysis error:', error);
+        res.status(500).json({ message: error.message || 'Failed to analyze audio' });
+    }
+};
+
+// ... (existing code)
 export const generateCourseDNA = async (req: Request, res: Response) => {
     try {
         const course = await Course.findById(req.params.id);

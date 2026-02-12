@@ -5,9 +5,11 @@ import {
     getCourseById,
     updateCourse,
     deleteCourse,
-    generateCourseDNA
+    generateCourseDNA,
+    analyzeCourseAudio
 } from '../controllers/courseController.js';
 import { authenticate } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -20,5 +22,6 @@ router.get('/:id', getCourseById);
 router.patch('/:id', updateCourse);
 router.delete('/:id', deleteCourse);
 router.post('/:id/generate-dna', generateCourseDNA);
+router.post('/analyze-audio', upload.single('file'), analyzeCourseAudio);
 
 export default router;

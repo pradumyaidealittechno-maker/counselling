@@ -610,6 +610,17 @@ export const api = {
         method: 'POST',
       });
     },
+    analyzeAudio: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      return authFetch('/api/courses/analyze-audio', {
+        method: 'POST',
+        body: formData,
+        // Let browser set the boundary for multipart/form-data
+        headers: {}
+      });
+    },
   },
 
   // Resource APIs
