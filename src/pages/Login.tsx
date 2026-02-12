@@ -264,7 +264,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
               <input
                 type="checkbox"
@@ -272,9 +272,9 @@ export default function Login() {
                 onChange={(e) => setIsStudent(e.target.checked)}
                 style={{ width: '1.25rem', height: '1.25rem', accentColor: 'var(--primary-600)' }}
               />
-              <span style={{ fontSize: '0.95rem', color: 'var(--gray-800)', fontWeight: 500 }}>Login as Student</span>
+              {/* <span style={{ fontSize: '0.95rem', color: 'var(--gray-800)', fontWeight: 500 }}>Login as Student</span> }
             </label>
-          </div>
+          </div> */}
 
           {!isStudent && (
             <div style={{ marginBottom: '1.5rem' }}>

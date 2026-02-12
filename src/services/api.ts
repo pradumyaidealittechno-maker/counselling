@@ -59,7 +59,8 @@ const handleResponse = async (response: Response) => {
 
   if (!response.ok) {
     logger.error(`Request failed with status ${response.status}`, data);
-    throw new Error(data.error || `HTTP ${response.status}`);
+    const errorMessage = data.message || data.error || `HTTP ${response.status}`;
+    throw new Error(errorMessage);
   }
 
   return data;

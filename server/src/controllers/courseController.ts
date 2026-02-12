@@ -4,13 +4,39 @@ import Course from '../models/Course.js';
 // Create new course
 export const createCourse = async (req: any, res: Response) => {
     try {
-        const course = await Course.create({
-            ...req.body,
-            createdBy: req.user.id || req.user._id
-        });
+        console.log('📚 [CourseController] Creating course request body:', JSON.stringify(req.body, null, 2));
+        console.log('👤 [CourseController] User from request:', JSON.stringify(req.user, null, 2));
+
+        const { title, description, category, duration, level, prerequisites, contextFileContent, audioUrl } = req.body;
+
+        // Ensure required fields are present and map to schema
+        const courseData = {
+            title,
+            description,
+            category,
+            duration,
+            level: (level || 'beginner').toLowerCase(),
+            prerequisites,
+            contextFileContent,
+            audioUrl,
+            createdBy: req.user?.id || req.user?._id
+        };
+
+        console.log('📝 [CourseController] Final course data for Mongoose:', JSON.stringify(courseData, null, 2));
+
+        const course = await Course.create(courseData);
+
+        console.log('✅ [CourseController] Course created successfully:', course._id);
         res.status(201).json(course);
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        console.error('❌ [CourseController] Create error details:', error);
+
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map((err: any) => err.message);
+            return res.status(400).json({ message: `Validation Error: ${messages.join(', ')}` });
+        }
+
+        res.status(500).json({ message: error.message || 'Internal Server Error' });
     }
 };
 
@@ -18,7 +44,6 @@ export const createCourse = async (req: any, res: Response) => {
 export const getCourses = async (req: Request, res: Response) => {
     try {
         const filter: any = {};
-        if (req.query.status) filter.status = req.query.status;
         if (req.query.category) filter.category = req.query.category;
         if (req.query.level) filter.level = req.query.level;
 

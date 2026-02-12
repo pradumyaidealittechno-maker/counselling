@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, BookOpen, ArrowRight, File, Loader, AlertCircle, PenTool } from 'lucide-react';
+import api from '../services/api';
 
 export default function CreateCourse() {
     const navigate = useNavigate();
@@ -13,9 +14,10 @@ export default function CreateCourse() {
         title: '',
         category: '',
         duration: '',
-        level: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced',
+        level: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
         prerequisites: '',
-        description: ''
+        description: '',
+        contextFileContent: ''
     });
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,20 +25,30 @@ export default function CreateCourse() {
         if (!file) return;
 
         setError(null);
-
         setUploading(true);
 
-        // Mock parsing delay
-        setTimeout(() => {
+        try {
+            // Use existing backend parsing service (supports PDF/Word)
+            const response = await api.jobs.parseDescription(file);
+
+            if (response && response.text) {
+                const fileName = file.name.replace(/\.[^/.]+$/, '').replace(/-/g, ' ');
+                setCourseDetails(prev => ({
+                    ...prev,
+                    title: prev.title || fileName || 'Uploaded Course',
+                    description: prev.description || `Syllabus parsed from ${file.name}.\n\nPlease review and edit the details below.`,
+                    contextFileContent: response.text
+                }));
+                setShowDetailsForm(true);
+            }
+        } catch (err: any) {
+            console.error('Failed to parse file:', err);
+            setError(err.message || 'Failed to parse file. Please try a different format.');
+        } finally {
             setUploading(false);
-            const fileName = file.name.replace(/\.[^/.]+$/, '').replace(/-/g, ' ');
-            setCourseDetails(prev => ({
-                ...prev,
-                title: fileName || 'Uploaded Course',
-                description: `Syllabus parsed from ${file.name}...\n\nCourse Overview: ...`
-            }));
-            setShowDetailsForm(true);
-        }, 1500);
+            // Clear input so same file can be uploaded again if needed
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     const handleCreateCourse = async () => {
@@ -62,13 +74,11 @@ export default function CreateCourse() {
             setUploading(true);
             setError(null);
 
-            // Mock API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 1. Create course in backend via API
+            await api.courses.create(courseDetails);
+            alert('Course created successfully!');
 
-            // Navigate to Recommendations page (or back to courses for now)
-            // Since "Recommend to students" is requested, maybe navigate to a recommendations page?
-            // For now, let's go to courses list with a success indicator?
-            // Or maybe a "Course View" page?
+            // Navigate back to courses list
             navigate('/dashboard/courses');
 
         } catch (err: any) {
@@ -84,7 +94,16 @@ export default function CreateCourse() {
     };
 
     return (
-        <div>
+        <div style={{ padding: '2rem', width: '100%', minHeight: '100vh' }}>
+            {/* Hidden File Input - Always rendered to stay accessible via ref */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".pdf,.doc,.docx,.txt"
+                style={{ display: 'none' }}
+            />
+
             {!showDetailsForm ? (
                 <>
                     <div style={{ marginBottom: '2rem' }}>
@@ -111,14 +130,6 @@ export default function CreateCourse() {
                         </div>
                     )}
 
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        accept=".pdf,.doc,.docx,.txt"
-                        style={{ display: 'none' }}
-                    />
-
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', maxWidth: '900px' }}>
                         {/* Upload Syllabus */}
                         <div
@@ -132,7 +143,7 @@ export default function CreateCourse() {
                                 borderRadius: '1rem',
                                 backgroundColor: 'white'
                             }}
-                            onClick={!uploading ? handleUploadClick : undefined}
+                            onClick={() => !uploading && handleUploadClick()}
                         >
                             <div style={{
                                 width: '80px',
@@ -244,7 +255,13 @@ export default function CreateCourse() {
                     )}
 
                     <div className="card" style={{ padding: '2rem', background: 'var(--white)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleCreateCourse();
+                            }}
+                            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+                        >
                             <div>
                                 <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
                                     Course Name <span style={{ color: '#EF4444' }}>*</span>
@@ -304,9 +321,9 @@ export default function CreateCourse() {
                                         value={courseDetails.level}
                                         onChange={(e) => setCourseDetails(prev => ({ ...prev, level: e.target.value as any }))}
                                     >
-                                        <option value="Beginner">Beginner</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Advanced">Advanced</option>
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="advanced">Advanced</option>
                                     </select>
                                 </div>
 
@@ -339,8 +356,37 @@ export default function CreateCourse() {
                                 />
                             </div>
 
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
+                                    Context File (Syllabus/Curriculum)
+                                </label>
+                                <div
+                                    onClick={() => !uploading && handleUploadClick()}
+                                    style={{
+                                        border: '2px dashed var(--gray-300)',
+                                        borderRadius: '0.5rem',
+                                        padding: '1.5rem',
+                                        textAlign: 'center',
+                                        cursor: uploading ? 'wait' : 'pointer',
+                                        background: uploading ? 'var(--gray-50)' : (courseDetails.contextFileContent ? 'var(--primary-50)' : 'transparent'),
+                                        borderColor: uploading ? 'var(--gray-300)' : (courseDetails.contextFileContent ? 'var(--primary-300)' : 'var(--gray-300)'),
+                                        opacity: uploading ? 0.7 : 1
+                                    }}
+                                >
+                                    {uploading ? (
+                                        <Loader size={24} className="animate-spin" style={{ color: 'var(--primary-600)', marginBottom: '0.5rem' }} />
+                                    ) : (
+                                        <Upload size={24} style={{ color: 'var(--primary-600)', marginBottom: '0.5rem' }} />
+                                    )}
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
+                                        {uploading ? 'Parsing File...' : (courseDetails.contextFileContent ? '✅ File Uploaded & Content Extracted' : 'Click to upload syllabus for better AI context')}
+                                    </p>
+                                </div>
+                            </div>
+
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button
+                                    type="button"
                                     className="btn btn-secondary"
                                     onClick={() => {
                                         setShowDetailsForm(false);
@@ -351,8 +397,8 @@ export default function CreateCourse() {
                                     Back
                                 </button>
                                 <button
+                                    type="submit"
                                     className="btn btn-primary"
-                                    onClick={handleCreateCourse}
                                     disabled={uploading}
                                     style={{ flex: 1 }}
                                 >
@@ -369,7 +415,7 @@ export default function CreateCourse() {
                                     )}
                                 </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             )}

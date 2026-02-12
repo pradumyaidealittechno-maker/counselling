@@ -1,64 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, BookOpen, Clock, FileText, DollarSign, BarChart, Loader } from 'lucide-react';
-
-interface Course {
-    _id: string;
-    title: string;
-    description: string;
-    category: string;
-    duration: string;
-    level: 'beginner' | 'intermediate' | 'advanced';
-    fees: number;
-    currency: string;
-    status: 'draft' | 'published' | 'archived';
-    enrolledStudentsCount: number;
-}
-
-const MOCK_COURSES: Course[] = [
-    {
-        _id: '1',
-        title: 'Career Planning Fundamentals',
-        description: 'A comprehensive guide to choosing the right career path based on skills and interests.',
-        duration: '4 Weeks',
-        level: 'beginner',
-        fees: 2500,
-        currency: 'INR',
-        category: 'Career Guidance',
-        enrolledStudentsCount: 120,
-        status: 'published'
-    },
-    {
-        _id: '2',
-        title: 'Advanced Interview Mastery',
-        description: 'Master the art of cracking interviews with mock sessions and expert tips.',
-        duration: '6 Weeks',
-        level: 'advanced',
-        fees: 5000,
-        currency: 'INR',
-        category: 'Soft Skills',
-        enrolledStudentsCount: 85,
-        status: 'published'
-    },
-    {
-        _id: '3',
-        title: 'Public Speaking Workshop',
-        description: 'Build confidence and learn effective public speaking techniques.',
-        duration: '2 Weeks',
-        level: 'intermediate',
-        fees: 1500,
-        currency: 'INR',
-        category: 'Communication',
-        enrolledStudentsCount: 45,
-        status: 'draft'
-    }
-];
+import { Plus, Search, BookOpen, Clock, FileText, BarChart, Loader } from 'lucide-react';
+import api from '../services/api';
 
 export default function Courses() {
     const navigate = useNavigate();
-    const [courses] = useState<Course[]>(MOCK_COURSES);
+    const [courses, setCourses] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchCourses();
+    }, []);
+
+    const fetchCourses = async () => {
+        setLoading(true);
+        try {
+            const data = await api.courses.getAll();
+            setCourses(data);
+        } catch (error) {
+            console.error('Failed to fetch courses:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredCourses = courses.filter(course =>
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -99,9 +64,9 @@ export default function Courses() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{
                             width: '100%',
-                            padding: '0.75rem 1rem 0.75rem 3rem',
-                            border: '1px solid var(--gray-300)',
+                            padding: '0.75rem 1rem 0.75rem 2.75rem',
                             borderRadius: '0.5rem',
+                            border: '1px solid var(--gray-300)',
                             fontSize: '0.875rem',
                             outline: 'none'
                         }}
@@ -111,8 +76,8 @@ export default function Courses() {
 
             {/* Content Area */}
             {loading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-                    <Loader size={48} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-600)' }} />
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', padding: '4rem' }}>
+                    <Loader size={48} className="animate-spin" style={{ color: 'var(--primary-600)' }} />
                 </div>
             ) : filteredCourses.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.5rem' }}>
@@ -131,17 +96,6 @@ export default function Courses() {
                                     }}>
                                         {course.category}
                                     </span>
-                                    <span style={{
-                                        padding: '0.25rem 0.75rem',
-                                        background: course.status === 'published' ? 'var(--success-50)' : 'var(--gray-100)',
-                                        color: course.status === 'published' ? 'var(--success-700)' : 'var(--gray-600)',
-                                        borderRadius: '0.375rem',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        textTransform: 'capitalize'
-                                    }}>
-                                        {course.status}
-                                    </span>
                                 </div>
 
                                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--gray-900)', marginBottom: '0.5rem' }}>{course.title}</h3>
@@ -158,14 +112,14 @@ export default function Courses() {
                                         <BarChart size={16} style={{ color: 'var(--gray-400)' }} />
                                         {course.level}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
-                                        <DollarSign size={16} style={{ color: 'var(--gray-400)' }} />
-                                        {course.fees === 0 ? 'Free' : `₹${course.fees}`}
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)' }}>
-                                        <FileText size={16} style={{ color: 'var(--gray-400)' }} />
-                                        {course.enrolledStudentsCount} Enrolled
-                                    </div>
+                                    {course.prerequisites && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-700)', gridColumn: 'span 2' }}>
+                                            <FileText size={16} style={{ color: 'var(--gray-400)' }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                Prerequisites: {course.prerequisites}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--gray-100)' }}>

@@ -66,6 +66,7 @@ export interface IStudent extends Document {
     enrollmentDate: Date;
     lastSessionDate?: Date;
     nextSessionDate?: Date;
+    enrolledCourse?: string;
 
     // Relationships
     counsellorId: mongoose.Types.ObjectId;
@@ -143,6 +144,7 @@ const studentSchema = new Schema<IStudent>(
         enrollmentDate: { type: Date, default: Date.now },
         lastSessionDate: Date,
         nextSessionDate: Date,
+        enrolledCourse: String,
 
         counsellorId: { type: Schema.Types.ObjectId, ref: 'User' },
         parentId: { type: Schema.Types.ObjectId, ref: 'Parent' },

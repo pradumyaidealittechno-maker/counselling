@@ -11,6 +11,7 @@ export default function Students() {
     const [searchQuery, setSearchQuery] = useState('');
     const [gradeFilter, setGradeFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [availableCourses, setAvailableCourses] = useState<any[]>([]);
     const [newStudent, setNewStudent] = useState({
         firstName: '',
         lastName: '',
@@ -24,7 +25,17 @@ export default function Students() {
 
     useEffect(() => {
         fetchStudents();
+        fetchCourses();
     }, []);
+
+    const fetchCourses = async () => {
+        try {
+            const data = await api.courses.getAll();
+            setAvailableCourses(data);
+        } catch (error) {
+            console.error('Failed to fetch courses:', error);
+        }
+    };
 
     const fetchStudents = async () => {
         setLoading(true);
@@ -38,12 +49,56 @@ export default function Students() {
         }
     };
 
-    const coursesList = [
-        'Career Planning Fundamentals',
-        'Advanced Interview Mastery',
-        'Public Speaking Workshop',
-        'Technical Skills Bootcamp'
-    ];
+    const handleAddStudent = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            // 1. Create student in DB
+            const student = await api.students.create(newStudent);
+
+            // 2. Trigger Counseling Webhook with both Student and Course data
+            try {
+                const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_COUNSELLING;
+                if (webhookUrl) {
+                    // Find course details from the title
+                    const enrolledCourseData = availableCourses.find(c => c.title === newStudent.enrolledCourse);
+
+                    await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            event: 'student_added',
+                            timestamp: new Date().toISOString(),
+                            student: student,
+                            course: enrolledCourseData || { title: newStudent.enrolledCourse }
+                        })
+                    });
+                }
+            } catch (webhookError) {
+                console.error('Webhook notification failed:', webhookError);
+            }
+
+            // 3. Refresh list and close modal
+            setIsAddModalOpen(false);
+            fetchStudents();
+            setNewStudent({
+                firstName: '',
+                lastName: '',
+                email: '',
+                phone: '',
+                currentGrade: '11th',
+                currentSchool: '',
+                currentBoard: 'CBSE',
+                enrolledCourse: ''
+            });
+            alert('Student added successfully!');
+        } catch (error: any) {
+            console.error('Failed to add student:', error);
+            alert(error.message || 'Failed to add student');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Filter students
     const filteredStudents = students.filter((student: any) => {
@@ -448,12 +503,7 @@ export default function Students() {
                             <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--gray-500)' }}>&times;</button>
                         </div>
 
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            // Handle add student logic here
-                            setIsAddModalOpen(false);
-                            alert('Student added successfully!');
-                        }}>
+                        <form onSubmit={handleAddStudent}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>First Name</label>
@@ -477,15 +527,28 @@ export default function Students() {
                                 </div>
                             </div>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>Email Address</label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={newStudent.email}
-                                    onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--gray-300)' }}
-                                />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>Email Address</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={newStudent.email}
+                                        onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--gray-300)' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--gray-700)', marginBottom: '0.5rem' }}>Phone Number</label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        value={newStudent.phone}
+                                        onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--gray-300)' }}
+                                        placeholder="+91..."
+                                    />
+                                </div>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -526,9 +589,13 @@ export default function Students() {
                                     style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--gray-300)' }}
                                 >
                                     <option value="" disabled>Select a course</option>
-                                    {coursesList.map((course, idx) => (
-                                        <option key={idx} value={course}>{course}</option>
-                                    ))}
+                                    {availableCourses.length > 0 ? (
+                                        availableCourses.map((course) => (
+                                            <option key={course._id} value={course.title}>{course.title}</option>
+                                        ))
+                                    ) : (
+                                        <option disabled>No courses available</option>
+                                    )}
                                 </select>
                             </div>
 
