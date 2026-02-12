@@ -10,6 +10,10 @@ export interface ICourse extends Document {
     contextFileContent?: string;
     audioUrl?: string;
     audioTranscript?: string;
+    courseDNA?: any;
+    fees?: string;
+    syllabus?: string;
+    resources?: Array<{ name: string; url: string }>;
     createdBy: mongoose.Types.ObjectId;
 }
 
@@ -27,7 +31,21 @@ const CourseSchema: Schema = new Schema({
     contextFileContent: { type: String },
     audioUrl: { type: String },
     audioTranscript: { type: String },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+    courseDNA: {
+        type: Schema.Types.Mixed,
+        default: null
+    },
+    fees: { type: String },
+    syllabus: { type: String },
+    resources: [{
+        name: String,
+        url: String
+    }],
+    createdBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    }
 }, {
     timestamps: true
 });

@@ -605,6 +605,11 @@ export const api = {
         method: 'DELETE',
       });
     },
+    generateDNA: async (id: string) => {
+      return authFetch(`/api/courses/${id}/generate-dna`, {
+        method: 'POST',
+      });
+    },
   },
 
   // Resource APIs

@@ -42,6 +42,7 @@ import Analytics from './pages/Analytics';
 import Resources from './pages/Resources';
 import Assessments from './pages/Assessments';
 import AssessmentRunner from './pages/AssessmentRunner';
+import CourseDNA from './pages/CourseDNA';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
@@ -121,6 +122,7 @@ function App() {
           <Route path="courses/create" element={<CreateCourse />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:id" element={<CourseDetails />} />
+          <Route path="courses/:courseId/course-dna" element={<CourseDNA />} />
           <Route path="courses/edit/:id" element={<EditCourse />} />
           <Route path="sessions" element={<Sessions />} />
           <Route path="sessions/schedule" element={<ScheduleSession />} />

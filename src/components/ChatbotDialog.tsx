@@ -4,6 +4,7 @@ import { X, Send, Loader, Sparkles, Bot, User } from 'lucide-react';
 interface ChatbotDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  module?: 'recruitment' | 'counselling';
   context?: {
     candidateName?: string;
     jobTitle?: string;
@@ -17,24 +18,50 @@ interface Message {
   content: string;
 }
 
-export default function ChatbotDialog({ isOpen, onClose, context }: ChatbotDialogProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: `Hi! 👋 I'm your AI hiring assistant specialized in recruitment and candidate evaluation.
+export default function ChatbotDialog({ isOpen, onClose, context, module = 'recruitment' }: ChatbotDialogProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      if (module === 'counselling') {
+        setMessages([
+          {
+            role: 'assistant',
+            content: `Hi! 👋 I'm your AI Counselling Assistant.
       
-      I can help you with:
-      • Understanding DNA match scores
-      • Explaining hiring recommendations  
-      • Comparing candidates
-      • Interview analysis insights
-      • Recruitment best practices
+I can help you with:
+• Analyzing student performance & grades
+• Managing counselling sessions
+• Course recommendations & curriculum
+• Student academic planning
+• Career guidance insights
       
-      ⚠️ **Note:** I only answer questions related to hiring and recruitment. For other topics, please use appropriate resources.
+⚠️ **Note:** I only answer questions related to student counselling and academic management.
       
-      What would you like to know about your hiring process?`
+How can I help you today?`
+          }
+        ]);
+      } else {
+        setMessages([
+          {
+            role: 'assistant',
+            content: `Hi! 👋 I'm your AI Recruitment Assistant.
+      
+I can help you with:
+• Understanding DNA match scores
+• Explaining hiring recommendations  
+• Comparing candidates
+• Interview analysis insights
+• Recruitment best practices
+      
+⚠️ **Note:** I only answer questions related to hiring and recruitment.
+      
+What would you like to know about your hiring process?`
+          }
+        ]);
+      }
     }
-  ]);
+  }, [isOpen, module]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -66,6 +93,7 @@ export default function ChatbotDialog({ isOpen, onClose, context }: ChatbotDialo
         },
         body: JSON.stringify({
           message: userMessage,
+          module,
           context: {
             ...context,
             conversationHistory: messages.map(m => ({ role: m.role, content: m.content }))
@@ -277,7 +305,7 @@ export default function ChatbotDialog({ isOpen, onClose, context }: ChatbotDialo
             <input
               type="text"
               className="input"
-              placeholder="Ask me anything about hiring, DNA matching, candidates..."
+              placeholder={module === 'counselling' ? "Ask about students, courses, or counselling sessions..." : "Ask me anything about hiring, DNA matching, candidates..."}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}

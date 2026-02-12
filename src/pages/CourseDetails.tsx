@@ -125,6 +125,71 @@ export default function CourseDetails() {
                 </p>
             </div>
 
+            {/* Course DNA Section */}
+            <div style={{ background: 'white', padding: '2rem', borderRadius: '1rem', border: '1px solid var(--gray-200)', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--gray-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <BarChart size={24} style={{ color: 'var(--primary-600)' }} />
+                        Course DNA & Student Alignment
+                    </h2>
+                    {!course.courseDNA && (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    setLoading(true);
+                                    const result = await api.courses.generateDNA(course._id);
+                                    setCourse({ ...course, courseDNA: result.courseDNA });
+                                } catch (error) {
+                                    console.error('Failed to generate DNA:', error);
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            className="btn btn-primary btn-sm"
+                        >
+                            Generate DNA Profile
+                        </button>
+                    )}
+                </div>
+
+                {course.courseDNA ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                        {Object.entries(course.courseDNA).map(([key, value]: [string, any]) => (
+                            <div key={key} style={{ padding: '1.5rem', background: 'var(--gray-50)', borderRadius: '0.75rem', border: '1px solid var(--gray-200)' }}>
+                                <h3 style={{ textTransform: 'capitalize', fontSize: '1rem', fontWeight: 600, color: 'var(--primary-700)', marginBottom: '1rem' }}>
+                                    {key.replace('DNA', ' Profile')}
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {value.map((trait: any) => (
+                                        <div key={trait.id} style={{ padding: '0.75rem', background: 'white', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{trait.name}</span>
+                                                <span style={{
+                                                    fontSize: '0.75rem',
+                                                    padding: '0.1rem 0.4rem',
+                                                    borderRadius: '0.25rem',
+                                                    background: trait.importance === 'critical' ? '#FEE2E2' : trait.importance === 'high' ? '#FEF3C7' : '#E0F2FE',
+                                                    color: trait.importance === 'critical' ? '#991B1B' : trait.importance === 'high' ? '#92400E' : '#075985'
+                                                }}>
+                                                    {trait.importance}
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: '0.8125rem', color: 'var(--gray-600)' }}>{trait.description}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem', background: 'var(--gray-50)', borderRadius: '0.75rem', border: '1px dashed var(--gray-300)' }}>
+                        <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                            No DNA profile generated yet. Use the button above to analyze this course with AI.
+                        </p>
+                    </div>
+                )}
+            </div>
+
             {/* Context File Content */}
             {course.contextFileContent && (
                 <div style={{ background: 'white', padding: '2rem', borderRadius: '1rem', border: '1px solid var(--gray-200)' }}>

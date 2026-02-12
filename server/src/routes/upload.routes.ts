@@ -15,7 +15,12 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const uploadFolder = folder || 'uploads';
+    let uploadFolder = folder || 'uploads';
+
+    // If folder is 'course-audio', use the value from .env if available
+    if (uploadFolder === 'course-audio' && process.env.AWS_S3_COURSES_FOLDER) {
+      uploadFolder = process.env.AWS_S3_COURSES_FOLDER;
+    }
 
     const result = await uploadToS3(
       file.buffer,

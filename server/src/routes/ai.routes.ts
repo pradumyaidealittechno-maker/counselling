@@ -26,12 +26,12 @@ router.post(
         return;
       }
 
-      const { message, context } = req.body;
+      const { message, context, module } = req.body;
       const userId = req.user?.id; // Get user ID from authenticated request
 
-      console.log('💬 AI Chat request:', { message, hasContext: !!context, userId });
+      console.log('💬 AI Chat request:', { message, hasContext: !!context, userId, module });
 
-      const response = await aiService.chatAssistant(message, userId || '', context);
+      const response = await aiService.chatAssistant(message, userId || '', context, module);
 
       res.json({ response });
     } catch (error: any) {

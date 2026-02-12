@@ -309,7 +309,9 @@ export default function DashboardLayout() {
               <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--gray-900)' }}>AI Assistant</span>
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
-              Get AI-powered insights for your hiring decisions
+              {selectedModule === 'counselling'
+                ? 'Get AI-powered insights for student counselling'
+                : 'Get AI-powered insights for your hiring decisions'}
             </p>
             <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={() => { setChatbotOpen(true); setIsMobileMenuOpen(false); }}>
               Ask AI
@@ -503,6 +505,7 @@ export default function DashboardLayout() {
         <ChatbotDialog
           isOpen={chatbotOpen}
           onClose={() => setChatbotOpen(false)}
+          module={selectedModule}
         />
       </div>
 

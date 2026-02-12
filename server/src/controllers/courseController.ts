@@ -1,16 +1,44 @@
 import { Request, Response } from 'express';
 import Course from '../models/Course.js';
+import aiService from '../services/ai.service.js';
+
+// ... (existing code)
+
+// Generate Course DNA
+export const generateCourseDNA = async (req: Request, res: Response) => {
+    try {
+        const course = await Course.findById(req.params.id);
+        if (!course) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        const courseDNA = await aiService.generateCourseDNA({
+            title: course.title,
+            description: course.description,
+            category: course.category,
+            level: course.level,
+            prerequisites: course.prerequisites,
+            fees: course.fees,
+            syllabus: course.syllabus,
+            transcript: course.audioTranscript
+        });
+
+        course.courseDNA = courseDNA;
+        await course.save();
+
+        res.json({ courseDNA });
+    } catch (error: any) {
+        console.error('Generate Course DNA error:', error);
+        res.status(500).json({ message: 'Failed to generate Course DNA' });
+    }
+};
 
 // Create new course
 export const createCourse = async (req: any, res: Response) => {
     try {
-        console.log('📚 [CourseController] Creating course request body:', JSON.stringify(req.body, null, 2));
-        console.log('👤 [CourseController] User from request:', JSON.stringify(req.user, null, 2));
+        const { title, description, category, duration, level, prerequisites, contextFileContent, audioUrl, resources, fees, syllabus } = req.body;
 
-        const { title, description, category, duration, level, prerequisites, contextFileContent, audioUrl } = req.body;
-
-        // Ensure required fields are present and map to schema
-        const courseData = {
+        const course = new Course({
             title,
             description,
             category,
@@ -19,24 +47,17 @@ export const createCourse = async (req: any, res: Response) => {
             prerequisites,
             contextFileContent,
             audioUrl,
-            createdBy: req.user?.id || req.user?._id
-        };
+            resources: resources || [],
+            fees,
+            syllabus,
+            createdBy: req.user._id
+        });
 
-        console.log('📝 [CourseController] Final course data for Mongoose:', JSON.stringify(courseData, null, 2));
-
-        const course = await Course.create(courseData);
-
-        console.log('✅ [CourseController] Course created successfully:', course._id);
+        await course.save();
         res.status(201).json(course);
     } catch (error: any) {
-        console.error('❌ [CourseController] Create error details:', error);
-
-        if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map((err: any) => err.message);
-            return res.status(400).json({ message: `Validation Error: ${messages.join(', ')}` });
-        }
-
-        res.status(500).json({ message: error.message || 'Internal Server Error' });
+        console.error('Create course error:', error);
+        res.status(500).json({ message: error.message || 'Failed to create course' });
     }
 };
 

@@ -4,7 +4,8 @@ import {
     createCourse,
     getCourseById,
     updateCourse,
-    deleteCourse
+    deleteCourse,
+    generateCourseDNA
 } from '../controllers/courseController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -18,5 +19,6 @@ router.post('/', createCourse);
 router.get('/:id', getCourseById);
 router.patch('/:id', updateCourse);
 router.delete('/:id', deleteCourse);
+router.post('/:id/generate-dna', generateCourseDNA);
 
 export default router;

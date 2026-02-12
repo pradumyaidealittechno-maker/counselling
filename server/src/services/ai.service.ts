@@ -2,6 +2,9 @@ import axios from 'axios';
 import Candidate from '../models/Candidate.js';
 import Job from '../models/Job.js';
 import User from '../models/User.js';
+import Student from '../models/Student.js';
+import Course from '../models/Course.js';
+import CounsellingSession from '../models/CounsellingSession.js';
 
 export interface TranscriptEntry {
   speaker: string;
@@ -986,6 +989,9 @@ Output JSON Format:
   /**
    * AI Chat Assistant for DNA/Hiring/Candidate questions
    */
+  /**
+   * AI Chat Assistant for DNA/Hiring/Counselling questions
+   */
   async chatAssistant(
     message: string,
     userId: string,
@@ -996,7 +1002,8 @@ Output JSON Format:
       candidateScore?: number;
       recommendation?: string;
       conversationHistory?: Array<{ role: string; content: string }>;
-    }
+    },
+    module: 'recruitment' | 'counselling' = 'recruitment'
   ): Promise<string> {
     const apiKey = this.getApiKey();
 
@@ -1005,93 +1012,116 @@ Output JSON Format:
       
 Question: ${message}
 
-Based on your question about ${context?.candidateName || 'the candidate'} for the ${context?.jobTitle || 'position'}, I would provide detailed insights about DNA matching, hiring recommendations, and candidate evaluation.`;
+Based on your question about ${module === 'counselling' ? 'student counselling' : 'recruitment'}, I would provide detailed insights tailored to the ${module} dashboard.`;
     }
 
     try {
-      // 1. Fetch relevant database context scoped to the USER
-      const candidates = await Candidate.find({ createdBy: userId }, 'firstName lastName status experience resumeMatchScore analysis resumeMatchAnalysis job jobId')
-        .populate('jobId', 'title department')
-        .lean();
-
-      const jobs = await Job.find({ createdBy: userId }, 'title company status requiredSkills location experienceLevel').lean();
-
-      // Also fetch user info
+      // 1. Fetch relevant database context scoped to the USER and MODULE
+      let dbContext: any = {};
       const user = await User.findById(userId, 'firstName lastName email company').lean() as any;
 
-      // Calculate derived stats
-      const totalCandidates = candidates.length;
-      const hiredCount = candidates.filter(c =>
-        c.status === 'hired' ||
-        c.analysis?.recommendation?.toLowerCase() === 'hire' ||
-        c.analysis?.recommendation?.toLowerCase() === 'recommended' ||
-        c.analysis?.recommendation?.toLowerCase() === 'match'
-      ).length;
+      if (module === 'counselling') {
+        const students = await Student.find({ createdBy: userId }).lean();
+        const courses = await Course.find({ createdBy: userId }).lean();
+        const sessions = await CounsellingSession.find({ createdBy: userId }).lean();
 
-      const interviewsCompleted = candidates.filter(c => c.status === 'interview_complete' || c.analysis).length;
+        dbContext = {
+          userConfig: {
+            name: user ? `${user.firstName} ${user.lastName}` : 'Counsellor',
+            company: user?.company || 'Educational Institute'
+          },
+          stats: {
+            totalStudents: students.length,
+            activeStudents: students.filter(s => s.status === 'active').length,
+            totalCourses: courses.length,
+            totalSessions: sessions.length,
+            upcomingSessions: sessions.filter((s: any) => new Date(s.date) > new Date()).length
+          },
+          students: students.map(s => ({
+            name: `${s.firstName} ${s.lastName}`,
+            grade: s.currentGrade,
+            status: s.status,
+            enrolledCourse: s.enrolledCourse || 'None',
+            lastSession: s.lastSessionDate,
+            profile: s.studentProfile,
+            careerInterests: s.careerInterests,
+            suggestedCareers: s.suggestedCareerPaths
+          })),
+          courses: courses.map(c => ({
+            title: c.title,
+            category: c.category,
+            level: c.level,
+            duration: c.duration,
+            courseDNA: c.courseDNA
+          })),
+          recentSessions: sessions.slice(0, 5).map((s: any) => ({
+            student: s.studentName,
+            type: s.type,
+            date: s.date,
+            status: s.status
+          }))
+        };
+      } else {
+        const candidates = await Candidate.find({ createdBy: userId }, 'firstName lastName status experience resumeMatchScore analysis resumeMatchAnalysis job jobId')
+          .populate('jobId', 'title department')
+          .lean();
 
-      // Prepare context object for the AI
-      const dbContext = {
-        userConfig: {
-          name: user ? `${user.firstName} ${user.lastName}` : 'User',
-          company: user?.company || 'My Company'
-        },
-        stats: {
-          totalCandidates,
-          hiredCandidates: hiredCount,
-          interviewsCompleted,
-          activeJobs: jobs.filter(j => j.status === 'active').length
-        },
-        candidates: candidates.map(c => ({
-          name: `${c.firstName} ${c.lastName}`,
-          status: c.status,
-          role: (c.jobId as any)?.title || 'Unassigned',
-          matchScore: c.resumeMatchScore || c.analysis?.overallScore || 0,
-          experience: c.experience,
-          recommendation: c.analysis?.recommendation || c.resumeMatchAnalysis?.recommendation || 'Pending'
-        })),
-        jobs: jobs.map(j => ({
-          title: j.title,
-          company: j.company,
-          status: j.status,
-          location: j.location,
-          requiredSkills: j.requiredSkills,
-          experienceLevel: j.experienceLevel
-        }))
-      };
+        const jobs = await Job.find({ createdBy: userId }, 'title company status requiredSkills location experienceLevel').lean();
 
-      const systemPrompt = `You are an AI hiring assistant for Intelligens, an AI-powered recruitment platform. 
-You are assisting ${user ? user.firstName : 'the user'}.
-You have access to the current live database of candidates, jobs, and recruitment stats SPECIFIC to this user.
+        dbContext = {
+          userConfig: {
+            name: user ? `${user.firstName} ${user.lastName}` : 'User',
+            company: user?.company || 'My Company'
+          },
+          stats: {
+            totalCandidates: candidates.length,
+            hiredCandidates: candidates.filter(c =>
+              c.status === 'hired' ||
+              c.analysis?.recommendation?.toLowerCase() === 'hire'
+            ).length,
+            activeJobs: jobs.filter(j => j.status === 'active').length
+          },
+          candidates: candidates.map(c => ({
+            name: `${c.firstName} ${c.lastName}`,
+            status: c.status,
+            role: (c.jobId as any)?.title || 'Unassigned',
+            matchScore: c.resumeMatchScore || c.analysis?.overallScore || 0,
+            recommendation: c.analysis?.recommendation || 'Pending'
+          })),
+          jobs: jobs.map(j => ({
+            title: j.title,
+            status: j.status,
+            requiredSkills: j.requiredSkills
+          }))
+        };
+      }
 
-**DATABASE CONTEXT:**
+      const systemPrompt = module === 'counselling'
+        ? `You are an AI Counselling Assistant for Intelligens.
+You are assisting ${user ? user.firstName : 'the counsellor'}.
+You have access to the counselling database including students, courses, and sessions.
+
+**COUNSELLING CONTEXT:**
 ${JSON.stringify(dbContext, null, 2)}
 
-**IMPORTANT INSTRUCTIONS:**
-1. **Use the Database Context:** When the user asks about "how many candidates", "available candidates", "candidates for role X", "match scores", etc., YOU MUST USE the data provided above to answer accurately. 
-   - Example: If asked "How many candidates for Full-stack Developer?", look at the 'candidates' array in context and count those where role matches.
-   - Example: If asked "Who has >85 match?", filter the candidates by 'matchScore'.
-   - Example: If asked "Show me candidates with experience...", check the 'experience' field.
+**INSTRUCTIONS:**
+1. **Use the Counselling Context:** Answer questions about student progress, upcoming sessions, and course details using the data above.
+2. **Scope:** Focused on student academic planning, career guidance, and session management.
+3. **Style:** Professional, encouraging, and data-driven.
+4. **DNA/Prompting:** If asked about student strengths or career paths, refer to the academic info and grades in context.
 
-2. **Scope of Assistance:**
-   - Answer questions about available candidates, their status, scores, and roles.
-   - Provide insights on jobs, required skills, and stats.
-   - Explain DNA matching and hiring recommendations.
-   - Discuss interview management and analysis reports.
-   - Answer questions about user info if available in context.
+User Question: "${message}"`
+        : `You are an AI Recruitment Assistant for Intelligens. 
+You are assisting ${user ? user.firstName : 'the recruiter'}.
+You have access to the recruitment database including candidates and jobs.
 
-3. **Response Style:**
-   - Be direct and data-driven.
-   - If the answer is 0 or none, state that clearly.
-   - Format lists nicely (e.g., using bullet points).
+**RECRUITMENT CONTEXT:**
+${JSON.stringify(dbContext, null, 2)}
 
-**STRICTLY FORBIDDEN:**
-- Do NOT answer questions about general world knowledge unconnected to this hiring data or HR best practices.
-- Do NOT invent data that is not in the context (unless providing general HR best practices).
-
-${context?.candidateName ? `Current Page Context - Candidate: ${context.candidateName}` : ''}
-${context?.jobTitle ? `Current Page Context - Position: ${context.jobTitle}` : ''}
-${context?.candidateScore ? `Current Page Context - Score: ${context.candidateScore}/100` : ''}
+**INSTRUCTIONS:**
+1. **Use the Recruitment Context:** Answer questions about candidate match scores, hiring status, and job requirements.
+2. **Scope:** Focused on DNA matching, interview analysis, and hiring decisions.
+3. **Style:** Direct, professional, and data-driven.
 
 User Question: "${message}"`;
 
@@ -1107,23 +1137,23 @@ User Question: "${message}"`;
           model: 'gpt-5-mini',
           messages,
           temperature: 0.7,
-          max_tokens: 500,
         },
         {
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: 30000, // 30s timeout
         }
       );
 
       return response.data.choices[0].message.content;
     } catch (error: any) {
-      console.error('AI Chat error:', error.response?.data || error.message);
-      throw new Error('Failed to get AI response. Please try again.');
+      console.error('❌ AI Chat error:', error.response?.data || error.message);
+      throw new Error('Failed to get AI assistant response');
     }
   }
+
+
 
   /**
    * Parse resume text and extract candidate information
@@ -1295,6 +1325,164 @@ SCORING CRITERIA:
         recommendation: 'no_match'
       };
     }
+  }
+
+  async generateCourseDNA(context: {
+    title: string;
+    description: string;
+    category: string;
+    level: string;
+    prerequisites?: string;
+    fees?: string;
+    syllabus?: string;
+    transcript?: string;
+  }): Promise<any> {
+    const apiKey = this.getApiKey();
+
+    if (this.shouldUseMock()) {
+      return this.generateMockCourseDNA();
+    }
+
+    try {
+      const prompt = `Analyze the following course details and counselling conversation transcript to extract key DNA elements for student alignment. 
+Use both the formal course details and any insights from the counselling conversation to create a comprehensive profile.
+
+Course Details:
+- Title: ${context.title}
+- Category: ${context.category}
+- Level: ${context.level}
+- Prerequisites: ${context.prerequisites || 'None'}
+- Fees: ${context.fees || 'Not specified'}
+- Syllabus: ${context.syllabus || 'Not provided'}
+- Description: ${context.description}
+
+Counselling Transcript (if available):
+${context.transcript || 'No transcript provided'}
+
+For each trait, provide:
+- id: unique identifier (use lowercase with hyphens)
+- name: trait name
+- description: brief description
+- importance: critical, high, medium, or low
+- signals: array of observable signals/indicators
+
+Provide a structured JSON response with:
+{
+  "academicDNA": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "importance": "critical|high|medium|low",
+      "signals": ["string"]
+    }
+  ],
+  "skillDNA": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "importance": "critical|high|medium|low",
+      "signals": ["string"]
+    }
+  ],
+  "careerDNA": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "importance": "critical|high|medium|low",
+      "signals": ["string"]
+    }
+  ],
+  "personalityDNA": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "importance": "critical|high|medium|low",
+      "signals": ["string"]
+    }
+  ]
+}
+
+Guidelines:
+- academicDNA: Subjects, grades, and academic prerequisites
+- skillDNA: Technical skills, soft skills, or practical abilities
+- careerDNA: Future career paths and industry alignment
+- personalityDNA: Learning style, temperament, and character traits`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'gpt-5-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert educational consultant specializing in course analysis and student profiling.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return JSON.parse(response.data.choices[0].message.content);
+    } catch (error: any) {
+      console.error('❌ Failed to generate Course DNA:', error.response?.data || error.message);
+      return this.generateMockCourseDNA();
+    }
+  }
+
+  private generateMockCourseDNA(): any {
+    return {
+      academicDNA: [
+        {
+          id: 'foundational-concepts',
+          name: 'Foundational Concepts',
+          description: 'Understanding of core academic principles required for this course',
+          importance: 'critical',
+          signals: ['Previous coursework completion', 'Conceptual clarity in assessments']
+        }
+      ],
+      skillDNA: [
+        {
+          id: 'analytical-thinking',
+          name: 'Analytical Thinking',
+          description: 'Ability to break down complex problems into manageable components',
+          importance: 'high',
+          signals: ['Problem-solving approach', 'Logical reasoning']
+        }
+      ],
+      careerDNA: [
+        {
+          id: 'professional-readiness',
+          name: 'Professional Readiness',
+          description: 'Alignment with industry standards and professional expectations',
+          importance: 'medium',
+          signals: ['Internship interests', 'Career goal alignment']
+        }
+      ],
+      personalityDNA: [
+        {
+          id: 'active-learner',
+          name: 'Active Learner',
+          description: 'Engagement level and curiosity towards the subject matter',
+          importance: 'high',
+          signals: ['Questioning during sessions', 'Self-motivated study habits']
+        }
+      ]
+    };
   }
 }
 

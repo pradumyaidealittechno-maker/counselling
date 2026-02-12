@@ -16,12 +16,20 @@ export const upload = multer({
       'video/webm',
       'video/mp4',
       'video/x-matroska',
+      'audio/mpeg',
+      'audio/wav',
+      'audio/ogg',
+      'audio/mp3',
+      'audio/webm',
+      'audio/mp4',
+      'audio/x-m4a',
+      'audio/m4a',
     ];
 
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, and video files are allowed.'));
+      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, video, and audio files are allowed.'));
     }
   },
 });
