@@ -59,7 +59,7 @@ console.log('📋 CONFIGURATION:');
 console.log('─'.repeat(60));
 console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
 console.log(`   Port: ${PORT}`);
-console.log(`   Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+console.log(`   Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5175'}`);
 console.log(`   MongoDB: ${process.env.MONGODB_URI ? '✅ Configured' : '❌ Not configured'}`);
 console.log(`   JWT Secret: ${process.env.JWT_SECRET ? '✅ Configured' : '❌ Not configured'}`);
 console.log(`   AWS S3: ${process.env.AWS_S3_BUCKET ? '✅ Configured' : '⚠️ Not configured'}`);
@@ -71,7 +71,7 @@ console.log('─'.repeat(60) + '\n');
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || 'http://localhost:5175',
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));

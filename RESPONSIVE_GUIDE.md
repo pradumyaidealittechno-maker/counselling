@@ -66,7 +66,7 @@ VITE_API_URL=http://localhost:3001
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173` (or the port shown in your terminal).
+The application will be available at `http://localhost:5175` (or the port shown in your terminal).
 
 ## Building for Production
 

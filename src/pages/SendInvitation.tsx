@@ -25,7 +25,7 @@ export default function SendInvitation() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
 
-  const BASE_URL = window.location.origin; // e.g., http://localhost:5173
+  const BASE_URL = window.location.origin; // e.g., http://localhost:5175
 
 
   const API_URL = 'https://hrapi.intelligens.app'; // Backend API server

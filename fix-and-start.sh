@@ -132,7 +132,7 @@ echo -e "   Email: ${GREEN}admin@intelligens.app${NC}"
 echo -e "   Password: ${GREEN}Admin123!${NC}\n"
 
 echo -e "${CYAN}🌐 Access Points:${NC}"
-echo -e "   Frontend: ${GREEN}http://localhost:5173${NC}"
+echo -e "   Frontend: ${GREEN}http://localhost:5175${NC}"
 echo -e "   Backend:  ${GREEN}http://localhost:3001${NC}\n"
 
 echo -e "${YELLOW}Press Ctrl+C to stop all servers${NC}\n"

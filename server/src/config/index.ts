@@ -4,7 +4,7 @@ export const config = {
   // Server
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3001', 10),
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5175',
 
   // MongoDB
   mongodbUri: process.env.MONGODB_URI || '',
@@ -69,7 +69,7 @@ export function validateConfig(): void {
   ];
 
   const missing = required.filter(({ value }) => !value || value === 'default-secret-change-me');
-  
+
   if (missing.length > 0 && config.nodeEnv === 'production') {
     throw new Error(`Missing required environment variables: ${missing.map(m => m.key).join(', ')}`);
   }

@@ -11,7 +11,7 @@ cd /home/ideal222/n8n-team/hr-solution
 npm run dev
 ```
 
-The application will be available at: **http://localhost:5173**
+The application will be available at: **http://localhost:5175**
 
 ---
 
@@ -134,7 +134,7 @@ The application will be available at: **http://localhost:5173**
 
 3. Open on mobile device:
    ```
-   http://[your-ip]:5173
+   http://[your-ip]:5175
    ```
 
 **What to test:**

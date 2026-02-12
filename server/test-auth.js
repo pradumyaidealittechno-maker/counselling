@@ -49,7 +49,7 @@ async function testAuth() {
     console.log('5️⃣ Testing login...');
     const testEmail = users.length > 0 ? users[0].email : 'test@example.com';
     const testPassword = 'Test123!';
-    
+
     const user = await User.findOne({ email: testEmail });
     if (!user) {
       console.log('❌ User not found');
@@ -81,7 +81,7 @@ async function testAuth() {
       console.log('   Password: Test123!');
     }
     console.log('');
-    console.log('🌐 Login at: http://localhost:5173/login');
+    console.log('🌐 Login at: http://localhost:5175/login');
 
     await mongoose.connection.close();
     process.exit(0);

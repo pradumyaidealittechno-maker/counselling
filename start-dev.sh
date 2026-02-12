@@ -31,7 +31,7 @@ else
 fi
 
 echo ""
-echo "🌐 Starting frontend server on port 5173..."
+echo "🌐 Starting frontend server on port 5175..."
 npm run dev
 
 # This will keep running until you press Ctrl+C
