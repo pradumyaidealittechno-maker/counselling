@@ -72,7 +72,7 @@ export default function ScheduleSession() {
     };
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ padding: '2rem', width: '100%' }}>
             {/* Header */}
             <div style={{ marginBottom: '2rem' }}>
                 <button
@@ -92,7 +92,7 @@ export default function ScheduleSession() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} style={{ background: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid var(--gray-200)' }}>
+            <form onSubmit={handleSubmit} style={{ background: 'white', padding: '2rem', borderRadius: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid var(--gray-200)', maxWidth: '800px' }}>
 
                 {/* Student Selection */}
                 <div style={{ marginBottom: '1.5rem' }}>

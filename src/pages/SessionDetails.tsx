@@ -131,7 +131,7 @@ export default function SessionDetails() {
     }
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ padding: '2rem', width: '100%' }}>
             {/* Header & Status */}
             <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
@@ -187,7 +187,7 @@ export default function SessionDetails() {
                 )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(500px, 2fr)', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '2rem', maxWidth: '1400px' }}>
 
                 {/* Sidebar: Details */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -299,54 +299,54 @@ export default function SessionDetails() {
                         )}
                     </div>
 
-                    {/* Action Items */}
-                    <div className="card">
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                            <CheckCircle size={20} className="text-success-600" />
-                            Action Items / Next Steps
-                        </h2>
-
-                        {/* List */}
-                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {actionItems.map((item, index) => (
-                                <li key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'white', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
-                                    <div style={{ color: 'var(--success-600)' }}>
-                                        <CheckCircle size={16} />
-                                    </div>
-                                    <span style={{ flex: 1, fontSize: '0.95rem', color: 'var(--gray-800)' }}>{item}</span>
-                                    {isEditing && (
-                                        <button
-                                            onClick={() => handleRemoveActionItem(index)}
-                                            style={{ color: 'var(--error-500)', background: 'none', border: 'none', cursor: 'pointer' }}
-                                        >
-                                            <AlertCircle size={16} />
-                                        </button>
-                                    )}
-                                </li>
-                            ))}
-                            {actionItems.length === 0 && !isEditing && (
-                                <p style={{ color: 'var(--gray-500)', fontStyle: 'italic', textAlign: 'center', padding: '2rem' }}>No action items listed for this session.</p>
-                            )}
-                        </ul>
-
-                        {/* Add New Item */}
-                        {isEditing && (
-                            <form onSubmit={handleAddActionItem} style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input
-                                    type="text"
-                                    className="input flex-1"
-                                    placeholder="Add a new action item..."
-                                    value={newActionItem}
-                                    onChange={(e) => setNewActionItem(e.target.value)}
-                                />
-                                <button type="submit" className="btn btn-outline" disabled={!newActionItem.trim()}>
-                                    Add
-                                </button>
-                            </form>
-                        )}
-                    </div>
-
                 </div>
+            </div>
+
+            {/* Action Items - Full Width Below Grid */}
+            <div className="card" style={{ maxWidth: '1400px' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                    <CheckCircle size={20} className="text-success-600" />
+                    Action Items / Next Steps
+                </h2>
+
+                {/* List */}
+                <ul style={{ listStyle: 'none', padding: 0, marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {actionItems.map((item, index) => (
+                        <li key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'var(--gray-50)', borderRadius: '0.5rem', border: '1px solid var(--gray-200)' }}>
+                            <div style={{ color: 'var(--success-600)' }}>
+                                <CheckCircle size={16} />
+                            </div>
+                            <span style={{ flex: 1, fontSize: '0.95rem', color: 'var(--gray-800)' }}>{item}</span>
+                            {isEditing && (
+                                <button
+                                    onClick={() => handleRemoveActionItem(index)}
+                                    style={{ color: 'var(--error-500)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                >
+                                    <AlertCircle size={16} />
+                                </button>
+                            )}
+                        </li>
+                    ))}
+                    {actionItems.length === 0 && !isEditing && (
+                        <p style={{ color: 'var(--gray-500)', fontStyle: 'italic', textAlign: 'center', padding: '2rem' }}>No action items listed for this session.</p>
+                    )}
+                </ul>
+
+                {/* Add New Item */}
+                {isEditing && (
+                    <form onSubmit={handleAddActionItem} style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input
+                            type="text"
+                            className="input flex-1"
+                            placeholder="Add a new action item..."
+                            value={newActionItem}
+                            onChange={(e) => setNewActionItem(e.target.value)}
+                        />
+                        <button type="submit" className="btn btn-outline" disabled={!newActionItem.trim()}>
+                            Add
+                        </button>
+                    </form>
+                )}
             </div>
         </div>
     );

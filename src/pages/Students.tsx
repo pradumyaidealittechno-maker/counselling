@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, TrendingUp, Users, Clock, BookOpen, GraduationCap, School, FileText, Loader } from 'lucide-react';
+import { Plus, Search, Calendar, BookOpen, GraduationCap, School, FileText, Loader, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -113,19 +113,7 @@ export default function Students() {
         return matchesSearch && matchesGrade && matchesStatus;
     });
 
-    // Calculate stats
-    const stats = {
-        totalStudents: students.length,
-        activeSessions: students.filter((s: any) => s.nextSessionDate).length,
-        sessionsThisWeek: students.filter((s: any) => {
-            if (!s.nextSessionDate) return false;
-            const sessionDate = new Date(s.nextSessionDate);
-            const today = new Date();
-            const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-            return sessionDate >= today && sessionDate <= weekFromNow;
-        }).length,
-        pendingFollowUps: students.filter((s: any) => s.status === 'pending').length
-    };
+
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return 'Not scheduled';
@@ -165,85 +153,6 @@ export default function Students() {
                         <Plus size={18} />
                         Add Student
                     </button>
-                </div>
-
-                {/* Stats Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
-                    <div style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        padding: '1.5rem',
-                        borderRadius: '1rem',
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.25)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                            <div>
-                                <p style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.5rem' }}>Total Students</p>
-                                <p style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.totalStudents}</p>
-                                <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>Enrolled this year</p>
-                            </div>
-                            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.75rem', borderRadius: '0.75rem' }}>
-                                <Users size={28} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{
-                        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                        padding: '1.5rem',
-                        borderRadius: '1rem',
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(240, 147, 251, 0.25)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                            <div>
-                                <p style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.5rem' }}>Active Sessions</p>
-                                <p style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.activeSessions}</p>
-                                <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>Scheduled this month</p>
-                            </div>
-                            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.75rem', borderRadius: '0.75rem' }}>
-                                <Calendar size={28} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{
-                        background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                        padding: '1.5rem',
-                        borderRadius: '1rem',
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(79, 172, 254, 0.25)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                            <div>
-                                <p style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.5rem' }}>Sessions This Week</p>
-                                <p style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.sessionsThisWeek}</p>
-                                <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>+2 from last week</p>
-                            </div>
-                            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.75rem', borderRadius: '0.75rem' }}>
-                                <TrendingUp size={28} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{
-                        background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                        padding: '1.5rem',
-                        borderRadius: '1rem',
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(250, 112, 154, 0.25)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                            <div>
-                                <p style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.5rem' }}>Pending Follow-ups</p>
-                                <p style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.pendingFollowUps}</p>
-                                <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>Requires attention</p>
-                            </div>
-                            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.75rem', borderRadius: '0.75rem' }}>
-                                <Clock size={28} />
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -339,7 +248,7 @@ export default function Students() {
                                     const gradeColors = getGradeColor(student.currentGrade);
                                     return (
                                         <tr
-                                            key={student.id}
+                                            key={student._id || student.id}
                                             style={{
                                                 borderBottom: idx !== filteredStudents.length - 1 ? '1px solid var(--gray-200)' : 'none',
                                                 cursor: 'pointer',
@@ -347,7 +256,7 @@ export default function Students() {
                                             }}
                                             onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                                            onClick={() => navigate(`/dashboard/students/${student.id}`)}
+                                            onClick={() => navigate(`/dashboard/students/${student._id || student.id}`)}
                                         >
                                             <td style={{ padding: '1rem' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
